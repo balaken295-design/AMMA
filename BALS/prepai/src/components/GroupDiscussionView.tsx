@@ -11,6 +11,56 @@ const DEFAULT_RTC_CONFIG: RTCConfiguration = {
   ],
 };
 
+// Remote peer video tile. Starts muted so it ALWAYS autoplays (every mobile
+// browser allows muted autoplay, but many silently block unmuted autoplay
+// even after an explicit .play() call) — a small tap-to-unmute overlay then
+// unlocks audio on the first genuine user tap, which mobile browsers do allow.
+const RemoteVideoTile: React.FC<{
+  stream: MediaStream;
+  socketId: string;
+  remoteVideoRefs: React.MutableRefObject<Record<string, HTMLVideoElement | null>>;
+}> = ({ stream, socketId, remoteVideoRefs }) => {
+  const [isMuted, setIsMuted] = useState(true);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
+
+  const attachRef = (el: HTMLVideoElement | null) => {
+    videoElRef.current = el;
+    remoteVideoRefs.current[socketId] = el;
+    if (el && el.srcObject !== stream) {
+      el.srcObject = stream;
+      el.play().catch(err => console.warn('Remote video play blocked:', err));
+    }
+  };
+
+  const handleUnmute = () => {
+    setIsMuted(false);
+    if (videoElRef.current) {
+      videoElRef.current.muted = false;
+      videoElRef.current.play().catch(err => console.warn('Unmute play blocked:', err));
+    }
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      <video
+        autoPlay
+        playsInline
+        muted={isMuted}
+        ref={attachRef}
+        className="w-full h-full object-cover"
+      />
+      {isMuted && (
+        <button
+          onClick={handleUnmute}
+          className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-xs font-bold gap-2 hover:bg-black/50 transition-colors"
+        >
+          <Volume2 className="w-5 h-5" /> Tap to unmute
+        </button>
+      )}
+    </div>
+  );
+};
+
 export const GroupDiscussionView: React.FC = () => {
   const [activeRoom, setActiveRoom] = useState<GDRoom | null>(null);
   const [selfSocketId, setSelfSocketId] = useState<string | null>(null);
@@ -650,18 +700,7 @@ export const GroupDiscussionView: React.FC = () => {
                   return (
                     <div key={p.socketId || p.id} className="relative aspect-video bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-sm flex items-center justify-center">
                       {p.role === 'peer' && stream ? (
-                        <video
-                          autoPlay
-                          playsInline
-                          ref={el => {
-                            remoteVideoRefs.current[p.socketId as string] = el;
-                            if (el && el.srcObject !== stream) {
-                              el.srcObject = stream;
-                              el.play().catch(err => console.warn('Remote video play blocked:', err));
-                            }
-                          }}
-                          className="w-full h-full object-cover"
-                        />
+                        <RemoteVideoTile stream={stream} socketId={p.socketId as string} remoteVideoRefs={remoteVideoRefs} />
                       ) : p.role === 'peer' ? (
                         <div className="flex flex-col items-center gap-2 text-slate-500">
                           <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
