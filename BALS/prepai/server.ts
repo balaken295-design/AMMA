@@ -270,6 +270,17 @@ const getGeminiClient = () => {
     },
   });
 };
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Gemini request timed out')), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
 
 // API Endpoint 1: Generate dynamic quiz questions for topics or module tests (supports 20 to 30 gaming questions per topic)
 app.post("/api/gemini/generate-questions", async (req, res) => {
@@ -557,7 +568,7 @@ Critical variety requirements — questions must NOT feel repetitive:
 - Vary the numbers, company names, and scenarios used — don't reuse the same fictional company or dataset twice.
 - Spread the correct answer across all 4 option positions roughly evenly — do not always put the correct answer in the same slot.`;
 
-    const response = await ai.models.generateContent({
+   const response = await withTimeout(ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
@@ -587,7 +598,7 @@ Critical variety requirements — questions must NOT feel repetitive:
           required: ["questions"],
         },
       },
-    });
+    }), 15000);
 
     const data = JSON.parse(response.text || "{}");
     const returnedQuestions = data.questions || [];
