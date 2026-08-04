@@ -457,7 +457,8 @@ export const GroupDiscussionView: React.FC = () => {
     }
   };
 
-  const remoteParticipants = activeRoom ? activeRoom.participants.filter(p => p.socketId !== selfSocketId && p.role !== 'user') : [];
+  const remoteParticipants = activeRoom ? activeRoom.participants.filter(p => p.socketId !== selfSocketId) : [];
+  const isRealPersonRole = (role: string) => role === 'peer' || role === 'user';
 
   return (
     <div id="gd-pipeline-container" className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 space-y-6">
@@ -699,9 +700,9 @@ export const GroupDiscussionView: React.FC = () => {
                   const stream = p.socketId ? remoteStreams[p.socketId] : undefined;
                   return (
                     <div key={p.socketId || p.id} className="relative aspect-video bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-sm flex items-center justify-center">
-                      {p.role === 'peer' && stream ? (
+                      {isRealPersonRole(p.role) && stream ? (
                         <RemoteVideoTile stream={stream} socketId={p.socketId as string} remoteVideoRefs={remoteVideoRefs} />
-                      ) : p.role === 'peer' ? (
+                      ) : isRealPersonRole(p.role) ? (
                         <div className="flex flex-col items-center gap-2 text-slate-500">
                           <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                           <span className="text-[10px] font-mono">Connecting camera…</span>
