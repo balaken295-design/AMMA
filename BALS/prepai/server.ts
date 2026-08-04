@@ -357,7 +357,63 @@ app.post("/api/gemini/generate-questions", async (req, res) => {
       correctIndex: 1,
       explanation: `Free Cash Flow Conversion (FCF / EBITDA or Net Income) shows how efficiently earnings become spendable cash — higher is generally better for valuation.`,
     }),
-  ];
+  (i) => {
+      const currentAssets = (i * 12) + 80; const currentLiabilities = (i * 7) + 50;
+      const workingCapital = currentAssets - currentLiabilities;
+      return {
+        question: `A company reports Current Assets of $${currentAssets}M and Current Liabilities of $${currentLiabilities}M. What is its Working Capital?`,
+        options: [`$${workingCapital - 10}M`, `$${workingCapital}M`, `$${workingCapital + 15}M`, `$${workingCapital + 30}M`],
+        correctIndex: 1,
+        explanation: `Working Capital = Current Assets − Current Liabilities = $${currentAssets}M − $${currentLiabilities}M = $${workingCapital}M.`,
+      };
+    },
+    (i) => {
+      const cogs = (i * 20) + 100; const avgInventory = (i * 4) + 20;
+      const turnover = (cogs / avgInventory).toFixed(1);
+      return {
+        question: `A retailer has COGS of $${cogs}M and Average Inventory of $${avgInventory}M. What is the Inventory Turnover Ratio?`,
+        options: [`${(Number(turnover)-1.5).toFixed(1)}x`, `${turnover}x`, `${(Number(turnover)+1).toFixed(1)}x`, `${(Number(turnover)+2.5).toFixed(1)}x`],
+        correctIndex: 1,
+        explanation: `Inventory Turnover = COGS / Average Inventory = $${cogs}M / $${avgInventory}M = ${turnover}x, showing how many times inventory is sold and replaced per period.`,
+      };
+    },
+    (i) => {
+      const netIncome = (i * 5) + 30; const equity = (i * 20) + 150;
+      const roe = ((netIncome / equity) * 100).toFixed(1);
+      return {
+        question: `A firm posts Net Income of $${netIncome}M on Shareholder Equity of $${equity}M. Using the basic ROE formula, what is its Return on Equity?`,
+        options: [`${(Number(roe)-3).toFixed(1)}%`, `${roe}%`, `${(Number(roe)+2).toFixed(1)}%`, `${(Number(roe)+5).toFixed(1)}%`],
+        correctIndex: 1,
+        explanation: `ROE = Net Income / Shareholder Equity = $${netIncome}M / $${equity}M = ${roe}%.`,
+      };
+    },
+    (i) => {
+      const investment = (i * 15) + 60; const annualCashFlow = (i * 3) + 15;
+      const payback = (investment / annualCashFlow).toFixed(1);
+      return {
+        question: `A project requires an initial investment of $${investment}M and generates $${annualCashFlow}M in annual cash flow. What is the Payback Period?`,
+        options: [`${(Number(payback)-1).toFixed(1)} years`, `${payback} years`, `${(Number(payback)+1.5).toFixed(1)} years`, `${(Number(payback)+3).toFixed(1)} years`],
+        correctIndex: 1,
+        explanation: `Payback Period = Initial Investment / Annual Cash Flow = $${investment}M / $${annualCashFlow}M ≈ ${payback} years.`,
+      };
+    },
+    () => ({
+      question: `Using CAPM, if the risk-free rate is 4%, the market return is 10%, and a stock's beta is 1.2, what is its Cost of Equity?`,
+      options: ['10.0%', '11.2%', '13.2%', '16.0%'],
+      correctIndex: 1,
+      explanation: `Cost of Equity = Rf + β(Rm − Rf) = 4% + 1.2 × (10% − 4%) = 4% + 7.2% = 11.2%.`,
+    }),
+    () => ({
+      question: `A bond's yield to maturity (YTM) rises sharply after issuance while its coupon rate stays fixed. What happened to the bond's market price?`,
+      options: [
+        'It rose, since yields and prices move together',
+        'It fell, since bond prices and yields move inversely',
+        'It stayed exactly the same',
+        'Price is unrelated to yield changes',
+      ],
+      correctIndex: 1,
+      explanation: `Bond prices and yields have an inverse relationship — as required yields rise, the present value of fixed coupon payments falls, pushing the bond's market price down.`,
+    }),];
 
   const marketingTemplates: FallbackTemplate[] = [
     (i) => {
@@ -396,7 +452,59 @@ app.post("/api/gemini/generate-questions", async (req, res) => {
       correctIndex: 1,
       explanation: `LTV:CAC ratio (commonly targeting 3:1 or higher) directly measures whether the value a customer generates exceeds what it cost to acquire them.`,
     }),
-  ];
+  (i) => {
+      const customers = (i * 500) + 2000; const totalMarket = (i * 3000) + 20000;
+      const penetration = ((customers / totalMarket) * 100).toFixed(1);
+      return {
+        question: `A brand has ${customers.toLocaleString()} customers in a total addressable market of ${totalMarket.toLocaleString()}. What is its Market Penetration Rate?`,
+        options: [`${(Number(penetration)-3).toFixed(1)}%`, `${penetration}%`, `${(Number(penetration)+4).toFixed(1)}%`, `${(Number(penetration)+8).toFixed(1)}%`],
+        correctIndex: 1,
+        explanation: `Market Penetration = Customers / Total Addressable Market × 100 = ${customers.toLocaleString()} / ${totalMarket.toLocaleString()} × 100 ≈ ${penetration}%.`,
+      };
+    },
+    () => ({
+      question: `A company's Net Promoter Score (NPS) survey shows 50% Promoters, 30% Passives, and 20% Detractors. What is the NPS?`,
+      options: ['20', '30', '50', '70'],
+      correctIndex: 1,
+      explanation: `NPS = %Promoters − %Detractors = 50% − 20% = 30. Passives are excluded from the calculation entirely.`,
+    }),
+    (i) => {
+      const visitors = (i * 2000) + 10000; const purchases = (i * 40) + 200;
+      const conv = ((purchases / visitors) * 100).toFixed(2);
+      return {
+        question: `An e-commerce funnel had ${visitors.toLocaleString()} visitors and ${purchases.toLocaleString()} purchases last month. What is the conversion rate?`,
+        options: [`${(Number(conv)-0.5).toFixed(2)}%`, `${conv}%`, `${(Number(conv)+0.8).toFixed(2)}%`, `${(Number(conv)+1.5).toFixed(2)}%`],
+        correctIndex: 1,
+        explanation: `Conversion Rate = Purchases / Visitors × 100 = ${purchases.toLocaleString()} / ${visitors.toLocaleString()} × 100 ≈ ${conv}%.`,
+      };
+    },
+    () => ({
+      question: `In the classic marketing mix (4 Ps), a company drops its price significantly right after a competitor's product launch. Which "P" is being adjusted?`,
+      options: ['Product', 'Price', 'Place', 'Promotion'],
+      correctIndex: 1,
+      explanation: `Price is one of the 4 Ps (Product, Price, Place, Promotion) — adjusting the price point directly in response to competitive pressure is a pricing-strategy decision.`,
+    }),
+    (i) => {
+      const adSpend = (i * 2000) + 8000; const revenue = (i * 9000) + 30000;
+      const roas = (revenue / adSpend).toFixed(1);
+      return {
+        question: `A campaign spent $${adSpend.toLocaleString()} on ads and generated $${revenue.toLocaleString()} in attributed revenue. What is the Return on Ad Spend (ROAS)?`,
+        options: [`${(Number(roas)-0.8).toFixed(1)}x`, `${roas}x`, `${(Number(roas)+0.6).toFixed(1)}x`, `${(Number(roas)+1.5).toFixed(1)}x`],
+        correctIndex: 1,
+        explanation: `ROAS = Revenue / Ad Spend = $${revenue.toLocaleString()} / $${adSpend.toLocaleString()} ≈ ${roas}x, meaning every $1 spent returned $${roas}.`,
+      };
+    },
+    () => ({
+      question: `Two products have identical features and price, but one commands a much higher willingness-to-pay. What best explains this gap?`,
+      options: [
+        'Random chance in customer surveys',
+        'Strong brand equity built through perceived quality, awareness, and loyalty',
+        'The product with lower price always wins regardless of brand',
+        'Brand has no measurable effect on pricing power',
+      ],
+      correctIndex: 1,
+      explanation: `Brand equity — the accumulated value from awareness, perceived quality, and loyalty — lets a brand charge a premium even when functional attributes are identical to competitors.`,
+    }),];
 
   const hrTemplates: FallbackTemplate[] = [
     (_i, topicName) => ({
@@ -432,7 +540,74 @@ app.post("/api/gemini/generate-questions", async (req, res) => {
       correctIndex: 1,
       explanation: `Cross-manager calibration against a shared rubric is the standard lever for reducing individual rater bias in appraisals.`,
     }),
-  ];
+  (i) => {
+      const marketMedian = (i * 2) + 60; const currentPay = (i * 2) + 54;
+      const compaRatio = (currentPay / marketMedian).toFixed(2);
+      return {
+        question: `An employee earns $${currentPay}K against a market median of $${marketMedian}K for the role. What is their compa-ratio, and what does it suggest?`,
+        options: [
+          `${compaRatio} — paid above market`,
+          `${compaRatio} — paid below market median, a retention risk`,
+          `${compaRatio} — exactly at market rate`,
+          `Compa-ratio cannot be calculated from this data`,
+        ],
+        correctIndex: 1,
+        explanation: `Compa-ratio = Employee Pay / Market Median = $${currentPay}K / $${marketMedian}K = ${compaRatio}. A ratio below 1.0 signals below-market pay, a common driver of voluntary attrition.`,
+      };
+    },
+    () => ({
+      question: `A company has no identified successor for its CFO role, who plans to retire within a year. What HR practice most directly mitigates this risk?`,
+      options: [
+        'Waiting until the CFO formally resigns to begin searching',
+        'A structured succession plan identifying and developing internal high-potential candidates in advance',
+        'Freezing the finance department budget',
+        'Succession planning is only relevant for CEO-level roles',
+      ],
+      correctIndex: 1,
+      explanation: `Succession planning proactively identifies and develops internal candidates for critical roles, reducing disruption and search time when a leader departs.`,
+    }),
+    (i) => {
+      const trainingCost = (i * 5) + 20; const productivityGain = (i * 9) + 35;
+      const roi = (((productivityGain - trainingCost) / trainingCost) * 100).toFixed(0);
+      return {
+        question: `A training program cost $${trainingCost}K and produced a measured productivity gain valued at $${productivityGain}K. What is the Training ROI?`,
+        options: [`${Number(roi)-20}%`, `${roi}%`, `${Number(roi)+15}%`, `${Number(roi)+40}%`],
+        correctIndex: 1,
+        explanation: `Training ROI = (Gain − Cost) / Cost × 100 = ($${productivityGain}K − $${trainingCost}K) / $${trainingCost}K × 100 ≈ ${roi}%.`,
+      };
+    },
+    () => ({
+      question: `A firm's diversity dashboard shows strong representation at entry level but a sharp drop-off at senior management. What does this pattern typically indicate?`,
+      options: [
+        'The hiring pipeline is entirely responsible and nothing else matters',
+        'A leaky pipeline — barriers to advancement or retention that disproportionately affect underrepresented groups as they move up',
+        'The company has no diversity issue since entry-level looks fine',
+        'This pattern is statistically impossible',
+      ],
+      correctIndex: 1,
+      explanation: `This leaky-pipeline pattern points to promotion, mentorship, or retention barriers further up the career ladder, not just a hiring-stage problem.`,
+    }),
+    () => ({
+      question: `On a 9-box talent grid, an employee rated "High Performance, Low Potential" is best suited for which action?`,
+      options: [
+        'Immediate promotion to a leadership track',
+        'Recognition and reward in their current role, without assuming they want or fit a broader leadership path',
+        'Termination, since low potential is disqualifying',
+        'No action of any kind should be taken',
+      ],
+      correctIndex: 1,
+      explanation: `High performers with lower assessed leadership potential are often best retained and rewarded as strong specialists rather than pushed into a mismatched leadership track.`,
+    }),
+    (i) => {
+      const daysAbsent = (i * 3) + 20; const workDays = (i * 10) + 220;
+      const rate = ((daysAbsent / workDays) * 100).toFixed(1);
+      return {
+        question: `A department logged ${daysAbsent} absence-days out of ${workDays} total scheduled work-days this year. What is the Absenteeism Rate?`,
+        options: [`${(Number(rate)-1).toFixed(1)}%`, `${rate}%`, `${(Number(rate)+1.5).toFixed(1)}%`, `${(Number(rate)+3).toFixed(1)}%`],
+        correctIndex: 1,
+        explanation: `Absenteeism Rate = Absence Days / Total Scheduled Work Days × 100 = ${daysAbsent} / ${workDays} × 100 ≈ ${rate}%.`,
+      };
+    },];
 
   const analyticsTemplates: FallbackTemplate[] = [
     (i, topicName) => ({
@@ -468,7 +643,56 @@ app.post("/api/gemini/generate-questions", async (req, res) => {
       correctIndex: 1,
       explanation: `In fraud detection, false negatives (missed fraud) are typically far more costly than false positives, so recall is often prioritized.`,
     }),
-  ];
+  () => ({
+      question: `A K-means clustering model on customer data produces 4 distinct clusters with very high within-cluster variance. What does this most likely suggest?`,
+      options: [
+        'The clustering is perfect and needs no further work',
+        `The chosen number of clusters (k) may be too low, or the features used don't separate customers well`,
+        'High within-cluster variance is always desirable',
+        'K-means cannot produce variance metrics',
+      ],
+      correctIndex: 1,
+      explanation: `High within-cluster variance suggests points in the same cluster aren't very similar — often fixed by testing more values of k (e.g. via the elbow method) or better feature selection.`,
+    }),
+    () => ({
+      question: `Ice cream sales and drowning incidents are strongly positively correlated across months. What is the correct interpretation?`,
+      options: [
+        'Ice cream sales cause drownings',
+        'Drownings cause ice cream sales',
+        'Both are driven by a third variable (hot weather/summer), a classic correlation-does-not-imply-causation case',
+        'The correlation must be a calculation error',
+      ],
+      correctIndex: 2,
+      explanation: `This is a textbook confounding-variable case — a third factor (warm weather) drives both variables independently, and the correlation between them is not causal.`,
+    }),
+    () => ({
+      question: `A customer satisfaction survey is emailed only to customers who made a purchase in the last 30 days. What bias does this sampling method introduce?`,
+      options: [
+        'No bias — email surveys are always representative',
+        'Survivorship/selection bias — it excludes churned or infrequent customers, likely inflating satisfaction scores',
+        'This method guarantees a random sample',
+        'Sampling method never affects survey results',
+      ],
+      correctIndex: 1,
+      explanation: `Restricting the sample to recent purchasers excludes dissatisfied customers who already churned, systematically inflating the measured satisfaction score.`,
+    }),
+    () => ({
+      question: `A retailer's monthly sales data shows a repeating spike every December for 5 straight years. What time-series component does this represent?`,
+      options: ['Trend', 'Seasonality', 'Random noise', 'Structural break'],
+      correctIndex: 1,
+      explanation: `A regularly repeating pattern tied to a specific calendar period (like December holiday sales) is classic seasonality, distinct from a long-term trend or one-off structural break.`,
+    }),
+    () => ({
+      question: `A model reports a 95% confidence interval for average customer spend of [$42, $58]. What is the correct interpretation?`,
+      options: [
+        '95% of customers spend between $42 and $58',
+        'If we repeated this sampling process many times, about 95% of such intervals would contain the true population mean',
+        'There is a 95% chance the true mean is exactly $50',
+        'Confidence intervals guarantee the exact population value',
+      ],
+      correctIndex: 1,
+      explanation: `A confidence interval describes the reliability of the estimation procedure across repeated sampling — it does not mean 95% of individual data points fall in that range.`,
+    }),];
 
   const generalTemplates: FallbackTemplate[] = [
     (_i, topicName, catName) => ({
@@ -504,7 +728,57 @@ app.post("/api/gemini/generate-questions", async (req, res) => {
       correctIndex: 0,
       explanation: `Regulatory complexity and cultural/localization needs are frequently underestimated relative to headline market-size opportunity.`,
     }),
-  ];
+  () => ({
+      question: `Using Porter's Five Forces, a market with low switching costs, many substitute products, and price-sensitive buyers signals which condition?`,
+      options: [
+        'High barriers to entry protecting incumbents',
+        'High buyer power and intense competitive rivalry, compressing margins',
+        'A natural monopoly with no competitive pressure',
+        `These factors are irrelevant to Porter's framework`,
+      ],
+      correctIndex: 1,
+      explanation: `Low switching costs, abundant substitutes, and price-sensitive buyers all strengthen buyer power and rivalry — two of Porter's five forces that squeeze industry profitability.`,
+    }),
+    (_i, topicName) => ({
+      question: `In a SWOT analysis for "${topicName || 'a new market entry'}", a strong existing distribution network but weak brand recognition abroad would be classified as which combination?`,
+      options: ['Strength and Opportunity', 'Strength and Weakness', 'Weakness and Threat', 'Opportunity and Threat'],
+      correctIndex: 1,
+      explanation: `An existing distribution network is an internal Strength; weak brand recognition abroad is an internal Weakness — both are internal factors, distinct from external Opportunities/Threats.`,
+    }),
+    () => ({
+      question: `A company creates an entirely new product category with no direct competitors, rather than competing on price in a saturated market. This best describes which strategic concept?`,
+      options: ['Red Ocean Strategy', 'Blue Ocean Strategy', 'Cost Leadership', 'Vertical Integration'],
+      correctIndex: 1,
+      explanation: `Blue Ocean Strategy focuses on creating uncontested market space rather than competing head-to-head in an existing, saturated market.`,
+    }),
+    () => ({
+      question: `A major organizational restructuring fails despite a sound strategic rationale, because employees were never given a clear, urgent reason to change. Which step of Kotter's 8-step change model was likely skipped?`,
+      options: ['Forming a powerful coalition', 'Creating a sense of urgency', 'Anchoring changes in culture', 'Removing obstacles'],
+      correctIndex: 1,
+      explanation: `Kotter's model begins with "Creating a Sense of Urgency" — without it, employees lack the motivation to support disruptive change, a common root cause of failed transformations.`,
+    }),
+    () => ({
+      question: `A CEO makes decisions that boost short-term stock price (and their own bonus) at the expense of long-term shareholder value. This is a classic example of which governance issue?`,
+      options: [
+        'Perfect alignment between management and shareholders',
+        'The agency problem — a conflict of interest between agents (management) and principals (shareholders)',
+        'A regulatory requirement being properly followed',
+        'This scenario has no governance implications',
+      ],
+      correctIndex: 1,
+      explanation: `The agency problem arises when managers (agents) pursue their own interests at the expense of shareholders (principals) — a core concern in corporate governance design.`,
+    }),
+    (_i, topicName, catName) => ({
+      question: `On a standard risk matrix, a risk with "High Impact" but "Low Probability" for "${topicName || catName || 'a strategic initiative'}" should typically be handled how?`,
+      options: [
+        `Ignored entirely since it's unlikely`,
+        `Mitigated with contingency plans even though it's rare, because the potential impact is severe`,
+        'Accepted without any monitoring',
+        'Treated identically to a Low Impact, Low Probability risk',
+      ],
+      correctIndex: 1,
+      explanation: `High-impact/low-probability risks (rare but catastrophic events) typically warrant contingency planning or risk transfer, because the potential damage is severe despite low likelihood.`,
+    }),];
 
   const generateFallbackQuestions = (topicName: string, catName: string, numToGen: number) => {
     const templatesByDomain: Record<string, FallbackTemplate[]> = {
