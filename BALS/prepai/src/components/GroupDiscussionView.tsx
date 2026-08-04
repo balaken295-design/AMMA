@@ -16,7 +16,24 @@ export const GroupDiscussionView: React.FC = () => {
   const [selfSocketId, setSelfSocketId] = useState<string | null>(null);
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [selectedTopic, setSelectedTopic] = useState('ESG Metrics vs Profit Maximization: Strategic Boardroom Tradeoffs in Global Multinationals');
+  const GD_TOPICS = [
+    'Generative AI Disruption in Financial Services, Asset Management & Private Equity',
+    'Central Bank Digital Currencies (CBDCs) vs Commercial Banking & Fintech Ecosystems',
+    'Shareholder Value vs Stakeholder Governance: M&A Impact on Corporate Debt',
+    'Gig Economy Regulation: Balancing Worker Welfare with Platform Business Scalability',
+    'Hybrid Workforce Productivity, Employee Mental Health & Executive Burnout',
+    'AI Automation in Performance Appraisals & Diversity Bias Mitigation',
+    'Data Privacy Regulations vs Hyper-Personalized Performance Marketing',
+    'Influencer Marketing ROI vs Traditional Media Brand Equity in Gen-Z FMCG',
+    'Subscription Pricing Fatigue & Customer Churn Prevention in Digital Platforms',
+    'Ethical Boundaries in Algorithmic Pricing, Dynamic Yield & Consumer Exploitation',
+    'Predictive Churn Modeling vs Customer Lifetime Value (LTV) Optimization',
+    'Data Governance in Sovereign Cloud Infrastructure for Global Enterprise',
+    'Supply Chain Decoupling & Nearshoring: Geopolitical Risk Management for FMCG',
+    'ESG Metrics vs Profit Maximization: Strategic Boardroom Tradeoffs in Global Multinationals',
+    'Market Entry Strategy: Electric Vehicle Expansion in Emerging Asian Economies',
+  ];
+  const [selectedTopic, setSelectedTopic] = useState(() => GD_TOPICS[Math.floor(Math.random() * GD_TOPICS.length)]);
   const [copiedCode, setCopiedCode] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
@@ -604,7 +621,12 @@ export const GroupDiscussionView: React.FC = () => {
                 {/* User Camera Tile */}
                 <div className="relative aspect-video bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-sm group">
                   <video
-                    ref={localVideoRef}
+                    ref={el => {
+                      localVideoRef.current = el;
+                      if (el && mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) {
+                        el.srcObject = mediaStreamRef.current;
+                      }
+                    }}
                     autoPlay
                     playsInline
                     muted
@@ -633,7 +655,10 @@ export const GroupDiscussionView: React.FC = () => {
                           playsInline
                           ref={el => {
                             remoteVideoRefs.current[p.socketId as string] = el;
-                            if (el && el.srcObject !== stream) el.srcObject = stream;
+                            if (el && el.srcObject !== stream) {
+                              el.srcObject = stream;
+                              el.play().catch(err => console.warn('Remote video play blocked:', err));
+                            }
                           }}
                           className="w-full h-full object-cover"
                         />
