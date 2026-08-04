@@ -1,0 +1,201 @@
+import React, { useState, useEffect } from 'react';
+import { Header } from './components/Header';
+import { LandingPageView } from './components/LandingPageView';
+import { DashboardView } from './components/DashboardView';
+import { AptitudeView } from './components/AptitudeView';
+import { GroupDiscussionView } from './components/GroupDiscussionView';
+import { AIInterviewView } from './components/AIInterviewView';
+import { EvaluationSummaryView } from './components/EvaluationSummaryView';
+import { GoogleLoginModal } from './components/GoogleLoginModal';
+import { InterviewEvaluation, UserProfile, INITIAL_USER_PROFILE, MBADomain } from './types';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<'landing' | 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation'>('landing');
+  const [selectedCategory, setSelectedCategory] = useState<'verbal' | 'logical' | 'quants'>('verbal');
+  const [lastEvaluation, setLastEvaluation] = useState<InterviewEvaluation | undefined>(undefined);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    try {
+      const saved = localStorage.getItem('prepai_user_profile');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {
+      // ignore
+    }
+    return INITIAL_USER_PROFILE;
+  });
+
+  // Sync profile to localStorage & MongoDB Atlas
+  useEffect(() => {
+    try {
+      localStorage.setItem('prepai_user_profile', JSON.stringify(userProfile));
+      if (userProfile.isLoggedIn && userProfile.email) {
+        fetch('/api/db/user-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile: userProfile }),
+        }).catch((err) => console.warn('Sync profile error:', err));
+      }
+    } catch {
+      // ignore
+    }
+  }, [userProfile]);
+
+  const calculateLevel = (xp: number) => {
+    if (xp < 500) return { level: 1, title: 'Intern Quest' };
+    if (xp < 1500) return { level: 2, title: 'Associate Sprint' };
+    if (xp < 3000) return { level: 3, title: 'VP Strategy' };
+    return { level: 4, title: 'MD Boss Battle' };
+  };
+
+  const handleAddXP = (xpAmount: number, domain?: string, scorePercent?: number) => {
+    setUserProfile((prev) => {
+      const newXp = prev.xp + xpAmount;
+      const { level, title } = calculateLevel(newXp);
+      const newCompletedTests = prev.completedTests + 1;
+      
+      const updatedDomainScores = { ...prev.domainScores };
+      if (domain && domain in updatedDomainScores) {
+        const currentDomainScore = updatedDomainScores[domain as MBADomain];
+        updatedDomainScores[domain as MBADomain] = currentDomainScore === 0 ? (scorePercent || 80) : Math.round((currentDomainScore + (scorePercent || 80)) / 2);
+      }
+
+      // Dynamic readiness score calculation from zero upwards
+      const totalTestsAndInterviews = newCompletedTests + prev.completedInterviews + prev.completedGDs;
+      const baseReadiness = Math.min(100, Math.round((newXp / 3000) * 85 + totalTestsAndInterviews * 5));
+
+      return {
+        ...prev,
+        xp: newXp,
+        level,
+        levelTitle: title,
+        completedTests: newCompletedTests,
+        readinessScore: Math.min(100, Math.max(15, baseReadiness)),
+        streakDays: prev.streakDays === 0 ? 1 : prev.streakDays,
+        domainScores: updatedDomainScores,
+      };
+    });
+  };
+
+  // Called once the backend has verified the real Google ID token — the
+  // profile it returns is already resolved (existing or freshly created),
+  // so we just adopt it directly rather than re-deriving anything client-side.
+  const handleGoogleVerifiedProfile = (profile: UserProfile) => {
+    setUserProfile({ ...profile, isLoggedIn: true });
+  };
+
+  const handleGoogleLogout = () => {
+    setUserProfile(INITIAL_USER_PROFILE);
+    localStorage.removeItem('prepai_user_profile');
+  };
+
+  const handleResetProgress = () => {
+    setUserProfile((prev) => ({
+      ...INITIAL_USER_PROFILE,
+      email: prev.email,
+      name: prev.name,
+      isLoggedIn: prev.isLoggedIn,
+    }));
+    localStorage.removeItem('prepai_user_profile');
+  };
+
+  const handleCompleteInterview = (evaluation: InterviewEvaluation) => {
+    setLastEvaluation(evaluation);
+    setUserProfile((prev) => {
+      const newXp = prev.xp + 300;
+      const { level, title } = calculateLevel(newXp);
+      const newInterviews = prev.completedInterviews + 1;
+      const readiness = Math.min(100, Math.max(20, Math.round((newXp / 3000) * 70 + evaluation.readinessScore * 0.3)));
+      return {
+        ...prev,
+        xp: newXp,
+        level,
+        levelTitle: title,
+        completedInterviews: newInterviews,
+        readinessScore: readiness,
+        streakDays: prev.streakDays === 0 ? 1 : prev.streakDays,
+      };
+    });
+    setActiveTab('evaluation');
+  };
+
+  const handleStartAppFromLanding = (targetTab: 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation' = 'dashboard', category?: 'verbal' | 'logical' | 'quants') => {
+    if (category) {
+      setSelectedCategory(category);
+    }
+    setActiveTab(targetTab);
+  };
+
+  return (
+    <div id="app-root" className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-col font-['Inter',sans-serif]">
+      {/* Top Header Navigation */}
+      {activeTab !== 'landing' && (
+        <Header 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          userProfile={userProfile}
+          onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        />
+      )}
+
+      {/* Main Content Stage */}
+      <main id="app-main" className="flex-1">
+        {activeTab === 'landing' && (
+          <LandingPageView 
+            onStartApp={handleStartAppFromLanding} 
+            userProfile={userProfile}
+            onOpenLoginModal={() => setIsLoginModalOpen(true)}
+          />
+        )}
+
+        {activeTab === 'dashboard' && (
+          <DashboardView
+            setActiveTab={setActiveTab}
+            onSelectCategory={(cat) => {
+              setSelectedCategory(cat);
+              setActiveTab('aptitude');
+            }}
+            userProfile={userProfile}
+            onOpenLoginModal={() => setIsLoginModalOpen(true)}
+          />
+        )}
+
+        {activeTab === 'aptitude' && (
+          <AptitudeView 
+            initialCategory={selectedCategory} 
+            userProfile={userProfile}
+            onAddXP={handleAddXP}
+          />
+        )}
+
+        {activeTab === 'gd' && (
+          <GroupDiscussionView />
+        )}
+
+        {activeTab === 'interview' && (
+          <AIInterviewView onCompleteInterview={handleCompleteInterview} />
+        )}
+
+        {activeTab === 'evaluation' && (
+          <EvaluationSummaryView
+            evaluation={lastEvaluation}
+            onStartNextPath={() => setActiveTab('aptitude')}
+          />
+        )}
+      </main>
+
+      {/* Google Sign In & Account Management Modal */}
+      <GoogleLoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        userProfile={userProfile}
+        onGoogleProfile={handleGoogleVerifiedProfile}
+        onLogout={handleGoogleLogout}
+        onResetProgress={handleResetProgress}
+      />
+    </div>
+  );
+}
+

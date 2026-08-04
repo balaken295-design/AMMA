@@ -1,0 +1,6 @@
+{
+  "name": "MBA BJD - Interview Intelligence & Aptitude System",
+  "description": "Comprehensive interview preparation platform featuring structured Verbal, Logical, and Quantitative aptitude modules, timed tests, real-time camera/microphone Group Discussion pipeline, and step-by-step AI Face Interviewer with detailed evaluation analytics.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
