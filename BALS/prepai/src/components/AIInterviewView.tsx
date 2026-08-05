@@ -160,42 +160,21 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     }
   };
 
-  const getFallbackEvaluation = (): InterviewEvaluation => ({
-    role: selectedRole,
-    date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-    readinessScore: 88,
-    percentile: 12,
-    metrics: {
-      communication: { score: 94, note: "Executive-level articulation with clear MECE structuring and top-line synthesis." },
-      technicalAccuracy: { score: 85, note: "Strong grasp of revenue drivers, EBITDA margins, and competitive moat analysis." },
-      bodyLanguage: { score: 90, note: "Steady posture, direct eye contact with camera, and confident voice projection." },
-      confidence: { score: 86, note: "Maintained executive composure under probing follow-up case questions." }
-    },
-    transcript: [
-      {
-        id: '1',
-        question: "How would you structure a market-entry framework for a multinational consumer goods brand evaluating expansion into Southeast Asia?",
-        answer: "I would structure this along 4 MECE dimensions: 1) Market Attractiveness (TAM, CAGR, margin profile), 2) Competitive Landscape (local players vs incumbents), 3) Capability & Operational Fit (distribution channels, regulatory compliance), and 4) Financial Feasibility (CAPEX, payback period, NPV).",
-        aiInsight: "Outstanding MECE framework! Your 4-bucket structure directly addresses boardroom priorities. To elevate further, quantify the target ROI benchmark (e.g., 'Targeting a 15% IRR within 3 years')."
-      },
-      {
-        id: '2',
-        question: "In an M&A scenario, if EBITDA multiples are expanding while net cash flows decline, what red flags should the board investigate?",
-        answer: "This signals potential margin compression from rising working capital requirements, uncollected receivables, or unsustainable debt servicing. I would analyze the cash conversion cycle and free cash flow conversion rates.",
-        aiInsight: "Excellent financial acumen! Highlighting Free Cash Flow conversion isolated the risk effectively."
-      }
-    ],
-    nextSteps: [
-      { title: "Refine M&A Valuation Drills", description: "Practice Advanced DCF sensitivity analysis and LBO debt sizing models.", icon: "school" },
-      { title: "Book Live MBA Peer Mock", description: "Schedule a live 1-on-1 case battle with an MBA peer reviewer.", icon: "event_available" },
-      { title: "Review Boardroom Synthesis", description: "Focus on summarizing 3-point executive takeaways within 30 seconds.", icon: "assignment_turned_in" }
-    ],
-    recommendedResources: [
-      { title: "McKinsey Case Interview Frameworks", url: "#" },
-      { title: "M&A Valuation & LBO Modeling Guide", url: "#" },
-      { title: "Top 50 MBA Boardroom Questions", url: "#" }
-    ]
-  });
+const getFallbackEvaluation = (): InterviewEvaluation => ({
+  role: selectedRole,
+  date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+  readinessScore: 0,
+  percentile: 0,
+  metrics: {
+    communication: { score: 0, note: "Evaluation unavailable — AI service did not respond." },
+    technicalAccuracy: { score: 0, note: "Evaluation unavailable — AI service did not respond." },
+    bodyLanguage: { score: 0, note: "Evaluation unavailable — AI service did not respond." },
+    confidence: { score: 0, note: "Evaluation unavailable — AI service did not respond." }
+  },
+  transcript: updatedHistory.map((q, i) => ({ id: String(i+1), question: q.question, answer: q.userAnswer || "", aiInsight: "N/A" })),
+  nextSteps: [],
+  recommendedResources: []
+});
 
   return (
     <div id="ai-interview-container" className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 space-y-6">
