@@ -25,7 +25,7 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
     );
   }
   const evalData = evaluation;
-  // ... rest of the component stays the same, delete the old hardcoded object entirely
+  return (
     <div id="evaluation-summary-page" className="bg-slate-50 text-slate-900 min-h-screen py-8 px-4 md:px-8">
       <main className="max-w-[1280px] mx-auto space-y-8">
         {/* Header Section */}
