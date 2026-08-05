@@ -282,6 +282,71 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   }
 }
 
+// Retries a Gemini call up to `attempts` times with a short backoff before
+// giving up. Most interview-evaluation failures are transient (rate limit /
+// momentary timeout on the model call), so a single retry clears the large
+// majority of them instead of immediately dropping the user to a fallback.
+async function withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 800): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await withTimeout(fn(), 25000);
+    } catch (err) {
+      lastError = err;
+      console.error(`Gemini call attempt ${i + 1}/${attempts} failed:`, err);
+      if (i < attempts - 1) {
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+  }
+  throw lastError;
+}
+
+// Builds a real (non-zero) evaluation from the actual transcript when Gemini
+// is unavailable, so the candidate never sees a blanket "0/100 — AI service
+// did not respond" screen. Scores are heuristic (based on answer length and
+// completeness) and clearly labeled as an estimate in each note.
+function buildHeuristicEvaluation(role: string, qaPairs: any[]): any {
+  const answers = (qaPairs || []).map((q) => (q?.userAnswer || "").trim());
+  const answered = answers.filter((a) => a.length > 0);
+  const avgLen = answered.length
+    ? answered.reduce((sum, a) => sum + a.split(/\s+/).length, 0) / answered.length
+    : 0;
+
+  // Simple, transparent heuristic: reward longer, more complete answers.
+  // Clamped so it never reads as a polished AI score, just a fair estimate.
+  const completeness = qaPairs?.length ? answered.length / qaPairs.length : 0;
+  const depthScore = Math.min(100, Math.round(avgLen * 2.5));
+  const baseScore = Math.round(completeness * 50 + Math.min(depthScore, 50));
+  const clampedScore = Math.max(35, Math.min(baseScore, 80));
+
+  const note = "Estimated score — our AI evaluator was temporarily unavailable, so this reflects a basic completeness/length check of your answer rather than a full review.";
+
+  return {
+    role: role || "Candidate Interview",
+    date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    readinessScore: clampedScore,
+    percentile: Math.max(5, 100 - clampedScore),
+    metrics: {
+      communication: { score: clampedScore, note },
+      technicalAccuracy: { score: clampedScore, note },
+      bodyLanguage: { score: clampedScore, note: "Not evaluated — AI evaluator was unavailable for this session." },
+      confidence: { score: clampedScore, note },
+    },
+    transcript: (qaPairs || []).map((pair: any, i: number) => ({
+      id: String(pair.id ?? i + 1),
+      question: pair.question,
+      answer: pair.userAnswer || "",
+      aiInsight: "AI insight unavailable for this answer — the evaluator service could not be reached.",
+    })),
+    nextSteps: [
+      { title: "Retry Evaluation", description: "Our AI evaluator hit a temporary issue. Try running the interview again for a full, detailed report.", icon: "refresh" },
+    ],
+    recommendedResources: [],
+    degraded: true,
+  };
+}
+
 // API Endpoint 1: Generate dynamic quiz questions for topics or module tests (supports 20 to 30 gaming questions per topic)
 app.post("/api/gemini/generate-questions", async (req, res) => {
   const { topicTitle, category, count = 20, domain = "General Management" } = req.body;
@@ -1049,7 +1114,7 @@ Candidate's last answer: "${userAnswer || ""}"
 2. Generate the next progressive interview question appropriate for step ${stepNumber}.
 3. Indicate if the interview is finished (isFinished = true if step > 4).`;
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
@@ -1064,7 +1129,7 @@ Candidate's last answer: "${userAnswer || ""}"
           required: ["nextQuestion", "isFinished"],
         },
       },
-    });
+    }), 2, 600);
 
     const data = JSON.parse(response.text || "{}");
     return res.json({
@@ -1149,7 +1214,7 @@ Generate a detailed evaluation report object with:
 5. 3 nextSteps recommendations
 6. 3 recommendedResources titles`;
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
@@ -1225,9 +1290,13 @@ Generate a detailed evaluation report object with:
           required: ["readinessScore", "percentile", "metrics", "transcript", "nextSteps", "recommendedResources"],
         },
       },
-    });
+    }));
 
     const evalData = JSON.parse(response.text || "{}");
+    if (!evalData || typeof evalData.readinessScore !== "number") {
+      throw new Error("Gemini returned an incomplete evaluation payload");
+    }
+
     return res.json({
       success: true,
       evaluation: {
@@ -1237,8 +1306,15 @@ Generate a detailed evaluation report object with:
       },
     });
   } catch (error) {
-    console.error("Error generating evaluation report:", error);
-    return res.status(500).json({ error: "Failed to generate evaluation" });
+    // Previously this returned a bare 500, which the frontend's catch block
+    // silently swaps for a hardcoded 0/100 "AI service did not respond"
+    // report. We now log the real cause here (check server logs for this)
+    // and hand back a real, non-zero estimate instead.
+    console.error("Error generating evaluation report (falling back to heuristic score):", error);
+    return res.json({
+      success: true,
+      evaluation: buildHeuristicEvaluation(role, qaPairs),
+    });
   }
 });
 
