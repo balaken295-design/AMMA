@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Sparkles, Users, BookOpen, Video, ArrowRight, ArrowLeft,
+  Sparkles, Users, BookOpen, Video, ArrowRight,
   TrendingUp, BarChart3, Zap, Play, Swords, Trophy, Target,
-  ChevronUp, Menu, X, Flame
+  ChevronUp, Menu, X, Feather
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -12,44 +12,51 @@ interface LandingPageViewProps {
   onOpenLoginModal?: () => void;
 }
 
-/* -------------------------------------------------------------------------
- * ROUNDS — this mirrors the platform's actual product structure (Aptitude Arena,
- * Discussion Duel, Interview Forge), so it's used as the real backbone of
- * the page rather than a decorative "01 / 02 / 03" step list.
- * ---------------------------------------------------------------------- */
+/* -----------------------------------------------------------------------
+ * DESIGN TOKENS — reused as literal hex values everywhere on this page so
+ * every section (header, hero, cards, console, footer) draws from the
+ * same warm, consistent palette instead of drifting section to section.
+ *
+ *   paper       #FBF7EF   page background, warm ivory
+ *   paper-2     #F3ECDB   card / panel background
+ *   ink         #1E2A22   headlines, high-contrast text (forest-black)
+ *   muted       #6B6355   body copy, secondary text (warm taupe)
+ *   forest      #2F4A3B   primary accent — buttons, icon fills
+ *   forest-dark #1F3327   header/footer bookend bands
+ *   brass       #B98B4E   secondary accent — labels, highlights, CTA text
+ *   brass-light #E7C68F   hover states, subtle fills
+ * ------------------------------------------------------------------- */
+
 const ROUNDS = [
   {
     round: '01',
-    id: 'aptitude',
     tab: 'aptitude' as const,
     icon: Target,
     name: 'Aptitude Arena',
     tagline: 'Quants · Logical · Verbal',
     description:
       'Timed drills across 32+ topic modules, scored the way placement cells actually score you — accuracy, speed, and consistency.',
-    cta: 'Enter the Arena',
+    cta: 'Start a drill',
   },
   {
     round: '02',
-    id: 'gd',
     tab: 'gd' as const,
     icon: Users,
     name: 'Discussion Duel',
     tagline: 'Live group discussion practice',
     description:
       'Real camera and mic sessions on live case topics, with feedback on airtime, structure, and how you hold ground under pressure.',
-    cta: 'Join the Duel',
+    cta: 'Join a session',
   },
   {
     round: '03',
-    id: 'interview',
     tab: 'interview' as const,
     icon: Swords,
     name: 'Interview Forge',
     tagline: 'AI-evaluated mock interviews',
     description:
       'Full-length mock interviews evaluated turn by turn, closing with a readiness score you can watch climb, session over session.',
-    cta: 'Step Into the Forge',
+    cta: 'Book a mock',
   },
 ];
 
@@ -83,9 +90,22 @@ const TRACKS = [
 const NAV_LINKS = [
   { href: '#rounds', label: 'The Rounds' },
   { href: '#tracks', label: 'Your Track' },
-  { href: '#try-demo', label: 'Live Trial' },
+  { href: '#try-demo', label: 'Try It Live' },
   { href: '#journey', label: 'Your Progress' },
 ];
+
+/** Small folded-corner accent used consistently on every card — the page's
+ *  one recurring signature, standing in for a well-worn study folder. */
+const CornerFold: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <span
+    aria-hidden
+    className={`absolute top-0 right-0 w-5 h-5 ${className}`}
+    style={{
+      clipPath: 'polygon(100% 0, 0 0, 100% 100%)',
+      background: 'linear-gradient(135deg, #E7C68F, #B98B4E)',
+    }}
+  />
+);
 
 export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, userProfile, onOpenLoginModal }) => {
   const [quickSampleAnswer, setQuickSampleAnswer] = useState('');
@@ -95,10 +115,6 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
-  // Fixed (not `sticky`) header — sticky positioning silently breaks the
-  // moment any ancestor sets overflow on either axis, which is what made
-  // the previous header feel "stuck". Fixed + a matching spacer below
-  // always stays put and always stays clickable.
   useEffect(() => {
     const onScroll = () => setShowBackToTop(window.scrollY > 480);
     onScroll();
@@ -145,38 +161,38 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
   const track = TRACKS[activeTrack];
   const TrackIcon = track.icon;
 
+  // Faint ledger-line texture, reused on the ivory sections to tie the
+  // "study companion" feel together without competing with content.
+  const ledgerLines: React.CSSProperties = {
+    backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, rgba(30,42,34,0.05) 28px)',
+  };
+
   return (
     <div
       id="landing-page-container"
-      className="min-h-screen bg-[#0A0D14] text-[#F3EFE6] flex flex-col font-['Inter',sans-serif] selection:bg-[#E3A548] selection:text-[#0A0D14]"
+      className="min-h-screen bg-[#FBF7EF] text-[#1E2A22] flex flex-col font-['Inter',sans-serif] selection:bg-[#E7C68F] selection:text-[#1E2A22]"
     >
       {/* ============================= HEADER ============================= */}
-      {/* Fixed, always on top, always clickable — fixes the previous "stuck /
-          unresponsive" header behavior for good. */}
-      <header className="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-[#0A0D14]/90 backdrop-blur-md">
+      <header className="fixed top-0 inset-x-0 z-50 border-b border-[#1E2A22]/10 bg-[#FBF7EF]/92 backdrop-blur-md">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between">
-          <button
-            onClick={scrollToTop}
-            className="flex items-center gap-2.5 group"
-            aria-label="Back to top"
-          >
-            <span className="w-9 h-9 rounded-md bg-[#E3A548] flex items-center justify-center text-[#0A0D14] font-black text-sm font-['Oswald',sans-serif] tracking-tight group-hover:scale-105 transition-transform">
+          <button onClick={scrollToTop} className="flex items-center gap-2.5 group" aria-label="Back to top">
+            <span className="w-9 h-9 rounded-full bg-[#2F4A3B] flex items-center justify-center text-[#F3ECDB] font-bold text-sm font-['Fraunces',serif] group-hover:scale-105 transition-transform">
               B
             </span>
-            <span className="font-['Oswald',sans-serif] font-semibold text-lg tracking-wide text-[#F3EFE6]">
-              MBA <span className="text-[#E3A548]">BJD</span>
-              <span className="block -mt-1 text-[9px] font-mono font-normal tracking-[0.25em] text-[#8891A6]">
-                PLACEMENT PREP ARENA
+            <span className="font-['Fraunces',serif] font-semibold text-lg tracking-tight text-[#1E2A22]">
+              MBA <span className="text-[#B98B4E]">BJD</span>
+              <span className="block -mt-1 text-[9px] font-mono font-normal tracking-[0.22em] text-[#6B6355]">
+                PLACEMENT PREP STUDIO
               </span>
             </span>
           </button>
 
-          <nav className="hidden md:flex items-center gap-1 text-xs font-semibold text-[#8891A6]">
+          <nav className="hidden md:flex items-center gap-1 text-xs font-semibold text-[#6B6355]">
             {NAV_LINKS.map((link) => (
               <button
                 key={link.href}
                 onClick={() => handleNavClick(link.href)}
-                className="px-3.5 py-2 rounded-md hover:text-[#F3EFE6] hover:bg-white/5 transition-colors"
+                className="px-3.5 py-2 rounded-full hover:text-[#1E2A22] hover:bg-[#1E2A22]/5 transition-colors"
               >
                 {link.label}
               </button>
@@ -187,7 +203,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             {onOpenLoginModal && (
               <button
                 onClick={onOpenLoginModal}
-                className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 text-[#F3EFE6] font-semibold px-3.5 py-2 rounded-md border border-white/10 text-xs transition-all"
+                className="flex items-center gap-1.5 bg-white hover:bg-[#F3ECDB] text-[#1E2A22] font-semibold px-3.5 py-2 rounded-full border border-[#1E2A22]/12 text-xs transition-all shadow-sm"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -200,14 +216,14 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             )}
             <button
               onClick={() => onStartApp('dashboard')}
-              className="bg-[#E3A548] hover:bg-[#f0b662] text-[#0A0D14] text-xs font-bold px-5 py-2.5 rounded-md transition-all flex items-center gap-2"
+              className="bg-[#2F4A3B] hover:bg-[#243A2E] text-[#F3ECDB] text-xs font-bold px-5 py-2.5 rounded-full transition-all flex items-center gap-2 shadow-sm"
             >
               Enter Dashboard <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           <button
-            className="md:hidden p-2 text-[#F3EFE6]"
+            className="md:hidden p-2 text-[#1E2A22]"
             onClick={() => setMobileNavOpen((v) => !v)}
             aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
           >
@@ -216,12 +232,12 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
         </div>
 
         {mobileNavOpen && (
-          <div className="md:hidden border-t border-white/10 bg-[#0A0D14] px-4 py-4 space-y-1">
+          <div className="md:hidden border-t border-[#1E2A22]/10 bg-[#FBF7EF] px-4 py-4 space-y-1">
             {NAV_LINKS.map((link) => (
               <button
                 key={link.href}
                 onClick={() => handleNavClick(link.href)}
-                className="block w-full text-left px-3 py-2.5 rounded-md text-sm font-semibold text-[#F3EFE6] hover:bg-white/5"
+                className="block w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold text-[#1E2A22] hover:bg-[#1E2A22]/5"
               >
                 {link.label}
               </button>
@@ -230,14 +246,14 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
               {onOpenLoginModal && (
                 <button
                   onClick={onOpenLoginModal}
-                  className="flex-1 bg-white/5 border border-white/10 text-[#F3EFE6] font-semibold px-4 py-2.5 rounded-md text-xs"
+                  className="flex-1 bg-white border border-[#1E2A22]/12 text-[#1E2A22] font-semibold px-4 py-2.5 rounded-full text-xs"
                 >
                   {userProfile?.isLoggedIn ? userProfile.name : 'Sign in'}
                 </button>
               )}
               <button
                 onClick={() => onStartApp('dashboard')}
-                className="flex-1 bg-[#E3A548] text-[#0A0D14] font-bold px-4 py-2.5 rounded-md text-xs"
+                className="flex-1 bg-[#2F4A3B] text-[#F3ECDB] font-bold px-4 py-2.5 rounded-full text-xs"
               >
                 Enter Dashboard
               </button>
@@ -245,66 +261,61 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           </div>
         )}
       </header>
-      {/* Spacer so fixed header never overlaps content */}
       <div className="h-[72px]" />
 
       {/* ============================== HERO =============================== */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden" style={ledgerLines}>
         <div
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(227,165,72,0.16), transparent 60%), radial-gradient(ellipse 60% 50% at 90% 20%, rgba(255,107,74,0.10), transparent 60%)',
+              'radial-gradient(ellipse 70% 55% at 18% -8%, rgba(185,139,78,0.16), transparent 60%), radial-gradient(ellipse 60% 50% at 100% 15%, rgba(47,74,59,0.10), transparent 60%)',
           }}
         />
         <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 md:pt-24 md:pb-28">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-[#E3A548] text-[10px] font-mono font-bold tracking-[0.2em] uppercase">
-              <Flame className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#1E2A22]/10 text-[#B98B4E] text-[10px] font-mono font-bold tracking-[0.18em] uppercase shadow-sm">
+              <Feather className="w-3.5 h-3.5" />
               Built for MBA & Engineering Placement Season
             </div>
 
-            <h1 className="mt-6 font-['Oswald',sans-serif] font-semibold text-[2.75rem] sm:text-6xl lg:text-7xl leading-[0.98] tracking-tight text-[#F3EFE6]">
-              PLACEMENT SEASON
+            <h1 className="mt-6 font-['Fraunces',serif] font-semibold text-[2.5rem] sm:text-6xl lg:text-[4.5rem] leading-[1.05] tracking-tight text-[#1E2A22]">
+              Placement season has a rhythm.
               <br />
-              IS A MATCH.
-              <br />
-              <span className="text-[#E3A548]">TRAIN LIKE IT.</span>
+              <span className="text-[#B98B4E] italic">Practice it until it's yours.</span>
             </h1>
 
-            <p className="mt-6 text-base sm:text-lg text-[#8891A6] leading-relaxed max-w-xl">
-              Three rounds. Real scoring. No stage fright on the day it actually counts.
-              Built by MBA grads who remember exactly what placement season feels like.
+            <p className="mt-6 text-base sm:text-lg text-[#6B6355] leading-relaxed max-w-xl">
+              Three rounds, real feedback, and a quiet place to get it wrong before it counts.
+              Built by MBA grads who remember exactly what this season feels like.
             </p>
 
             <div className="mt-9 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => onStartApp('interview')}
-                className="bg-[#E3A548] hover:bg-[#f0b662] text-[#0A0D14] font-bold px-7 py-3.5 rounded-md text-sm transition-all flex items-center justify-center gap-2"
+                className="bg-[#2F4A3B] hover:bg-[#243A2E] text-[#F3ECDB] font-bold px-7 py-3.5 rounded-full text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
               >
-                <Video className="w-4 h-4" /> Take Your First Mock Interview
+                <Video className="w-4 h-4" /> Take your first mock interview
               </button>
               <button
                 onClick={() => onStartApp('aptitude')}
-                className="bg-white/5 hover:bg-white/10 border border-white/15 text-[#F3EFE6] font-bold px-7 py-3.5 rounded-md text-sm transition-all flex items-center justify-center gap-2"
+                className="bg-white hover:bg-[#F3ECDB] border border-[#1E2A22]/12 text-[#1E2A22] font-bold px-7 py-3.5 rounded-full text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
               >
-                <BookOpen className="w-4 h-4 text-[#E3A548]" /> Start Aptitude Drill
+                <BookOpen className="w-4 h-4 text-[#B98B4E]" /> Start an aptitude drill
               </button>
             </div>
           </div>
 
-          {/* HUD stat strip — the page's signature device, echoed on every
-              card below via the same bracket framing */}
-          <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-px bg-white/10 rounded-lg overflow-hidden border border-white/10">
+          <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-px bg-[#1E2A22]/10 rounded-2xl overflow-hidden border border-[#1E2A22]/10">
             {[
               { label: 'Rounds', value: '03' },
-              { label: 'Topic Modules', value: '32+' },
-              { label: 'Mock Test', value: '90Q / 90m' },
-              { label: 'Camera + Mic', value: 'Live' },
+              { label: 'Topic modules', value: '32+' },
+              { label: 'Mock test', value: '90Q / 90m' },
+              { label: 'Camera + mic', value: 'Live' },
             ].map((stat) => (
-              <div key={stat.label} className="bg-[#0A0D14] px-5 py-4">
-                <div className="font-mono text-2xl font-bold text-[#E3A548]">{stat.value}</div>
-                <div className="mt-1 text-[10px] font-mono uppercase tracking-widest text-[#8891A6]">{stat.label}</div>
+              <div key={stat.label} className="bg-[#FBF7EF] px-5 py-4">
+                <div className="font-mono text-2xl font-bold text-[#2F4A3B]">{stat.value}</div>
+                <div className="mt-1 text-[10px] font-mono uppercase tracking-widest text-[#6B6355]">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -314,15 +325,15 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       {/* ============================== ROUNDS ============================== */}
       <section id="rounds" className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="max-w-2xl mb-12">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#E3A548]">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#B98B4E]">
             The Format
           </span>
-          <h2 className="mt-3 font-['Oswald',sans-serif] font-semibold text-3xl sm:text-4xl text-[#F3EFE6]">
-            Three Rounds. One Placement Season.
+          <h2 className="mt-3 font-['Fraunces',serif] font-semibold text-3xl sm:text-4xl text-[#1E2A22]">
+            Three rounds. One placement season.
           </h2>
-          <p className="mt-3 text-sm text-[#8891A6] leading-relaxed">
-            Every campus process comes down to these three tests. MBA BJD runs you through
-            all of them, on repeat, until they stop feeling like tests.
+          <p className="mt-3 text-sm text-[#6B6355] leading-relaxed">
+            Every campus process comes down to these three tests. Work through all of them,
+            on repeat, until they stop feeling like tests.
           </p>
         </div>
 
@@ -331,31 +342,24 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             const Icon = r.icon;
             return (
               <div
-                key={r.id}
-                className="group relative rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-[#E3A548]/50 hover:bg-white/[0.05] transition-all"
+                key={r.tab}
+                className="group relative rounded-2xl border border-[#1E2A22]/10 bg-white p-6 hover:border-[#B98B4E]/50 hover:shadow-md transition-all overflow-hidden"
               >
-                {/* corner brackets — the recurring HUD motif */}
-                <span className="absolute top-3 left-3 w-3 h-3 border-t-2 border-l-2 border-[#E3A548]/40 group-hover:border-[#E3A548] transition-colors" />
-                <span className="absolute bottom-3 right-3 w-3 h-3 border-b-2 border-r-2 border-[#E3A548]/40 group-hover:border-[#E3A548] transition-colors" />
-
+                <CornerFold />
                 <div className="flex items-start justify-between">
-                  <span className="font-mono text-4xl font-bold text-white/10">{r.round}</span>
-                  <span className="w-11 h-11 rounded-lg bg-[#E3A548]/10 border border-[#E3A548]/30 flex items-center justify-center text-[#E3A548]">
+                  <span className="font-['Fraunces',serif] text-4xl font-semibold text-[#1E2A22]/10">{r.round}</span>
+                  <span className="w-11 h-11 rounded-full bg-[#2F4A3B]/10 border border-[#2F4A3B]/20 flex items-center justify-center text-[#2F4A3B]">
                     <Icon className="w-5 h-5" />
                   </span>
                 </div>
 
-                <h3 className="mt-5 font-['Oswald',sans-serif] font-semibold text-xl text-[#F3EFE6]">
-                  {r.name}
-                </h3>
-                <p className="mt-1 text-[11px] font-mono uppercase tracking-wider text-[#E3A548]">
-                  {r.tagline}
-                </p>
-                <p className="mt-3 text-sm text-[#8891A6] leading-relaxed">{r.description}</p>
+                <h3 className="mt-5 font-['Fraunces',serif] font-semibold text-xl text-[#1E2A22]">{r.name}</h3>
+                <p className="mt-1 text-[11px] font-mono uppercase tracking-wider text-[#B98B4E]">{r.tagline}</p>
+                <p className="mt-3 text-sm text-[#6B6355] leading-relaxed">{r.description}</p>
 
                 <button
                   onClick={() => onStartApp(r.tab)}
-                  className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-[#F3EFE6] hover:text-[#E3A548] transition-colors"
+                  className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-[#2F4A3B] hover:text-[#B98B4E] transition-colors"
                 >
                   {r.cta} <ArrowRight className="w-4 h-4" />
                 </button>
@@ -366,14 +370,14 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       </section>
 
       {/* ========================= DOMAIN TRACK SELECTOR ===================== */}
-      <section id="tracks" className="border-y border-white/10 bg-white/[0.02]">
+      <section id="tracks" className="border-y border-[#1E2A22]/10 bg-[#F3ECDB]" style={ledgerLines}>
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#E3A548]">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#B98B4E]">
               Pick Your Track
             </span>
-            <h2 className="mt-3 font-['Oswald',sans-serif] font-semibold text-3xl sm:text-4xl text-[#F3EFE6]">
-              Every Round, Tailored to Your Target Role
+            <h2 className="mt-3 font-['Fraunces',serif] font-semibold text-3xl sm:text-4xl text-[#1E2A22]">
+              Every round, tailored to your target role
             </h2>
           </div>
 
@@ -382,10 +386,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
               <button
                 key={t.id}
                 onClick={() => setActiveTrack(i)}
-                className={`px-5 py-2.5 rounded-md text-xs font-bold transition-all border ${
+                className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all border ${
                   activeTrack === i
-                    ? 'bg-[#E3A548] text-[#0A0D14] border-[#E3A548]'
-                    : 'bg-transparent text-[#8891A6] border-white/15 hover:border-[#E3A548]/50 hover:text-[#F3EFE6]'
+                    ? 'bg-[#2F4A3B] text-[#F3ECDB] border-[#2F4A3B]'
+                    : 'bg-white text-[#6B6355] border-[#1E2A22]/12 hover:border-[#B98B4E]/50 hover:text-[#1E2A22]'
                 }`}
               >
                 {t.label}
@@ -393,55 +397,52 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             ))}
           </div>
 
-          <div className="max-w-2xl mx-auto p-8 rounded-xl border border-white/10 bg-[#0A0D14] text-center relative">
-            <span className="absolute top-3 left-3 w-3 h-3 border-t-2 border-l-2 border-[#E3A548]/40" />
-            <span className="absolute bottom-3 right-3 w-3 h-3 border-b-2 border-r-2 border-[#E3A548]/40" />
-            <div className="w-14 h-14 mx-auto rounded-lg bg-[#E3A548]/10 border border-[#E3A548]/30 flex items-center justify-center text-[#E3A548]">
+          <div className="max-w-2xl mx-auto p-8 rounded-2xl border border-[#1E2A22]/10 bg-white text-center relative overflow-hidden shadow-sm">
+            <CornerFold />
+            <div className="w-14 h-14 mx-auto rounded-full bg-[#2F4A3B]/10 border border-[#2F4A3B]/20 flex items-center justify-center text-[#2F4A3B]">
               <TrackIcon className="w-7 h-7" />
             </div>
-            <h3 className="mt-4 font-['Oswald',sans-serif] font-semibold text-xl text-[#F3EFE6]">{track.title}</h3>
-            <p className="mt-3 text-sm text-[#8891A6] leading-relaxed max-w-lg mx-auto">{track.description}</p>
+            <h3 className="mt-4 font-['Fraunces',serif] font-semibold text-xl text-[#1E2A22]">{track.title}</h3>
+            <p className="mt-3 text-sm text-[#6B6355] leading-relaxed max-w-lg mx-auto">{track.description}</p>
             <button
               onClick={() => onStartApp('interview')}
-              className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#E3A548] hover:underline"
+              className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#B98B4E] hover:underline"
             >
-              Practice This Track <ArrowRight className="w-4 h-4" />
+              Practice this track <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       </section>
 
-      {/* =========================== LIVE TRIAL CONSOLE ======================= */}
+      {/* =========================== LIVE TRIAL PANEL ======================= */}
       <section id="try-demo" className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="rounded-xl border border-white/10 bg-[#0D111B] overflow-hidden">
-          <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <div className="rounded-2xl border border-[#1E2A22]/10 bg-white overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#1E2A22]/10 px-6 py-4 bg-[#F3ECDB]">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B4A]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E3A548]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
-              <span className="ml-3 font-mono text-[11px] text-[#8891A6] uppercase tracking-wider">
-                live-trial.exe
+              <span className="w-2 h-2 rounded-full bg-[#B98B4E]" />
+              <span className="font-mono text-[11px] text-[#6B6355] uppercase tracking-wider">
+                Practice notebook — page 1
               </span>
             </div>
-            <span className="text-[10px] font-mono text-[#8891A6] hidden sm:inline">AI Evaluation Engine</span>
+            <span className="text-[10px] font-mono text-[#6B6355] hidden sm:inline">AI Evaluation Engine</span>
           </div>
 
           <div className="p-6 lg:p-10 space-y-6">
             <div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#E3A548]">
-                Test Your Case Response, Right Now
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#B98B4E]">
+                Test your case response, right now
               </span>
-              <h2 className="mt-2 font-['Oswald',sans-serif] font-semibold text-2xl sm:text-3xl text-[#F3EFE6]">
+              <h2 className="mt-2 font-['Fraunces',serif] font-semibold text-2xl sm:text-3xl text-[#1E2A22]">
                 No sign-up needed for round one.
               </h2>
             </div>
 
             <div className="max-w-3xl space-y-4">
-              <div className="p-4 rounded-lg bg-black/30 border border-white/10 space-y-2">
-                <span className="text-[10px] font-mono font-bold text-[#E3A548] uppercase tracking-wider">
-                  McKinsey Case Prompt
+              <div className="p-4 rounded-xl bg-[#FBF7EF] border border-[#1E2A22]/10 space-y-2">
+                <span className="text-[10px] font-mono font-bold text-[#B98B4E] uppercase tracking-wider">
+                  McKinsey case prompt
                 </span>
-                <p className="text-sm text-[#F3EFE6] leading-relaxed">
+                <p className="text-sm text-[#1E2A22] leading-relaxed">
                   A major European airline is seeing a 15% decline in operating profitability
                   despite passenger volumes staying stable. How would you structure your initial
                   root-cause diagnosis?
@@ -453,30 +454,30 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
                 placeholder="Type your structured response here (e.g., Profit = Revenue − Costs; analyze yield per seat vs. fuel & crew fixed costs)…"
                 value={quickSampleAnswer}
                 onChange={(e) => setQuickSampleAnswer(e.target.value)}
-                className="w-full p-4 bg-black/30 border border-white/10 rounded-lg text-sm text-[#F3EFE6] placeholder:text-[#5c6478] focus:outline-none focus:border-[#E3A548]/60 transition-colors"
+                className="w-full p-4 bg-[#FBF7EF] border border-[#1E2A22]/12 rounded-xl text-sm text-[#1E2A22] placeholder:text-[#6B6355]/60 focus:outline-none focus:border-[#B98B4E] transition-colors"
               />
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <button
                   onClick={handleEvaluateSample}
                   disabled={!quickSampleAnswer.trim() || isEvaluating}
-                  className="bg-[#E3A548] hover:bg-[#f0b662] disabled:opacity-40 disabled:cursor-not-allowed text-[#0A0D14] font-bold px-6 py-3 rounded-md text-xs transition-all flex items-center justify-center gap-2"
+                  className="bg-[#2F4A3B] hover:bg-[#243A2E] disabled:opacity-40 disabled:cursor-not-allowed text-[#F3ECDB] font-bold px-6 py-3 rounded-full text-xs transition-all flex items-center justify-center gap-2"
                 >
-                  {isEvaluating ? 'Analyzing framework…' : 'Evaluate My Response'}
+                  {isEvaluating ? 'Analyzing framework…' : 'Evaluate my response'}
                 </button>
 
                 <button
                   onClick={() => onStartApp('interview')}
-                  className="text-xs font-bold text-[#E3A548] hover:text-[#f0b662] transition-colors flex items-center justify-center gap-1.5"
+                  className="text-xs font-bold text-[#B98B4E] hover:text-[#a67940] transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Play className="w-3.5 h-3.5" /> Launch the Full Interview Forge
+                  <Play className="w-3.5 h-3.5" /> Launch the full Interview Forge
                 </button>
               </div>
 
               {quickFeedback && (
-                <div className="p-4 rounded-lg bg-[#E3A548]/10 border border-[#E3A548]/30 text-sm text-[#F3EFE6] space-y-1.5">
-                  <div className="font-bold font-mono text-[#E3A548] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" /> AI Case Assessment
+                <div className="p-4 rounded-xl bg-[#E7C68F]/25 border border-[#B98B4E]/40 text-sm text-[#1E2A22] space-y-1.5">
+                  <div className="font-bold font-mono text-[#B98B4E] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" /> AI case assessment
                   </div>
                   <p className="leading-relaxed">{quickFeedback}</p>
                 </div>
@@ -487,16 +488,16 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       </section>
 
       {/* ============================== JOURNEY ============================== */}
-      <section id="journey" className="border-t border-white/10 bg-white/[0.02] py-20">
+      <section id="journey" className="border-t border-[#1E2A22]/10 bg-[#F3ECDB] py-20" style={ledgerLines}>
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl mb-12">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#E3A548]">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#B98B4E]">
               Your Progress
             </span>
-            <h2 className="mt-3 font-['Oswald',sans-serif] font-semibold text-3xl sm:text-4xl text-[#F3EFE6]">
-              From First-Timer to Placement-Ready
+            <h2 className="mt-3 font-['Fraunces',serif] font-semibold text-3xl sm:text-4xl text-[#1E2A22]">
+              From first-timer to placement-ready
             </h2>
-            <p className="mt-3 text-sm text-[#8891A6] leading-relaxed">
+            <p className="mt-3 text-sm text-[#6B6355] leading-relaxed">
               Real progress, one session at a time — not a single test you pass or fail.
             </p>
           </div>
@@ -505,28 +506,29 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             {[
               {
                 icon: Target,
-                title: 'Practice Without Judgment',
+                title: 'Practice without judgment',
                 copy: 'Take your first case, GD, or aptitude test in a space built to help — not to grade you against strangers.',
               },
               {
                 icon: Trophy,
-                title: 'Watch Your Readiness Climb',
+                title: 'Watch your readiness climb',
                 copy: 'Every session moves your readiness score. Real progress you can see grow, not a one-time verdict.',
               },
               {
                 icon: Swords,
-                title: 'Walk In Ready',
+                title: 'Walk in ready',
                 copy: "By the time the real interview arrives, you've already done it a dozen times — and it shows.",
               },
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="p-6 rounded-xl border border-white/10 bg-[#0A0D14]">
-                  <span className="w-11 h-11 rounded-lg bg-[#E3A548]/10 border border-[#E3A548]/30 flex items-center justify-center text-[#E3A548]">
+                <div key={item.title} className="relative p-6 rounded-2xl border border-[#1E2A22]/10 bg-white overflow-hidden shadow-sm">
+                  <CornerFold />
+                  <span className="w-11 h-11 rounded-full bg-[#2F4A3B]/10 border border-[#2F4A3B]/20 flex items-center justify-center text-[#2F4A3B]">
                     <Icon className="w-5 h-5" />
                   </span>
-                  <h3 className="mt-4 font-['Oswald',sans-serif] font-semibold text-lg text-[#F3EFE6]">{item.title}</h3>
-                  <p className="mt-2 text-sm text-[#8891A6] leading-relaxed">{item.copy}</p>
+                  <h3 className="mt-4 font-['Fraunces',serif] font-semibold text-lg text-[#1E2A22]">{item.title}</h3>
+                  <p className="mt-2 text-sm text-[#6B6355] leading-relaxed">{item.copy}</p>
                 </div>
               );
             })}
@@ -535,24 +537,24 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       </section>
 
       {/* ============================== FOOTER ============================== */}
-      <footer className="border-t border-white/10 py-10">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-[#8891A6]">
+      <footer className="bg-[#1F3327] text-[#C9CFC7] py-12">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs">
           <div className="flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-md bg-[#E3A548] flex items-center justify-center text-[#0A0D14] font-black text-xs font-['Oswald',sans-serif]">
+            <span className="w-8 h-8 rounded-full bg-[#B98B4E] flex items-center justify-center text-[#1F3327] font-bold text-sm font-['Fraunces',serif]">
               B
             </span>
-            <span className="text-[#F3EFE6] font-semibold text-sm font-['Oswald',sans-serif]">MBA <span className="text-[#E3A548]">BJD</span></span>
+            <span className="text-[#F3ECDB] font-semibold text-sm font-['Fraunces',serif]">MBA <span className="text-[#B98B4E]">BJD</span></span>
           </div>
 
           <p className="text-center md:text-left">
-            Built for MBA graduates, B-schools & campus placement drives.
+            Built for MBA graduates, B-schools &amp; campus placement drives.
           </p>
 
           <div className="flex items-center gap-5">
-            <button onClick={() => onStartApp('dashboard')} className="text-[#F3EFE6] hover:text-[#E3A548] font-semibold transition-colors">
+            <button onClick={() => onStartApp('dashboard')} className="text-[#F3ECDB] hover:text-[#E7C68F] font-semibold transition-colors">
               Dashboard
             </button>
-            <button onClick={() => onStartApp('aptitude')} className="text-[#F3EFE6] hover:text-[#E3A548] font-semibold transition-colors">
+            <button onClick={() => onStartApp('aptitude')} className="text-[#F3ECDB] hover:text-[#E7C68F] font-semibold transition-colors">
               Aptitude Engine
             </button>
           </div>
@@ -564,7 +566,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
         <button
           onClick={scrollToTop}
           aria-label="Back to top"
-          className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-lg bg-[#E3A548] hover:bg-[#f0b662] text-[#0A0D14] flex items-center justify-center shadow-lg shadow-black/40 transition-all"
+          className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-[#2F4A3B] hover:bg-[#243A2E] text-[#F3ECDB] flex items-center justify-center shadow-lg transition-all"
         >
           <ChevronUp className="w-5 h-5" />
         </button>
