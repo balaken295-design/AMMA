@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Sparkles, Award, Users, BookOpen, Video, ArrowRight, CheckCircle2, 
-  TrendingUp, Shield, BarChart3, Database, Layers, Check, Play, Zap, HelpCircle, LogIn
+  TrendingUp, Shield, BarChart3, Check, Play, Zap, HelpCircle, LogIn
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -58,7 +58,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             <a href="#features" className="hover:text-indigo-600 transition-colors">Core Modules</a>
             <a href="#mba-tracks" className="hover:text-indigo-600 transition-colors">MBA Placement Tracks</a>
             <a href="#try-demo" className="hover:text-indigo-600 transition-colors">Interactive Demo</a>
-            <a href="#database-integration" className="hover:text-indigo-600 transition-colors">MongoDB Atlas</a>
+            <a href="#journey" className="hover:text-indigo-600 transition-colors">Your Journey</a>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -96,11 +96,11 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 font-['Hanken_Grotesk',sans-serif] tracking-tight leading-[1.1]">
-            Ace McKinsey Cases, GD Rooms & MBA Placements with <span className="text-indigo-600 underline decoration-indigo-200 decoration-wavy decoration-2">AI Precision</span>
+            Every Placement Season Has a Winner. <span className="text-indigo-600 underline decoration-indigo-200 decoration-wavy decoration-2">Prepare Like One.</span>
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal max-w-2xl">
-            The all-in-one interview intelligence platform engineered for MBA candidates. Practice 1-on-1 AI Face Case Interviews, live camera & microphone Group Discussions with AI peers, and 10-question deep aptitude modules tailored for CAT, GMAT, and corporate campus drives.
+            From your first mock case to your final placement offer — practice, get real feedback, and walk in confident. No more guessing what recruiters want to hear. Built by MBA grads who remember exactly how placement season feels.
           </p>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
@@ -108,29 +108,32 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
               onClick={() => onStartApp('interview')}
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-4 rounded-2xl text-sm transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
             >
-              <Video className="w-4 h-4" /> Start AI Case Interview
+              <Video className="w-4 h-4" /> Take Your First Mock Interview
             </button>
             <button
               onClick={() => onStartApp('gd')}
               className="bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/90 font-bold px-8 py-4 rounded-2xl text-sm transition-all shadow-xs flex items-center justify-center gap-2"
             >
-              <Users className="w-4 h-4 text-indigo-600" /> Launch Live GD Room
+              <Users className="w-4 h-4 text-indigo-600" /> Join a Live Discussion
             </button>
             <button
               onClick={() => onStartApp('aptitude')}
               className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-8 py-4 rounded-2xl text-sm transition-all shadow-xs flex items-center justify-center gap-2"
             >
-              <BookOpen className="w-4 h-4 text-indigo-400" /> 10-Q Deep Aptitude
+              <BookOpen className="w-4 h-4 text-indigo-400" /> Sharpen Your Aptitude
             </button>
           </div>
 
-          {/* Key Value Points */}
-         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-slate-200/80">
-  <div className="space-y-1"><span className="text-2xl font-black text-slate-900">98.4%</span><p className="text-xs text-slate-500 font-medium">Placement shortlist rate</p></div>
-  <div className="space-y-1"><span className="text-2xl font-black text-indigo-600">10 Questions</span><p className="text-xs text-slate-500 font-medium">Deep test guarantee per topic</p></div>
-  <div className="space-y-1"><span className="text-2xl font-black text-slate-900">3 Modules</span><p className="text-xs text-slate-500 font-medium">Aptitude, GD & Interview</p></div>
-  <div className="space-y-1"><span className="text-2xl font-black text-slate-900">Atlas Sync</span><p className="text-xs text-slate-500 font-medium">Progress saved automatically</p></div>
-</div>
+          {/* Today's Momentum Nudge */}
+          <div className="flex items-center gap-3 pt-6 border-t border-slate-200/80">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
+              🔥
+            </div>
+            <p className="text-sm text-slate-700 font-medium">
+              <span className="font-bold text-slate-900">Placement season is closer than you think.</span>{' '}
+              One mock interview today puts you ahead of tomorrow.
+            </p>
+          </div>
         </div>
 
         {/* Hero Interactive Card Preview */}
@@ -144,9 +147,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
                 <span className="text-xs font-mono font-bold text-slate-400 ml-2">MBA Case Simulator v2.4</span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">
-  Demo Preview
-</span>
+                Demo Preview
+              </span>
             </div>
+
             {/* Simulated Candidate Video Box */}
             <div className="relative aspect-video bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
               <img 
@@ -383,50 +387,36 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
         </div>
       </section>
 
-      {/* Database & Technical Architecture Section */}
-      <section id="database-integration" className="bg-white border-t border-slate-200/80 py-16">
+      {/* Your Prep Journey */}
+      <section id="journey" className="bg-white border-t border-slate-200/80 py-16">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
             <span className="font-mono text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-3.5 py-1 rounded-full">
-              Production Architecture
+              Your Journey
             </span>
             <h2 className="text-3xl font-black text-slate-900 font-['Hanken_Grotesk',sans-serif]">
-              MongoDB Atlas Persistent Storage Ready
+              From First-Timer to Placement-Ready
             </h2>
             <p className="text-sm text-slate-600">
-              Easily connect your MongoDB Atlas connection string in <code className="bg-slate-100 text-indigo-600 px-1.5 py-0.5 rounded font-mono">.env</code> to store all candidate test scores, interview evaluations, and GD transcripts permanently.
+              Real progress, one session at a time — not a test you pass or fail once.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
-                <Database className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-base">MongoDB Atlas Driver</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Native MongoDB driver installed with lazy connection initialization to prevent server startup crashes when environment variables are configured.
-              </p>
+            <div className="p-6 bg-indigo-50/60 rounded-3xl space-y-3">
+              <span className="text-3xl font-black text-indigo-600">01</span>
+              <h3 className="font-bold text-slate-900">Practice Without Judgment</h3>
+              <p className="text-sm text-slate-600">Take your first case, GD, or aptitude test in a space built to help, not grade you against strangers.</p>
             </div>
-
-            <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
-                <Shield className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-base">Secure Credentials</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                All connection strings remain server-side in process environment. Zero credential exposure to client browser code.
-              </p>
+            <div className="p-6 bg-indigo-50/60 rounded-3xl space-y-3">
+              <span className="text-3xl font-black text-indigo-600">02</span>
+              <h3 className="font-bold text-slate-900">See Yourself Improve</h3>
+              <p className="text-sm text-slate-600">Every session builds your readiness score — real progress you can watch grow, not a one-time verdict.</p>
             </div>
-
-            <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
-                <Layers className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-base">Automatic Fallback Mode</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                If MongoDB Atlas key is omitted during development, the system smoothly falls back to session memory without crashing.
-              </p>
+            <div className="p-6 bg-indigo-50/60 rounded-3xl space-y-3">
+              <span className="text-3xl font-black text-indigo-600">03</span>
+              <h3 className="font-bold text-slate-900">Walk In Ready</h3>
+              <p className="text-sm text-slate-600">By the time the real interview comes, you've already done it a dozen times — and it shows.</p>
             </div>
           </div>
         </div>
@@ -443,7 +433,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           </div>
 
           <p className="text-center md:text-left">
-            Crafted for MBA Graduates, B-Schools &amp; Campus Placement Drives. Supports MongoDB Atlas &amp; Gemini AI.
+            Crafted for MBA Graduates, B-Schools &amp; Campus Placement Drives.
           </p>
 
           <div className="flex items-center gap-4">
