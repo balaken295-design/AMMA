@@ -125,20 +125,12 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           </div>
 
           {/* Key Value Points */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-slate-200/80">
-            <div className="space-y-1">
-              <span className="text-2xl font-black text-slate-900 font-['Hanken_Grotesk',sans-serif]">98.4%</span>
-              <p className="text-xs text-slate-500 font-medium">Placement shortlist rate</p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-2xl font-black text-indigo-600 font-['Hanken_Grotesk',sans-serif]">10 Questions</span>
-              <p className="text-xs text-slate-500 font-medium">Deep test guarantee per topic</p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-2xl font-black text-slate-900 font-['Hanken_Grotesk',sans-serif]">Atlas Sync</span>
-              <p className="text-xs text-slate-500 font-medium">MongoDB database persistence</p>
-            </div>
-          </div>
+         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-slate-200/80">
+  <div className="space-y-1"><span className="text-2xl font-black text-slate-900">98.4%</span><p className="text-xs text-slate-500 font-medium">Placement shortlist rate</p></div>
+  <div className="space-y-1"><span className="text-2xl font-black text-indigo-600">10 Questions</span><p className="text-xs text-slate-500 font-medium">Deep test guarantee per topic</p></div>
+  <div className="space-y-1"><span className="text-2xl font-black text-slate-900">3 Modules</span><p className="text-xs text-slate-500 font-medium">Aptitude, GD & Interview</p></div>
+  <div className="space-y-1"><span className="text-2xl font-black text-slate-900">Atlas Sync</span><p className="text-xs text-slate-500 font-medium">Progress saved automatically</p></div>
+</div>
         </div>
 
         {/* Hero Interactive Card Preview */}
@@ -151,11 +143,9 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
                 <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
                 <span className="text-xs font-mono font-bold text-slate-400 ml-2">MBA Case Simulator v2.4</span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold border border-indigo-500/30">
-                LIVE HUD ACTIVE
-              </span>
-            </div>
-
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">
+  Demo Preview
+</span>
             {/* Simulated Candidate Video Box */}
             <div className="relative aspect-video bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
               <img 
