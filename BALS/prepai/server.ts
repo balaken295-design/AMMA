@@ -985,6 +985,37 @@ app.post("/api/gemini/gd-turn", async (req, res) => {
   return res.json(result);
 });
 
+// API Endpoint 2.5: Final Group Discussion Evaluation
+app.post("/api/gemini/gd-evaluation", async (req, res) => {
+  const { transcript, userId } = req.body; // transcript = array of {senderName, text}
+  const ai = getGeminiClient();
+
+  if (!ai || !transcript || transcript.length === 0) {
+    return res.json({ success: true, evaluation: { readinessScore: 0, metrics: {
+      relevance: { score: 0, note: "No transcript captured." },
+      clarity: { score: 0, note: "No transcript captured." },
+      listening: { score: 0, note: "No transcript captured." },
+      leadership: { score: 0, note: "No transcript captured." }
+    }}});
+  }
+
+  try {
+    const convo = transcript.map((t: any) => `${t.senderName}: ${t.text}`).join("\n");
+    const prompt = `You are an MBA Group Discussion evaluator. Score ONLY the candidate's turns (the user, not AI peers) on Content Relevance, Communication Clarity, Listening/Building on Others, Leadership/Initiative (each 0-100). Transcript:\n${convo}\nReturn JSON only: {"readinessScore": n, "metrics": {"relevance": {"score": n, "note": "..."}, "clarity": {"score": n, "note": "..."}, "listening": {"score": n, "note": "..."}, "leadership": {"score": n, "note": "..."}}}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    const evaluation = JSON.parse(response.text || "{}");
+    return res.json({ success: true, evaluation });
+  } catch (error) {
+    console.error("GD evaluation error:", error);
+    return res.json({ success: false });
+  }
+});
+
 // API Endpoint 3: Interactive Step-by-Step AI Interviewer Turn
 app.post("/api/gemini/interview-step", async (req, res) => {
   const { role, stepNumber, previousQuestions, userAnswer } = req.body;
