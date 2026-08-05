@@ -88,18 +88,27 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       </header>
 
       {/* Hero Section */}
-      <section className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        <div className="lg:col-span-7 space-y-6 text-left">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-mono font-bold">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+      <section
+        className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center rounded-3xl overflow-hidden"
+        style={{
+          backgroundImage:
+            "linear-gradient(180deg, rgba(8,12,30,0.72) 0%, rgba(8,12,30,0.85) 100%), url('/hero-banner.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="relative lg:col-span-7 space-y-6 text-left">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-indigo-200 text-xs font-mono font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
             Designed for MBA Graduates & Campus Placements
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 font-['Hanken_Grotesk',sans-serif] tracking-tight leading-[1.1]">
-            Every Placement Season Has a Winner. <span className="text-indigo-600 underline decoration-indigo-200 decoration-wavy decoration-2">Prepare Like One.</span>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white font-['Hanken_Grotesk',sans-serif] tracking-tight leading-[1.1]">
+            Every Placement Season Has a Winner. <span className="text-indigo-300 underline decoration-indigo-400/60 decoration-wavy decoration-2">Prepare Like One.</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal max-w-2xl">
+          <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-normal max-w-2xl">
             From your first mock case to your final placement offer — practice, get real feedback, and walk in confident. No more guessing what recruiters want to hear. Built by MBA grads who remember exactly how placement season feels.
           </p>
 
@@ -125,19 +134,19 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           </div>
 
           {/* Today's Momentum Nudge */}
-          <div className="flex items-center gap-3 pt-6 border-t border-slate-200/80">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
+          <div className="flex items-center gap-3 pt-6 border-t border-white/15">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 text-indigo-200 flex items-center justify-center font-bold text-sm">
               🔥
             </div>
-            <p className="text-sm text-slate-700 font-medium">
-              <span className="font-bold text-slate-900">Placement season is closer than you think.</span>{' '}
+            <p className="text-sm text-slate-200 font-medium">
+              <span className="font-bold text-white">Placement season is closer than you think.</span>{' '}
               One mock interview today puts you ahead of tomorrow.
             </p>
           </div>
         </div>
 
         {/* Hero Interactive Card Preview */}
-        <div className="lg:col-span-5 relative">
+        <div className="relative lg:col-span-5">
           <div className="bg-slate-950 text-white rounded-3xl p-6 shadow-2xl border border-slate-800 space-y-5 relative overflow-hidden">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
               <div className="flex items-center gap-2">
