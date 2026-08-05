@@ -61,7 +61,11 @@ const RemoteVideoTile: React.FC<{
   );
 };
 
-export const GroupDiscussionView: React.FC = () => {
+interface GroupDiscussionViewProps {
+  onCompleteGD?: (evaluation: any) => void;
+}
+
+export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onCompleteGD }) => {
   const [activeRoom, setActiveRoom] = useState<GDRoom | null>(null);
   const [selfSocketId, setSelfSocketId] = useState<string | null>(null);
   const [roomCodeInput, setRoomCodeInput] = useState('');
