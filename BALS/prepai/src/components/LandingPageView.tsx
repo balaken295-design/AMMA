@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { 
-  Sparkles, Award, Users, BookOpen, Video, ArrowRight, CheckCircle2, 
-  TrendingUp, Shield, BarChart3, Check, Play, Zap, HelpCircle, LogIn
+import {
+  Sparkles, Users, BookOpen, Video, ArrowRight,
+  TrendingUp, BarChart3, Zap, Play
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -11,10 +11,44 @@ interface LandingPageViewProps {
   onOpenLoginModal?: () => void;
 }
 
+const TRACKS = [
+  {
+    id: 'consulting',
+    label: 'Consulting',
+    icon: BarChart3,
+    accent: 'bg-indigo-600 shadow-indigo-200',
+    title: 'Management Consulting',
+    description:
+      'Profitability cases, market sizing, growth frameworks, and GTM strategy simulations for McKinsey, BCG, Bain, and Strategy&.',
+    cta: 'Practice Case Interview',
+  },
+  {
+    id: 'banking',
+    label: 'Investment Banking',
+    icon: TrendingUp,
+    accent: 'bg-slate-900 shadow-slate-200',
+    title: 'Investment Banking & M&A',
+    description:
+      'Discounted Cash Flow (DCF), LBO fundamentals, enterprise valuation multiples, and financial statement analysis drills.',
+    cta: 'Practice Valuation Drill',
+  },
+  {
+    id: 'product',
+    label: 'Product Management',
+    icon: Zap,
+    accent: 'bg-indigo-600 shadow-indigo-200',
+    title: 'Tech Product Management',
+    description:
+      'Product design, root-cause metric drops, AI feature prioritization, and launch strategy for FAANG, Uber, and tech scaleups.',
+    cta: 'Practice PM Cases',
+  },
+] as const;
+
 export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, userProfile, onOpenLoginModal }) => {
   const [quickSampleAnswer, setQuickSampleAnswer] = useState('');
   const [quickFeedback, setQuickFeedback] = useState<string | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [activeTrack, setActiveTrack] = useState(0);
 
   const handleEvaluateSample = async () => {
     if (!quickSampleAnswer.trim()) return;
@@ -42,6 +76,9 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
     }
   };
 
+  const track = TRACKS[activeTrack];
+  const TrackIcon = track.icon;
+
   return (
     <div id="landing-page-container" className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-col font-['Inter',sans-serif]">
       {/* Top Header Navigation */}
@@ -55,8 +92,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           </div>
 
           <nav className="hidden md:flex gap-8 items-center text-xs font-bold text-slate-600">
-            <a href="#features" className="hover:text-indigo-600 transition-colors">Core Modules</a>
-            <a href="#mba-tracks" className="hover:text-indigo-600 transition-colors">MBA Placement Tracks</a>
+            <a href="#tracks" className="hover:text-indigo-600 transition-colors">Placement Tracks</a>
             <a href="#try-demo" className="hover:text-indigo-600 transition-colors">Interactive Demo</a>
             <a href="#journey" className="hover:text-indigo-600 transition-colors">Your Journey</a>
           </nav>
@@ -77,7 +113,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
               </button>
             )}
 
-            <button 
+            <button
               onClick={() => onStartApp('dashboard')}
               className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all shadow-xs flex items-center gap-2"
             >
@@ -89,7 +125,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
 
       {/* Hero Section */}
       <section
-        className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center rounded-3xl overflow-hidden"
+        className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 rounded-3xl overflow-hidden text-center"
         style={{
           backgroundImage:
             "linear-gradient(180deg, rgba(8,12,30,0.72) 0%, rgba(8,12,30,0.85) 100%), url('/hero-banner.png')",
@@ -98,7 +134,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           backgroundRepeat: 'no-repeat',
         }}
       >
-        <div className="relative lg:col-span-7 space-y-6 text-left">
+        <div className="relative max-w-3xl mx-auto space-y-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-indigo-200 text-xs font-mono font-bold">
             <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
             Designed for MBA Graduates & Campus Placements
@@ -108,11 +144,11 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             Every Placement Season Has a Winner. <span className="text-indigo-300 underline decoration-indigo-400/60 decoration-wavy decoration-2">Prepare Like One.</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-normal max-w-2xl">
-            From your first mock case to your final placement offer — practice, get real feedback, and walk in confident. No more guessing what recruiters want to hear. Built by MBA grads who remember exactly how placement season feels.
+          <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-normal max-w-2xl mx-auto">
+            Practice, get real feedback, and walk in confident. Built by MBA grads who remember exactly how placement season feels.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4 pt-2">
             <button
               onClick={() => onStartApp('interview')}
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-4 rounded-2xl text-sm transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
@@ -132,207 +168,50 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
               <BookOpen className="w-4 h-4 text-indigo-400" /> Sharpen Your Aptitude
             </button>
           </div>
-
-          {/* Today's Momentum Nudge */}
-          <div className="flex items-center gap-3 pt-6 border-t border-white/15">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 text-indigo-200 flex items-center justify-center font-bold text-sm">
-              🔥
-            </div>
-            <p className="text-sm text-slate-200 font-medium">
-              <span className="font-bold text-white">Placement season is closer than you think.</span>{' '}
-              One mock interview today puts you ahead of tomorrow.
-            </p>
-          </div>
-        </div>
-
-        {/* Hero Interactive Card Preview */}
-        <div className="relative lg:col-span-5">
-          <div className="bg-slate-950 text-white rounded-3xl p-6 shadow-2xl border border-slate-800 space-y-5 relative overflow-hidden">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500"></span>
-                <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                <span className="text-xs font-mono font-bold text-slate-400 ml-2">MBA Case Simulator v2.4</span>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">
-                Demo Preview
-              </span>
-            </div>
-
-            {/* Simulated Candidate Video Box */}
-            <div className="relative aspect-video bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
-              <img 
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop" 
-                alt="MBA Candidate Simulator" 
-                className="w-full h-full object-cover opacity-90" 
-              />
-              <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-mono font-bold text-indigo-300 border border-white/10 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-                McKinsey Case Interview
-              </div>
-              <div className="absolute bottom-3 right-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-mono text-slate-300 border border-white/10 space-y-0.5">
-                <div>Eye Contact: <strong className="text-indigo-400">96%</strong></div>
-                <div>Structure (MECE): <strong className="text-indigo-400">Optimal</strong></div>
-              </div>
-            </div>
-
-            {/* Dynamic AI Feedback Bubble */}
-            <div className="bg-indigo-950/80 border border-indigo-800/80 p-4 rounded-2xl space-y-2 text-xs text-indigo-100">
-              <div className="flex items-center justify-between text-indigo-300 font-mono font-bold text-[10px]">
-                <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-indigo-400" /> AI INTERVIEWER INSIGHT</span>
-                <span>SCORE: 92/100</span>
-              </div>
-              <p className="text-xs leading-relaxed text-indigo-200">
-                "Excellent segmentation of revenue drivers into volume vs price elasticity. Next step: calculate the break-even volume for the proposed acquisition."
-              </p>
-            </div>
-
-            <button
-              onClick={() => onStartApp('interview')}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-md"
-            >
-              <Play className="w-4 h-4" /> Try Full 1-on-1 Interview Simulator
-            </button>
-          </div>
         </div>
       </section>
 
-      {/* MBA Placement Role Tracks */}
-      <section id="mba-tracks" className="bg-white border-y border-slate-200/80 py-16">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 space-y-12 text-center">
-          <div className="max-w-2xl mx-auto space-y-3">
-            <span className="font-mono text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-3.5 py-1 rounded-full">
-              Industry Tailored Prep
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 font-['Hanken_Grotesk',sans-serif]">
-              Tailored for Top MBA Graduate Career Tracks
-            </h2>
-            <p className="text-sm text-slate-600">
-              Our AI interview prompts, group discussion topics, and valuation metrics are curated from real placement drives at top B-schools.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
-            <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-4 hover:border-indigo-300 transition-all">
-              <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-md shadow-indigo-200">
-                <BarChart3 className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-slate-900 font-['Hanken_Grotesk',sans-serif]">Management Consulting</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Profitability cases, market sizing, growth frameworks, and GTM strategy simulations for McKinsey, BCG, Bain, and Strategy&amp;.
-              </p>
-              <button onClick={() => onStartApp('interview')} className="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:underline pt-2">
-                Practice Case Interview &rarr;
-              </button>
-            </div>
-
-            <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-4 hover:border-indigo-300 transition-all">
-              <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-md">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-slate-900 font-['Hanken_Grotesk',sans-serif]">Investment Banking & M&amp;A</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Discounted Cash Flow (DCF), LBO fundamentals, enterprise valuation multiples, and financial statement analysis drills.
-              </p>
-              <button onClick={() => onStartApp('interview')} className="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:underline pt-2">
-                Practice Valuation Drill &rarr;
-              </button>
-            </div>
-
-            <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-4 hover:border-indigo-300 transition-all">
-              <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-md shadow-indigo-200">
-                <Zap className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-slate-900 font-['Hanken_Grotesk',sans-serif]">Tech Product Management</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Product design, root-cause metric drops, AI feature prioritization, and launch strategy for FAANG, Uber, and tech scaleups.
-              </p>
-              <button onClick={() => onStartApp('interview')} className="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:underline pt-2">
-                Practice PM Cases &rarr;
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Core Features Grid */}
-      <section id="features" className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-12">
+      {/* Interactive Placement Tracks */}
+      <section id="tracks" className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
           <span className="font-mono text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-3.5 py-1 rounded-full">
-            Full-Spectrum Preparation Engine
+            Industry Tailored Prep
           </span>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 font-['Hanken_Grotesk',sans-serif]">
-            Everything Needed to Land Top Campus Offers
+            Pick Your Track. See What You'll Practice.
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {/* Feature 1: Aptitude */}
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-8 space-y-4 shadow-sm flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 font-['Hanken_Grotesk',sans-serif]">
-                10-Question Deep Aptitude Engine
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Never limits you to 1 or 2 shallow practice questions. Every single topic guarantees at least 10 comprehensive questions with step-by-step mathematical and logical explanations for CAT, GMAT, and placement tests.
-              </p>
-            </div>
+        {/* Tab selector */}
+        <div className="flex flex-wrap justify-center gap-2">
+          {TRACKS.map((t, i) => (
             <button
-              onClick={() => onStartApp('aptitude')}
-              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-3 px-5 rounded-2xl text-xs transition-colors flex items-center justify-between"
+              key={t.id}
+              onClick={() => setActiveTrack(i)}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                activeTrack === i
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+              }`}
             >
-              <span>Explore Aptitude Topics</span>
-              <ArrowRight className="w-4 h-4" />
+              {t.label}
             </button>
-          </div>
+          ))}
+        </div>
 
-          {/* Feature 2: GD Room */}
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-8 space-y-4 shadow-sm flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                <Users className="w-5 h-5" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 font-['Hanken_Grotesk',sans-serif]">
-                Live Camera/Mic Group Discussion
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Join or host real-time GD rooms with AI participants (Alex, Sophia, David) or generate custom peer room codes. Features live video feeds, real-time speech-to-text transcript, and instant moderator feedback.
-              </p>
-            </div>
-            <button
-              onClick={() => onStartApp('gd')}
-              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-3 px-5 rounded-2xl text-xs transition-colors flex items-center justify-between"
-            >
-              <span>Launch Live GD Session</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+        {/* Active track panel */}
+        <div className="max-w-2xl mx-auto p-8 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-4 text-center">
+          <div className={`w-14 h-14 mx-auto text-white rounded-2xl flex items-center justify-center shadow-md ${track.accent}`}>
+            <TrackIcon className="w-7 h-7" />
           </div>
-
-          {/* Feature 3: AI Interviewer */}
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-8 space-y-4 shadow-sm flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                <Video className="w-5 h-5" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 font-['Hanken_Grotesk',sans-serif]">
-                1-on-1 AI Face Case Interviewer
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Interactive video avatar asks progressive follow-up questions tailored to MBA tracks. Monitors posture, articulation, eye contact, and response structure, culminating in a detailed 4-metric valuation report.
-              </p>
-            </div>
-            <button
-              onClick={() => onStartApp('interview')}
-              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-3 px-5 rounded-2xl text-xs transition-colors flex items-center justify-between"
-            >
-              <span>Start 1-on-1 Interview</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+          <h3 className="font-bold text-xl text-slate-900 font-['Hanken_Grotesk',sans-serif]">{track.title}</h3>
+          <p className="text-sm text-slate-600 leading-relaxed max-w-lg mx-auto">{track.description}</p>
+          <button
+            onClick={() => onStartApp('interview')}
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 hover:underline pt-2"
+          >
+            {track.cta} <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </section>
 
@@ -380,7 +259,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
                 onClick={() => onStartApp('interview')}
                 className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
               >
-                Launch Full Interview Simulator &rarr;
+                <Play className="w-3.5 h-3.5" /> Launch Full Interview Simulator
               </button>
             </div>
 
