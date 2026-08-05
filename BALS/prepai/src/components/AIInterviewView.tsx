@@ -108,7 +108,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
           body: JSON.stringify({ role: selectedRole, qaPairs: updatedHistory })
         });
         const data = await res.json();
-        const evalResult = (data.success && data.evaluation) ? data.evaluation : getFallbackEvaluation();
+        const evalResult = (data.success && data.evaluation) ? data.evaluation : getFallbackEvaluation(updatedHistory);
 
         // Persist evaluation to MongoDB Atlas
         fetch('/api/db/save-interview', {
@@ -123,7 +123,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
         onCompleteInterview(evalResult);
       } catch {
-        const fallback = getFallbackEvaluation();
+        const fallback = getFallbackEvaluation(updatedHistory);
         onCompleteInterview(fallback);
       } finally {
         setIsGenerating(false);
@@ -160,7 +160,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     }
   };
 
-const getFallbackEvaluation = (): InterviewEvaluation => ({
+const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEvaluation => ({
   role: selectedRole,
   date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
   readinessScore: 0,
@@ -171,7 +171,7 @@ const getFallbackEvaluation = (): InterviewEvaluation => ({
     bodyLanguage: { score: 0, note: "Evaluation unavailable — AI service did not respond." },
     confidence: { score: 0, note: "Evaluation unavailable — AI service did not respond." }
   },
-  transcript: updatedHistory.map((q, i) => ({ id: String(i+1), question: q.question, answer: q.userAnswer || "", aiInsight: "N/A" })),
+  transcript: history.map((q, i) => ({ id: String(i+1), question: q.question, answer: q.userAnswer || "", aiInsight: "N/A" })),
   nextSteps: [],
   recommendedResources: []
 });
