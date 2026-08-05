@@ -1,10 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { InterviewQuestion, InterviewEvaluation } from '../types';
 import { Video, VideoOff, Mic, MicOff, Send, Sparkles, Award, Bot, CheckCircle2, Volume2, Activity, Play } from 'lucide-react';
+import { FaceLandmarker, FilesetResolver, type FaceLandmarkerResult } from '@mediapipe/tasks-vision';
 
 interface AIInterviewViewProps {
   onCompleteInterview: (evaluation: InterviewEvaluation) => void;
 }
+
+// Decomposes MediaPipe's column-major 4x4 facial transformation matrix into
+// approximate yaw/pitch/roll (degrees). This is a head-pose proxy, not true
+// eyeball gaze tracking, but it's a real, live signal computed from the
+// camera feed rather than a fixed placeholder value.
+function matrixToEuler(m: Float32Array | number[]) {
+  const r00 = m[0], r10 = m[1], r20 = m[2];
+  const r01 = m[4], r11 = m[5], r21 = m[6];
+  const r02 = m[8], r12 = m[9], r22 = m[10];
+  const yaw = Math.atan2(r02, r22) * (180 / Math.PI);
+  const pitch = Math.atan2(-r12, Math.sqrt(r02 * r02 + r22 * r22)) * (180 / Math.PI);
+  const roll = Math.atan2(r10, r00) * (180 / Math.PI);
+  return { yaw, pitch, roll };
+}
+
+// How many recent frames to average eye-contact over (~ a few seconds at the
+// throttled sampling rate below).
+const EYE_CONTACT_WINDOW = 30;
 
 export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInterview }) => {
   const [selectedRole, setSelectedRole] = useState('Management Consulting Associate (McKinsey, BCG, Bain Case Interview)');
@@ -22,8 +41,20 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const [micEnabled, setMicEnabled] = useState(true);
   const localVideoRef = useRef<HTMLVideoElement>(null);
 
+  // Live posture / eye-contact HUD, computed from the actual camera feed
+  // via MediaPipe FaceLandmarker instead of being hardcoded.
+  const [eyeContactPct, setEyeContactPct] = useState<number | null>(null);
+  const [postureLabel, setPostureLabel] = useState<string>('Calibrating…');
+  const [trackingError, setTrackingError] = useState(false);
+  const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const eyeSamplesRef = useRef<boolean[]>([]);
+  const lastDetectTimeRef = useRef(0);
+
   useEffect(() => {
     let activeStream: MediaStream | null = null;
+    let cancelled = false;
+
     async function initCam() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -31,16 +62,105 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
+        await initTracking();
       } catch (err) {
         console.warn("Camera/Mic not accessible:", err);
+        setTrackingError(true);
       }
     }
+
+    async function initTracking() {
+      try {
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+        );
+        const landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "GPU",
+          },
+          runningMode: "VIDEO",
+          numFaces: 1,
+          outputFacialTransformationMatrixes: true,
+        });
+        if (cancelled) {
+          landmarker.close();
+          return;
+        }
+        faceLandmarkerRef.current = landmarker;
+        trackLoop();
+      } catch (err) {
+        console.warn("Face tracking failed to initialize:", err);
+        setTrackingError(true);
+      }
+    }
+
+    // Runs on every animation frame but only actually calls the model at a
+    // throttled ~6fps, which is plenty for a stability/HUD signal and keeps
+    // CPU usage low during a long interview session.
+    function trackLoop() {
+      rafIdRef.current = requestAnimationFrame(trackLoop);
+      const video = localVideoRef.current;
+      const landmarker = faceLandmarkerRef.current;
+      if (!video || !landmarker || video.readyState < 2) return;
+
+      const now = performance.now();
+      if (now - lastDetectTimeRef.current < 160) return;
+      lastDetectTimeRef.current = now;
+
+      let result: FaceLandmarkerResult;
+      try {
+        result = landmarker.detectForVideo(video, now);
+      } catch {
+        return;
+      }
+
+      const matrix = result.facialTransformationMatrixes?.[0]?.data;
+      if (!matrix) {
+        // No face detected this frame — don't count it either way, but
+        // let the person know tracking has lost them.
+        setPostureLabel(prev => (prev === 'Calibrating…' ? prev : 'Face not detected'));
+        return;
+      }
+
+      const { yaw, pitch, roll } = matrixToEuler(matrix);
+
+      // Eye-contact proxy: is the head roughly facing the camera?
+      const lookingAtCamera = Math.abs(yaw) < 15 && Math.abs(pitch) < 12;
+      const samples = eyeSamplesRef.current;
+      samples.push(lookingAtCamera);
+      if (samples.length > EYE_CONTACT_WINDOW) samples.shift();
+      const pct = Math.round((samples.filter(Boolean).length / samples.length) * 100);
+      setEyeContactPct(pct);
+
+      // Posture proxy: head tilt / lean, derived from the same pose.
+      let label = 'Optimal';
+      if (Math.abs(roll) > 15) label = 'Tilted';
+      else if (pitch < -15) label = 'Slouching';
+      else if (pitch > 20) label = 'Leaning back';
+      setPostureLabel(label);
+    }
+
     if (sessionStarted) {
+      eyeSamplesRef.current = [];
+      setEyeContactPct(null);
+      setPostureLabel('Calibrating…');
+      setTrackingError(false);
       initCam();
     }
+
     return () => {
+      cancelled = true;
       if (activeStream) {
         activeStream.getTracks().forEach(t => t.stop());
+      }
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      if (faceLandmarkerRef.current) {
+        faceLandmarkerRef.current.close();
+        faceLandmarkerRef.current = null;
       }
     };
   }, [sessionStarted]);
@@ -285,8 +405,14 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
                 />
                 {/* HUD Overlay */}
                 <div className="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-mono text-indigo-300 space-y-0.5 border border-white/10">
-                  <div>Eye Contact: <strong>92%</strong></div>
-                  <div>Posture: <strong>Optimal</strong></div>
+                  {trackingError ? (
+                    <div className="text-slate-400">Tracking unavailable</div>
+                  ) : (
+                    <>
+                      <div>Eye Contact: <strong>{eyeContactPct === null ? '—' : `${eyeContactPct}%`}</strong></div>
+                      <div>Posture: <strong>{postureLabel}</strong></div>
+                    </>
+                  )}
                 </div>
                 <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white">
                   You (Candidate Camera)
