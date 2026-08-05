@@ -438,14 +438,30 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
     });
   };
 
-  const handleLeaveRoom = () => {
-    if (activeRoom && socketRef.current) {
-      socketRef.current.emit('gd:leave', { code: activeRoom.code });
+const handleLeaveRoom = async () => {
+  if (activeRoom && onCompleteGD) {
+    try {
+      const res = await fetch('/api/gemini/gd-evaluation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: activeRoom.messages })
+      });
+      const data = await res.json();
+      if (data.success) {
+        onCompleteGD(data.evaluation);
+      }
+    } catch (err) {
+      console.warn('GD evaluation failed:', err);
     }
-    teardownSocket();
-    setActiveRoom(null);
-    setSelfSocketId(null);
-  };
+  }
+
+  if (activeRoom && socketRef.current) {
+    socketRef.current.emit('gd:leave', { code: activeRoom.code });
+  }
+  teardownSocket();
+  setActiveRoom(null);
+  setSelfSocketId(null);
+};
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !activeRoom || !socketRef.current) return;
