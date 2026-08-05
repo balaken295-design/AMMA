@@ -146,6 +146,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
               <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">
   Demo Preview
 </span>
+            </div>
             {/* Simulated Candidate Video Box */}
             <div className="relative aspect-video bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
               <img 
