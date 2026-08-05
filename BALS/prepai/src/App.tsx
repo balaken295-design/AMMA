@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Header } from './components/Header';
 import { LandingPageView } from './components/LandingPageView';
 import { DashboardView } from './components/DashboardView';
@@ -55,7 +56,7 @@ export default function App() {
       const newXp = prev.xp + xpAmount;
       const { level, title } = calculateLevel(newXp);
       const newCompletedTests = prev.completedTests + 1;
-      
+
       const updatedDomainScores = { ...prev.domainScores };
       if (domain && domain in updatedDomainScores) {
         const currentDomainScore = updatedDomainScores[domain as MBADomain];
@@ -120,23 +121,24 @@ export default function App() {
     });
     setActiveTab('evaluation');
   };
+
   const handleCompleteGD = (evaluation: any) => {
-  setUserProfile((prev) => {
-    const newXp = prev.xp + 200;
-    const { level, title } = calculateLevel(newXp);
-    const newGDs = prev.completedGDs + 1;
-    const readiness = Math.min(100, Math.max(10, Math.round((newXp / 3000) * 70 + (evaluation.readinessScore || 0) * 0.3)));
-    return {
-      ...prev,
-      xp: newXp,
-      level,
-      levelTitle: title,
-      completedGDs: newGDs,
-      readinessScore: readiness,
-      streakDays: prev.streakDays === 0 ? 1 : prev.streakDays,
-    };
-  });
-};
+    setUserProfile((prev) => {
+      const newXp = prev.xp + 200;
+      const { level, title } = calculateLevel(newXp);
+      const newGDs = prev.completedGDs + 1;
+      const readiness = Math.min(100, Math.max(10, Math.round((newXp / 3000) * 70 + (evaluation.readinessScore || 0) * 0.3)));
+      return {
+        ...prev,
+        xp: newXp,
+        level,
+        levelTitle: title,
+        completedGDs: newGDs,
+        readinessScore: readiness,
+        streakDays: prev.streakDays === 0 ? 1 : prev.streakDays,
+      };
+    });
+  };
 
   const handleStartAppFromLanding = (targetTab: 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation' = 'dashboard', category?: 'verbal' | 'logical' | 'quants') => {
     if (category) {
@@ -145,23 +147,46 @@ export default function App() {
     setActiveTab(targetTab);
   };
 
+  // Dedicated "go home" handler, wired to a control rendered directly by
+  // App itself (not by Header). Previously the only way back to the
+  // landing page was a "Home" tab inside <Header>, and if that tab's
+  // click handler wasn't wired to setActiveTab('landing') it would look
+  // "stuck" — present but unresponsive. This button always works,
+  // regardless of what Header does internally.
+  const handleGoHome = () => setActiveTab('landing');
+
   return (
     <div id="app-root" className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-col font-['Inter',sans-serif]">
       {/* Top Header Navigation */}
       {activeTab !== 'landing' && (
-        <Header 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
+        <Header
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           userProfile={userProfile}
           onOpenLoginModal={() => setIsLoginModalOpen(true)}
         />
       )}
 
+      {/* Always-available Back button. Rendered outside of Header so it
+          keeps working even if the Header component's own Home tab has a
+          wiring bug. Safe to remove once Header's Home tab is confirmed
+          fixed. */}
+      {activeTab !== 'landing' && (
+        <button
+          onClick={handleGoHome}
+          aria-label="Back to home"
+          className="fixed top-4 left-4 z-[60] flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-800 font-bold px-3.5 py-2 rounded-xl border border-slate-300 text-xs shadow-md transition-all"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back
+        </button>
+      )}
+
       {/* Main Content Stage */}
       <main id="app-main" className="flex-1">
         {activeTab === 'landing' && (
-          <LandingPageView 
-            onStartApp={handleStartAppFromLanding} 
+          <LandingPageView
+            onStartApp={handleStartAppFromLanding}
             userProfile={userProfile}
             onOpenLoginModal={() => setIsLoginModalOpen(true)}
           />
@@ -180,17 +205,16 @@ export default function App() {
         )}
 
         {activeTab === 'aptitude' && (
-          <AptitudeView 
-            initialCategory={selectedCategory} 
+          <AptitudeView
+            initialCategory={selectedCategory}
             userProfile={userProfile}
             onAddXP={handleAddXP}
           />
         )}
 
-   {activeTab === 'gd' && (
-  <GroupDiscussionView onCompleteGD={handleCompleteGD} />
-)}
-      
+        {activeTab === 'gd' && (
+          <GroupDiscussionView onCompleteGD={handleCompleteGD} />
+        )}
 
         {activeTab === 'interview' && (
           <AIInterviewView onCompleteInterview={handleCompleteInterview} />
@@ -216,4 +240,3 @@ export default function App() {
     </div>
   );
 }
-
