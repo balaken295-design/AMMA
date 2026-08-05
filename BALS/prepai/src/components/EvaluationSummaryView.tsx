@@ -11,58 +11,21 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
   evaluation,
   onStartNextPath
 }) => {
-  const [filter, setFilter] = useState<'critical' | 'all'>('critical');
-
-  // Default fallback matching the prompt image exactly if evaluation is null
-  const evalData: InterviewEvaluation = evaluation || {
-    role: "Senior Software Engineer Role Simulation",
-    date: "Oct 24, 2023",
-    readinessScore: 85,
-    percentile: 15,
-    metrics: {
-      communication: { score: 92, note: "Exceptional articulation and clarity in explaining complex logic." },
-      technicalAccuracy: { score: 78, note: "Solid fundamentals; minor inefficiency noted in system design task." },
-      bodyLanguage: { score: 88, note: "Great eye contact and posture throughout the 45-minute session." },
-      confidence: { score: 82, note: "Maintained composure even when faced with high-stress questions." }
-    },
-    transcript: [
-      {
-        id: '1',
-        question: "How would you handle a conflict within your development team regarding architectural choices?",
-        answer: "I believe in data-driven decisions. I would ask both parties to present their POCs, evaluate them against our scaling requirements, and then decide based on long-term maintainability.",
-        aiInsight: "Great structure, but consider mentioning the human element. Adding a note about 'facilitating a healthy discussion to ensure everyone feels heard' would boost your 'Leadership' score by approximately 12%."
-      },
-      {
-        id: '2',
-        question: "Describe your experience with Microservices architecture.",
-        answer: "In my last role, we migrated from a monolith to microservices using Kubernetes. It helped us deploy faster and isolate faults across services.",
-        aiInsight: "You hit the 'fault isolation' keyword. To make this answer stronger, quantify the results (e.g., 'Reduced deployment time by 40%')."
-      }
-    ],
-    nextSteps: [
-      { title: "Refine System Design", description: "Based on your tech accuracy, we recommend the 'Advanced System Design' module.", icon: "school" },
-      { title: "Book Expert Mock", description: "You're ready for a live human peer review. Schedule for next Tuesday.", icon: "event_available" },
-      { title: "Review Weak Keywords", description: "Study the feedback on 'CAP Theorem' and 'Database Normalization'.", icon: "assignment_turned_in" }
-    ],
-    recommendedResources: [
-      { title: "Distributed Systems 101", url: "#" },
-      { title: "STAR Method Cheat Sheet", url: "#" },
-      { title: "Top 50 Backend Questions", url: "#" }
-    ]
-  };
-
-  const handleDownloadReport = () => {
-    const reportText = `MBA BJD Evaluation Report\nRole: ${evalData.role}\nDate: ${evalData.date}\nReadiness Score: ${evalData.readinessScore}/100\nTop Percentile: ${evalData.percentile}%\nCommunication: ${evalData.metrics.communication.score}%\nTechnical Accuracy: ${evalData.metrics.technicalAccuracy.score}%\nBody Language: ${evalData.metrics.bodyLanguage.score}%\nConfidence: ${evalData.metrics.confidence.score}%`;
-    const blob = new Blob([reportText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `MBA_BJD_Evaluation_Report.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
+ const [filter, setFilter] = useState<'critical' | 'all'>('critical');
+ 
+  if (!evaluation) {
+    return (
+      <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
+        <h2 className="text-2xl font-bold text-slate-900">No evaluation yet</h2>
+        <p className="text-slate-600">Complete an AI Interview or GD session to see your report here.</p>
+        <button onClick={onStartNextPath} className="bg-indigo-600 text-white font-bold px-6 py-3 rounded-xl">
+          Start Now
+        </button>
+      </div>
+    );
+  }
+  const evalData = evaluation;
+  // ... rest of the component stays the same, delete the old hardcoded object entirely
     <div id="evaluation-summary-page" className="bg-slate-50 text-slate-900 min-h-screen py-8 px-4 md:px-8">
       <main className="max-w-[1280px] mx-auto space-y-8">
         {/* Header Section */}
