@@ -25,6 +25,51 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
     );
   }
   const evalData = evaluation;
+
+  const handleDownloadReport = () => {
+    const lines = [
+      `MBA BJD — Evaluation Summary`,
+      `Role: ${evalData.role}`,
+      `Date: ${evalData.date}`,
+      ``,
+      `Readiness Score: ${evalData.readinessScore} / 100`,
+      `Percentile: Top ${evalData.percentile}%`,
+      ``,
+      `Performance Metrics`,
+      `-------------------`,
+      `Communication: ${evalData.metrics.communication.score}% — ${evalData.metrics.communication.note}`,
+      `Technical Accuracy: ${evalData.metrics.technicalAccuracy.score}% — ${evalData.metrics.technicalAccuracy.note}`,
+      `Body Language: ${evalData.metrics.bodyLanguage.score}% — ${evalData.metrics.bodyLanguage.note}`,
+      `Confidence: ${evalData.metrics.confidence.score}% — ${evalData.metrics.confidence.note}`,
+      ``,
+      `Interview Transcript`,
+      `---------------------`,
+      ...evalData.transcript.flatMap((item) => [
+        `Q: ${item.question}`,
+        `A: ${item.answer}`,
+        `AI Insight: ${item.aiInsight}`,
+        ``,
+      ]),
+      `Next Steps`,
+      `----------`,
+      ...evalData.nextSteps.map((s) => `- ${s.title}: ${s.description}`),
+      ``,
+      `Recommended Resources`,
+      `----------------------`,
+      ...evalData.recommendedResources.map((r) => `- ${r.title}`),
+    ];
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `MBA-BJD-Evaluation-Report-${evalData.date.replace(/\s+/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div id="evaluation-summary-page" className="bg-slate-50 text-slate-900 min-h-screen py-8 px-4 md:px-8">
       <main className="max-w-[1280px] mx-auto space-y-8">
