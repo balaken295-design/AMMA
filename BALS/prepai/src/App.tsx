@@ -170,14 +170,31 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'gd' && (
-          <GroupDiscussionView />
-        )}
+   {activeTab === 'gd' && (
+  <GroupDiscussionView onCompleteGD={handleCompleteGD} />
+)}
+      
 
         {activeTab === 'interview' && (
           <AIInterviewView onCompleteInterview={handleCompleteInterview} />
         )}
-
+const handleCompleteGD = (evaluation: any) => {
+  setUserProfile((prev) => {
+    const newXp = prev.xp + 200;
+    const { level, title } = calculateLevel(newXp);
+    const newGDs = prev.completedGDs + 1;
+    const readiness = Math.min(100, Math.max(10, Math.round((newXp / 3000) * 70 + (evaluation.readinessScore || 0) * 0.3)));
+    return {
+      ...prev,
+      xp: newXp,
+      level,
+      levelTitle: title,
+      completedGDs: newGDs,
+      readinessScore: readiness,
+      streakDays: prev.streakDays === 0 ? 1 : prev.streakDays,
+    };
+  });
+};
         {activeTab === 'evaluation' && (
           <EvaluationSummaryView
             evaluation={lastEvaluation}
