@@ -12,16 +12,16 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userProfile, onOpenLoginModal }) => {
   return (
     <header id="main-header" className="sticky top-4 z-50 max-w-[1280px] w-[calc(100%-2rem)] mx-auto mb-2">
-      <div className="flex justify-between items-center px-6 py-3.5 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-sm">
+      <div className="flex justify-between items-center px-6 py-3.5 bg-white/90 backdrop-blur-md border border-ink-200/80 rounded-2xl shadow-sm">
         <div 
           id="header-brand" 
           onClick={() => setActiveTab('landing')} 
-          className="font-bold text-xl tracking-tight text-slate-800 cursor-pointer flex items-center gap-3 font-['Hanken_Grotesk',sans-serif]"
+          className="font-bold text-xl tracking-tight text-ink-800 cursor-pointer flex items-center gap-3"
         >
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-200">
+          <div className="w-10 h-10 bg-accent-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-md shadow-accent-200">
             B
           </div>
-          <span className="text-slate-900 font-extrabold text-xl whitespace-nowrap">MBA <span className="text-indigo-600">BJD</span></span>
+          <span className="text-ink-900 font-extrabold text-xl whitespace-nowrap">MBA <span className="text-accent-600">BJD</span></span>
         </div>
 
         <nav id="header-nav" className="hidden lg:flex gap-6 items-center">
@@ -30,8 +30,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
             onClick={() => setActiveTab('landing')}
             className={`font-semibold text-sm transition-all flex items-center gap-2 pb-1 ${
               activeTab === 'landing'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-500 hover:text-indigo-600'
+                ? 'text-accent-600 border-b-2 border-accent-600'
+                : 'text-ink-500 hover:text-accent-600'
             }`}
           >
             <Home className="w-4 h-4" />
@@ -43,8 +43,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
             onClick={() => setActiveTab('dashboard')}
             className={`font-semibold text-sm transition-all flex items-center gap-2 pb-1 ${
               activeTab === 'dashboard'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-500 hover:text-indigo-600'
+                ? 'text-accent-600 border-b-2 border-accent-600'
+                : 'text-ink-500 hover:text-accent-600'
             }`}
           >
             <LayoutDashboard className="w-4 h-4" />
@@ -56,8 +56,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
             onClick={() => setActiveTab('aptitude')}
             className={`font-semibold text-sm transition-all flex items-center gap-2 pb-1 ${
               activeTab === 'aptitude'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-500 hover:text-indigo-600'
+                ? 'text-accent-600 border-b-2 border-accent-600'
+                : 'text-ink-500 hover:text-accent-600'
             }`}
           >
             <BookOpen className="w-4 h-4" />
@@ -69,8 +69,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
             onClick={() => setActiveTab('gd')}
             className={`font-semibold text-sm transition-all flex items-center gap-2 pb-1 ${
               activeTab === 'gd'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-500 hover:text-indigo-600'
+                ? 'text-accent-600 border-b-2 border-accent-600'
+                : 'text-ink-500 hover:text-accent-600'
             }`}
           >
             <Users className="w-4 h-4" />
@@ -82,8 +82,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
             onClick={() => setActiveTab('interview')}
             className={`font-semibold text-sm transition-all flex items-center gap-2 pb-1 ${
               activeTab === 'interview'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-500 hover:text-indigo-600'
+                ? 'text-accent-600 border-b-2 border-accent-600'
+                : 'text-ink-500 hover:text-accent-600'
             }`}
           >
             <Video className="w-4 h-4" />
@@ -95,8 +95,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
             onClick={() => setActiveTab('evaluation')}
             className={`font-semibold text-sm transition-all flex items-center gap-2 pb-1 ${
               activeTab === 'evaluation'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-500 hover:text-indigo-600'
+                ? 'text-accent-600 border-b-2 border-accent-600'
+                : 'text-ink-500 hover:text-accent-600'
             }`}
           >
             <Award className="w-4 h-4" />
@@ -105,13 +105,13 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
         </nav>
 
         <div id="header-actions" className="flex items-center gap-3">
-          {/* Live Progress HUD Pill */}
-          <div className="hidden sm:flex items-center gap-2 bg-slate-900 text-white px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono">
-            <span className="text-amber-400 font-bold">⚡ {userProfile.xp} XP</span>
-            <span className="text-rose-400 font-bold border-l border-slate-700 pl-2">🔥 {userProfile.streakDays}d</span>
+          {/* Readiness indicator */}
+          <div className="hidden sm:flex items-center gap-2 bg-ink-50 text-ink-700 px-3 py-1.5 rounded-xl border border-ink-200 text-xs">
+            <span className="font-semibold">Readiness</span>
+            <span className="font-bold text-accent-700">{userProfile.readinessScore}%</span>
           </div>
 
-          <button id="btn-notifications" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors rounded-xl hover:bg-indigo-50">
+          <button id="btn-notifications" className="p-2 text-ink-500 hover:text-accent-600 transition-colors rounded-xl hover:bg-accent-50">
             <Bell className="w-4 h-4" />
           </button>
 
@@ -119,19 +119,19 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
           {userProfile.isLoggedIn ? (
             <div
               onClick={onOpenLoginModal}
-              className="flex items-center gap-2.5 pl-2 border-l border-slate-200 cursor-pointer group"
+              className="flex items-center gap-2.5 pl-2 border-l border-ink-200 cursor-pointer group"
             >
               <div className="hidden sm:block text-right">
-                <p className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest">
-                  LVL {userProfile.level} • {userProfile.levelTitle}
+                <p className="text-[10px] font-semibold text-accent-700 uppercase tracking-widest">
+                  Candidate Profile
                 </p>
-                <p className="text-xs font-bold text-slate-800 truncate max-w-[120px]">
+                <p className="text-xs font-bold text-ink-800 truncate max-w-[120px]">
                   {userProfile.name}
                 </p>
               </div>
               <div
                 id="user-profile-avatar"
-                className="w-9 h-9 rounded-full bg-indigo-600 text-white font-black text-xs flex items-center justify-center border-2 border-indigo-200 shadow-xs group-hover:scale-105 transition-transform"
+                className="w-9 h-9 rounded-full bg-accent-600 text-white font-black text-xs flex items-center justify-center border-2 border-accent-200 shadow-xs group-hover:scale-105 transition-transform"
               >
                 {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 'G'}
               </div>
@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
           ) : (
             <button
               onClick={onOpenLoginModal}
-              className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-800 font-bold px-3.5 py-1.5 rounded-xl border border-slate-300 text-xs shadow-xs transition-all"
+              className="flex items-center gap-2 bg-white hover:bg-ink-50 text-ink-800 font-bold px-3.5 py-1.5 rounded-xl border border-ink-300 text-xs shadow-xs transition-all"
             >
               {/* Official Google Icon */}
               <svg className="w-4 h-4" viewBox="0 0 24 24">
