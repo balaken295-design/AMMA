@@ -156,7 +156,7 @@ export default function App() {
   const handleGoHome = () => setActiveTab('landing');
 
   return (
-    <div id="app-root" className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-col font-['Inter',sans-serif]">
+    <div id="app-root" className="min-h-screen bg-paper text-ink-900 flex flex-col">
       {/* Top Header Navigation */}
       {activeTab !== 'landing' && (
         <Header
@@ -175,7 +175,7 @@ export default function App() {
         <button
           onClick={handleGoHome}
           aria-label="Back to home"
-          className="fixed top-4 left-4 z-[60] flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-800 font-bold px-3.5 py-2 rounded-xl border border-slate-300 text-xs shadow-md transition-all"
+          className="fixed top-4 left-4 z-[60] flex items-center gap-1.5 bg-white hover:bg-ink-50 text-ink-800 font-bold px-3.5 py-2 rounded-xl border border-ink-300 text-xs shadow-md transition-all"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back
