@@ -71,21 +71,156 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [displayName, setDisplayName] = useState('');
   const GD_TOPICS = [
-    'Generative AI Disruption in Financial Services, Asset Management & Private Equity',
-    'Central Bank Digital Currencies (CBDCs) vs Commercial Banking & Fintech Ecosystems',
-    'Shareholder Value vs Stakeholder Governance: M&A Impact on Corporate Debt',
-    'Gig Economy Regulation: Balancing Worker Welfare with Platform Business Scalability',
-    'Hybrid Workforce Productivity, Employee Mental Health & Executive Burnout',
-    'AI Automation in Performance Appraisals & Diversity Bias Mitigation',
-    'Data Privacy Regulations vs Hyper-Personalized Performance Marketing',
-    'Influencer Marketing ROI vs Traditional Media Brand Equity in Gen-Z FMCG',
-    'Subscription Pricing Fatigue & Customer Churn Prevention in Digital Platforms',
-    'Ethical Boundaries in Algorithmic Pricing, Dynamic Yield & Consumer Exploitation',
-    'Predictive Churn Modeling vs Customer Lifetime Value (LTV) Optimization',
-    'Data Governance in Sovereign Cloud Infrastructure for Global Enterprise',
-    'Supply Chain Decoupling & Nearshoring: Geopolitical Risk Management for FMCG',
-    'ESG Metrics vs Profit Maximization: Strategic Boardroom Tradeoffs in Global Multinationals',
-    'Market Entry Strategy: Electric Vehicle Expansion in Emerging Asian Economies',
+    'Is saving money better than investing it?',
+    'Should students be taught personal finance in school?',
+    'Is cash still important in a digital payment world?',
+    'Should college students be given credit cards?',
+    'Is it wise to take a loan for higher education?',
+    'Should India move faster towards a cashless economy?',
+    'Is investing in gold still a good idea today?',
+    'Should everyone have a fixed monthly savings habit?',
+    'Are mutual funds a good option for first-time investors?',
+    'Is real estate a better investment than the stock market?',
+    'Should young people invest in the stock market early?',
+    'Is cryptocurrency a safe investment for beginners?',
+    'Should banks reduce or remove ATM withdrawal charges?',
+    'Is it better to rent a house or buy one?',
+    'Should companies pay employees weekly instead of monthly?',
+    'Is insurance necessary for every working adult?',
+    'Should students take part-time jobs to fund their studies?',
+    'Is it good to depend on credit cards for daily expenses?',
+    'Should the government give more tax benefits to small businesses?',
+    'Is financial literacy more important than technical knowledge?',
+    'Should everyone maintain an emergency fund?',
+    'Is online banking safer than visiting a bank branch?',
+    'Should students learn budgeting before they start earning?',
+    'Is it better to pay bills online or in person?',
+    'Should companies offer more financial training to new employees?',
+    'Is a joint bank account a good idea for young couples?',
+    'Should schools introduce a subject on money management?',
+    'Is it a good idea to buy things only on discount or sale?',
+    'Should the government control the prices of essential goods?',
+    'Is EMI shopping a smart way to buy expensive items?',
+    'Should retirement planning start from the first job itself?',
+    'Is it better to have one bank account or many?',
+    'Should companies switch fully to digital payroll systems?',
+    'Is buying insurance online as reliable as through an agent?',
+    'Should small shops be encouraged to accept digital payments?',
+    'Is a fixed deposit still a smart way to save money?',
+    'Should students be given a monthly budget by their parents?',
+    'Is it better to spend on experiences or save for the future?',
+    'Should microfinance loans be promoted more in villages?',
+    'Is it necessary to check your bank statement every month?',
+    'Should companies give bonuses in cash or investments?',
+    'Is it wise to borrow money from friends or family?',
+    'Should India have more financial literacy campaigns on TV?',
+    'Is UPI a better payment method than cards?',
+    'Should young earners avoid taking a car loan?',
+    'Is it good to have more than one source of income?',
+    'Should schools conduct workshops on tax filing basics?',
+    'Is it okay to spend all your salary before saving?',
+    'Should senior citizens be given higher interest rates on deposits?',
+    'Is digital gold a good alternative to buying physical gold?',
+    'Should employees be allowed to choose their own working hours?',
+    'Is working from home better than working from office?',
+    'Should companies hire based on skills rather than degrees?',
+    'Is a four-day work week a good idea?',
+    'Should freshers be given the same salary as experienced hires?',
+    'Is it important for managers to be friendly with their team?',
+    'Should companies give more importance to soft skills in interviews?',
+    'Is job-hopping good or bad for a career?',
+    'Should internships always be paid?',
+    'Is teamwork more important than individual performance?',
+    'Should companies allow employees to bring pets to work?',
+    'Is it fair to reject a candidate for being overqualified?',
+    'Should employees get a say in choosing their own manager?',
+    'Is it right to fire an employee without prior warning?',
+    'Should companies focus more on employee happiness than profit?',
+    'Is group interview a fair way to select candidates?',
+    'Should companies give preference to local candidates while hiring?',
+    'Is it necessary to have a dress code at the workplace?',
+    'Should employees be trained regularly even after joining?',
+    'Is it okay to ask personal questions during a job interview?',
+    'Should performance be judged only by targets achieved?',
+    'Is peer feedback more useful than manager feedback?',
+    'Should companies celebrate employee birthdays and festivals?',
+    'Is it good to promote employees based on seniority?',
+    'Should new employees get a mentor in their first month?',
+    'Is multitasking a useful skill or does it reduce quality?',
+    'Should companies allow flexible leave policies?',
+    'Is it important to have women in leadership roles?',
+    'Should employees be penalized for reaching office late?',
+    'Is online training as effective as classroom training?',
+    'Should companies conduct exit interviews for every employee?',
+    'Is it right to reject a resume because of a job gap?',
+    'Should freshers be allowed to negotiate their salary?',
+    'Is teamwork better in small teams or large teams?',
+    'Should employees be allowed to work from a different city?',
+    'Is it important for a company to have a fun Friday culture?',
+    'Should managers share their personal mobile numbers with the team?',
+    'Is it good to have friends as colleagues at work?',
+    'Should companies have a strict social media policy for employees?',
+    'Is punctuality more important than the quality of work?',
+    'Should probation periods be shorter than six months?',
+    'Is it fair to give the same increment to every employee?',
+    'Should companies allow employees to switch departments easily?',
+    'Is stress at work mainly the employee\'s fault or the company\'s?',
+    'Should employees be told the reason if they are not selected?',
+    'Is a warm welcome important for a new employee\'s first day?',
+    'Should companies reward employees who suggest new ideas?',
+    'Is it good to have team outings once every few months?',
+    'Should older employees be trained to use new technology?',
+    'Is honesty more important than diplomacy at the workplace?',
+    'Is social media advertising more effective than TV ads?',
+    'Should companies use celebrities to promote their products?',
+    'Is word of mouth still the best form of advertising?',
+    'Should brands respond to every customer comment online?',
+    'Is packaging more important than the product itself?',
+    'Should companies offer free samples to attract customers?',
+    'Is online shopping killing local retail shops?',
+    'Should advertisements aimed at children be banned?',
+    'Is discount pricing a good long-term marketing strategy?',
+    'Should every brand have its own mobile app?',
+    'Is influencer marketing more trustworthy than celebrity endorsement?',
+    'Should companies focus more on customer service than advertising?',
+    'Is a catchy tagline more important than product quality?',
+    'Should brands sponsor local events to build trust?',
+    'Is it fair for companies to use comparison ads against rivals?',
+    'Should packaging always mention all ingredients clearly?',
+    'Is loyalty card and rewards system effective in keeping customers?',
+    'Should small businesses spend more on branding or on the product?',
+    'Is it important for a brand to have its own mascot or logo?',
+    'Should companies avoid exaggerating claims in advertisements?',
+    'Is festive season discounting good for brand image?',
+    'Should companies use humor in their advertisements?',
+    'Is customer feedback more valuable than market research?',
+    'Should brands take a stand on social issues in their ads?',
+    'Is email marketing still useful in the age of social media?',
+    'Should new brands focus on online sales before opening stores?',
+    'Is it better to launch one big ad campaign or many small ones?',
+    'Should companies personalize ads based on browsing history?',
+    'Is free shipping more attractive to customers than a discount?',
+    'Should brands use regional languages in their advertising?',
+    'Is a strong brand name more important than a strong product?',
+    'Should companies give more importance to reviews and ratings?',
+    'Is door-to-door marketing still relevant today?',
+    'Should every product have an eco-friendly packaging option?',
+    'Is repeat customer business more valuable than new customers?',
+    'Should brands avoid using models with unrealistic body standards?',
+    'Is it good for a company to change its logo often?',
+    'Should companies match competitor prices immediately?',
+    'Is storytelling in ads more effective than showing product features?',
+    'Should local businesses use social media over newspaper ads?',
+    'Is a limited-time offer a good way to boost sales?',
+    'Should companies give free trials before asking for payment?',
+    'Is it necessary for every business to have a website today?',
+    'Should brands use nostalgia to connect with older customers?',
+    'Is aggressive marketing during festivals a good strategy?',
+    'Should companies avoid targeting ads at very young audiences?',
+    'Is customer trust built more by ads or by product quality?',
+    'Should a company change its marketing strategy for every city?',
+    'Is it a good idea to launch a product without any advertising?',
+    'Should brands collaborate with other brands for joint promotions?'
   ];
   const [selectedTopic, setSelectedTopic] = useState(() => GD_TOPICS[Math.floor(Math.random() * GD_TOPICS.length)]);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -518,46 +653,169 @@ const handleLeaveRoom = async () => {
 
           {/* Topic Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">MBA Group Discussion Case Topic (By Domain)</label>
+            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Group Discussion Topic (By Domain)</label>
             <select
               value={selectedTopic}
               onChange={e => setSelectedTopic(e.target.value)}
               className="w-full p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-sm font-semibold text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs"
             >
-              <optgroup label="💼 Finance & Financial Markets">
-                <option value="Generative AI Disruption in Financial Services, Asset Management & Private Equity">
-                  Finance: Generative AI Disruption in Financial Services, Asset Management & Private Equity
-                </option>
-                <option value="Central Bank Digital Currencies (CBDCs) vs Commercial Banking & Fintech Ecosystems">
-                  Finance: CBDCs vs Commercial Banking & Fintech Ecosystems
-                </option>
-                <option value="Shareholder Value vs Stakeholder Governance: M&A Impact on Corporate Debt">
-                  Finance: Shareholder Value vs Stakeholder Governance in M&A
-                </option>
+              <optgroup label="💼 Finance & Money (50 simple topics)">
+                <option value="Is saving money better than investing it?">Finance: Is saving money better than investing it?</option>
+                <option value="Should students be taught personal finance in school?">Finance: Should students be taught personal finance in school?</option>
+                <option value="Is cash still important in a digital payment world?">Finance: Is cash still important in a digital payment world?</option>
+                <option value="Should college students be given credit cards?">Finance: Should college students be given credit cards?</option>
+                <option value="Is it wise to take a loan for higher education?">Finance: Is it wise to take a loan for higher education?</option>
+                <option value="Should India move faster towards a cashless economy?">Finance: Should India move faster towards a cashless economy?</option>
+                <option value="Is investing in gold still a good idea today?">Finance: Is investing in gold still a good idea today?</option>
+                <option value="Should everyone have a fixed monthly savings habit?">Finance: Should everyone have a fixed monthly savings habit?</option>
+                <option value="Are mutual funds a good option for first-time investors?">Finance: Are mutual funds a good option for first-time investors?</option>
+                <option value="Is real estate a better investment than the stock market?">Finance: Is real estate a better investment than the stock market?</option>
+                <option value="Should young people invest in the stock market early?">Finance: Should young people invest in the stock market early?</option>
+                <option value="Is cryptocurrency a safe investment for beginners?">Finance: Is cryptocurrency a safe investment for beginners?</option>
+                <option value="Should banks reduce or remove ATM withdrawal charges?">Finance: Should banks reduce or remove ATM withdrawal charges?</option>
+                <option value="Is it better to rent a house or buy one?">Finance: Is it better to rent a house or buy one?</option>
+                <option value="Should companies pay employees weekly instead of monthly?">Finance: Should companies pay employees weekly instead of monthly?</option>
+                <option value="Is insurance necessary for every working adult?">Finance: Is insurance necessary for every working adult?</option>
+                <option value="Should students take part-time jobs to fund their studies?">Finance: Should students take part-time jobs to fund their studies?</option>
+                <option value="Is it good to depend on credit cards for daily expenses?">Finance: Is it good to depend on credit cards for daily expenses?</option>
+                <option value="Should the government give more tax benefits to small businesses?">Finance: Should the government give more tax benefits to small businesses?</option>
+                <option value="Is financial literacy more important than technical knowledge?">Finance: Is financial literacy more important than technical knowledge?</option>
+                <option value="Should everyone maintain an emergency fund?">Finance: Should everyone maintain an emergency fund?</option>
+                <option value="Is online banking safer than visiting a bank branch?">Finance: Is online banking safer than visiting a bank branch?</option>
+                <option value="Should students learn budgeting before they start earning?">Finance: Should students learn budgeting before they start earning?</option>
+                <option value="Is it better to pay bills online or in person?">Finance: Is it better to pay bills online or in person?</option>
+                <option value="Should companies offer more financial training to new employees?">Finance: Should companies offer more financial training to new employees?</option>
+                <option value="Is a joint bank account a good idea for young couples?">Finance: Is a joint bank account a good idea for young couples?</option>
+                <option value="Should schools introduce a subject on money management?">Finance: Should schools introduce a subject on money management?</option>
+                <option value="Is it a good idea to buy things only on discount or sale?">Finance: Is it a good idea to buy things only on discount or sale?</option>
+                <option value="Should the government control the prices of essential goods?">Finance: Should the government control the prices of essential goods?</option>
+                <option value="Is EMI shopping a smart way to buy expensive items?">Finance: Is EMI shopping a smart way to buy expensive items?</option>
+                <option value="Should retirement planning start from the first job itself?">Finance: Should retirement planning start from the first job itself?</option>
+                <option value="Is it better to have one bank account or many?">Finance: Is it better to have one bank account or many?</option>
+                <option value="Should companies switch fully to digital payroll systems?">Finance: Should companies switch fully to digital payroll systems?</option>
+                <option value="Is buying insurance online as reliable as through an agent?">Finance: Is buying insurance online as reliable as through an agent?</option>
+                <option value="Should small shops be encouraged to accept digital payments?">Finance: Should small shops be encouraged to accept digital payments?</option>
+                <option value="Is a fixed deposit still a smart way to save money?">Finance: Is a fixed deposit still a smart way to save money?</option>
+                <option value="Should students be given a monthly budget by their parents?">Finance: Should students be given a monthly budget by their parents?</option>
+                <option value="Is it better to spend on experiences or save for the future?">Finance: Is it better to spend on experiences or save for the future?</option>
+                <option value="Should microfinance loans be promoted more in villages?">Finance: Should microfinance loans be promoted more in villages?</option>
+                <option value="Is it necessary to check your bank statement every month?">Finance: Is it necessary to check your bank statement every month?</option>
+                <option value="Should companies give bonuses in cash or investments?">Finance: Should companies give bonuses in cash or investments?</option>
+                <option value="Is it wise to borrow money from friends or family?">Finance: Is it wise to borrow money from friends or family?</option>
+                <option value="Should India have more financial literacy campaigns on TV?">Finance: Should India have more financial literacy campaigns on TV?</option>
+                <option value="Is UPI a better payment method than cards?">Finance: Is UPI a better payment method than cards?</option>
+                <option value="Should young earners avoid taking a car loan?">Finance: Should young earners avoid taking a car loan?</option>
+                <option value="Is it good to have more than one source of income?">Finance: Is it good to have more than one source of income?</option>
+                <option value="Should schools conduct workshops on tax filing basics?">Finance: Should schools conduct workshops on tax filing basics?</option>
+                <option value="Is it okay to spend all your salary before saving?">Finance: Is it okay to spend all your salary before saving?</option>
+                <option value="Should senior citizens be given higher interest rates on deposits?">Finance: Should senior citizens be given higher interest rates on deposits?</option>
+                <option value="Is digital gold a good alternative to buying physical gold?">Finance: Is digital gold a good alternative to buying physical gold?</option>
               </optgroup>
 
-              <optgroup label="👥 HR & Organizational Leadership">
-                <option value="Gig Economy Regulation: Balancing Worker Welfare with Platform Business Scalability">
-                  HR: Gig Economy Regulation & Platform Business Scalability
-                </option>
-                <option value="Hybrid Workforce Productivity, Employee Mental Health & Executive Burnout">
-                  HR: Hybrid Workforce Productivity, Mental Health & Executive Turnover
-                </option>
-                <option value="AI Automation in Performance Appraisals & Diversity Bias Mitigation">
-                  HR: AI Automation in Performance Appraisals & Diversity Bias Mitigation
-                </option>
+              <optgroup label="👥 HR & Workplace (50 simple topics)">
+                <option value="Should employees be allowed to choose their own working hours?">HR: Should employees be allowed to choose their own working hours?</option>
+                <option value="Is working from home better than working from office?">HR: Is working from home better than working from office?</option>
+                <option value="Should companies hire based on skills rather than degrees?">HR: Should companies hire based on skills rather than degrees?</option>
+                <option value="Is a four-day work week a good idea?">HR: Is a four-day work week a good idea?</option>
+                <option value="Should freshers be given the same salary as experienced hires?">HR: Should freshers be given the same salary as experienced hires?</option>
+                <option value="Is it important for managers to be friendly with their team?">HR: Is it important for managers to be friendly with their team?</option>
+                <option value="Should companies give more importance to soft skills in interviews?">HR: Should companies give more importance to soft skills in interviews?</option>
+                <option value="Is job-hopping good or bad for a career?">HR: Is job-hopping good or bad for a career?</option>
+                <option value="Should internships always be paid?">HR: Should internships always be paid?</option>
+                <option value="Is teamwork more important than individual performance?">HR: Is teamwork more important than individual performance?</option>
+                <option value="Should companies allow employees to bring pets to work?">HR: Should companies allow employees to bring pets to work?</option>
+                <option value="Is it fair to reject a candidate for being overqualified?">HR: Is it fair to reject a candidate for being overqualified?</option>
+                <option value="Should employees get a say in choosing their own manager?">HR: Should employees get a say in choosing their own manager?</option>
+                <option value="Is it right to fire an employee without prior warning?">HR: Is it right to fire an employee without prior warning?</option>
+                <option value="Should companies focus more on employee happiness than profit?">HR: Should companies focus more on employee happiness than profit?</option>
+                <option value="Is group interview a fair way to select candidates?">HR: Is group interview a fair way to select candidates?</option>
+                <option value="Should companies give preference to local candidates while hiring?">HR: Should companies give preference to local candidates while hiring?</option>
+                <option value="Is it necessary to have a dress code at the workplace?">HR: Is it necessary to have a dress code at the workplace?</option>
+                <option value="Should employees be trained regularly even after joining?">HR: Should employees be trained regularly even after joining?</option>
+                <option value="Is it okay to ask personal questions during a job interview?">HR: Is it okay to ask personal questions during a job interview?</option>
+                <option value="Should performance be judged only by targets achieved?">HR: Should performance be judged only by targets achieved?</option>
+                <option value="Is peer feedback more useful than manager feedback?">HR: Is peer feedback more useful than manager feedback?</option>
+                <option value="Should companies celebrate employee birthdays and festivals?">HR: Should companies celebrate employee birthdays and festivals?</option>
+                <option value="Is it good to promote employees based on seniority?">HR: Is it good to promote employees based on seniority?</option>
+                <option value="Should new employees get a mentor in their first month?">HR: Should new employees get a mentor in their first month?</option>
+                <option value="Is multitasking a useful skill or does it reduce quality?">HR: Is multitasking a useful skill or does it reduce quality?</option>
+                <option value="Should companies allow flexible leave policies?">HR: Should companies allow flexible leave policies?</option>
+                <option value="Is it important to have women in leadership roles?">HR: Is it important to have women in leadership roles?</option>
+                <option value="Should employees be penalized for reaching office late?">HR: Should employees be penalized for reaching office late?</option>
+                <option value="Is online training as effective as classroom training?">HR: Is online training as effective as classroom training?</option>
+                <option value="Should companies conduct exit interviews for every employee?">HR: Should companies conduct exit interviews for every employee?</option>
+                <option value="Is it right to reject a resume because of a job gap?">HR: Is it right to reject a resume because of a job gap?</option>
+                <option value="Should freshers be allowed to negotiate their salary?">HR: Should freshers be allowed to negotiate their salary?</option>
+                <option value="Is teamwork better in small teams or large teams?">HR: Is teamwork better in small teams or large teams?</option>
+                <option value="Should employees be allowed to work from a different city?">HR: Should employees be allowed to work from a different city?</option>
+                <option value="Is it important for a company to have a fun Friday culture?">HR: Is it important for a company to have a fun Friday culture?</option>
+                <option value="Should managers share their personal mobile numbers with the team?">HR: Should managers share their personal mobile numbers with the team?</option>
+                <option value="Is it good to have friends as colleagues at work?">HR: Is it good to have friends as colleagues at work?</option>
+                <option value="Should companies have a strict social media policy for employees?">HR: Should companies have a strict social media policy for employees?</option>
+                <option value="Is punctuality more important than the quality of work?">HR: Is punctuality more important than the quality of work?</option>
+                <option value="Should probation periods be shorter than six months?">HR: Should probation periods be shorter than six months?</option>
+                <option value="Is it fair to give the same increment to every employee?">HR: Is it fair to give the same increment to every employee?</option>
+                <option value="Should companies allow employees to switch departments easily?">HR: Should companies allow employees to switch departments easily?</option>
+                <option value="Is stress at work mainly the employee\'s fault or the company\'s?">HR: Is stress at work mainly the employee\'s fault or the company\'s?</option>
+                <option value="Should employees be told the reason if they are not selected?">HR: Should employees be told the reason if they are not selected?</option>
+                <option value="Is a warm welcome important for a new employee\'s first day?">HR: Is a warm welcome important for a new employee\'s first day?</option>
+                <option value="Should companies reward employees who suggest new ideas?">HR: Should companies reward employees who suggest new ideas?</option>
+                <option value="Is it good to have team outings once every few months?">HR: Is it good to have team outings once every few months?</option>
+                <option value="Should older employees be trained to use new technology?">HR: Should older employees be trained to use new technology?</option>
+                <option value="Is honesty more important than diplomacy at the workplace?">HR: Is honesty more important than diplomacy at the workplace?</option>
               </optgroup>
 
-              <optgroup label="📈 Marketing & Consumer Behavior">
-                <option value="Data Privacy Regulations vs Hyper-Personalized Performance Marketing">
-                  Marketing: Data Privacy Regulations vs Hyper-Personalized Targeting
-                </option>
-                <option value="Influencer Marketing ROI vs Traditional Media Brand Equity in Gen-Z FMCG">
-                  Marketing: Influencer Marketing ROI vs Traditional Brand Equity
-                </option>
-                <option value="Subscription Pricing Fatigue & Customer Churn Prevention in Digital Platforms">
-                  Marketing: Subscription Pricing Fatigue & Customer Churn Prevention
-                </option>
+              <optgroup label="📈 Marketing & Branding (50 simple topics)">
+                <option value="Is social media advertising more effective than TV ads?">Marketing: Is social media advertising more effective than TV ads?</option>
+                <option value="Should companies use celebrities to promote their products?">Marketing: Should companies use celebrities to promote their products?</option>
+                <option value="Is word of mouth still the best form of advertising?">Marketing: Is word of mouth still the best form of advertising?</option>
+                <option value="Should brands respond to every customer comment online?">Marketing: Should brands respond to every customer comment online?</option>
+                <option value="Is packaging more important than the product itself?">Marketing: Is packaging more important than the product itself?</option>
+                <option value="Should companies offer free samples to attract customers?">Marketing: Should companies offer free samples to attract customers?</option>
+                <option value="Is online shopping killing local retail shops?">Marketing: Is online shopping killing local retail shops?</option>
+                <option value="Should advertisements aimed at children be banned?">Marketing: Should advertisements aimed at children be banned?</option>
+                <option value="Is discount pricing a good long-term marketing strategy?">Marketing: Is discount pricing a good long-term marketing strategy?</option>
+                <option value="Should every brand have its own mobile app?">Marketing: Should every brand have its own mobile app?</option>
+                <option value="Is influencer marketing more trustworthy than celebrity endorsement?">Marketing: Is influencer marketing more trustworthy than celebrity endorsement?</option>
+                <option value="Should companies focus more on customer service than advertising?">Marketing: Should companies focus more on customer service than advertising?</option>
+                <option value="Is a catchy tagline more important than product quality?">Marketing: Is a catchy tagline more important than product quality?</option>
+                <option value="Should brands sponsor local events to build trust?">Marketing: Should brands sponsor local events to build trust?</option>
+                <option value="Is it fair for companies to use comparison ads against rivals?">Marketing: Is it fair for companies to use comparison ads against rivals?</option>
+                <option value="Should packaging always mention all ingredients clearly?">Marketing: Should packaging always mention all ingredients clearly?</option>
+                <option value="Is loyalty card and rewards system effective in keeping customers?">Marketing: Is loyalty card and rewards system effective in keeping customers?</option>
+                <option value="Should small businesses spend more on branding or on the product?">Marketing: Should small businesses spend more on branding or on the product?</option>
+                <option value="Is it important for a brand to have its own mascot or logo?">Marketing: Is it important for a brand to have its own mascot or logo?</option>
+                <option value="Should companies avoid exaggerating claims in advertisements?">Marketing: Should companies avoid exaggerating claims in advertisements?</option>
+                <option value="Is festive season discounting good for brand image?">Marketing: Is festive season discounting good for brand image?</option>
+                <option value="Should companies use humor in their advertisements?">Marketing: Should companies use humor in their advertisements?</option>
+                <option value="Is customer feedback more valuable than market research?">Marketing: Is customer feedback more valuable than market research?</option>
+                <option value="Should brands take a stand on social issues in their ads?">Marketing: Should brands take a stand on social issues in their ads?</option>
+                <option value="Is email marketing still useful in the age of social media?">Marketing: Is email marketing still useful in the age of social media?</option>
+                <option value="Should new brands focus on online sales before opening stores?">Marketing: Should new brands focus on online sales before opening stores?</option>
+                <option value="Is it better to launch one big ad campaign or many small ones?">Marketing: Is it better to launch one big ad campaign or many small ones?</option>
+                <option value="Should companies personalize ads based on browsing history?">Marketing: Should companies personalize ads based on browsing history?</option>
+                <option value="Is free shipping more attractive to customers than a discount?">Marketing: Is free shipping more attractive to customers than a discount?</option>
+                <option value="Should brands use regional languages in their advertising?">Marketing: Should brands use regional languages in their advertising?</option>
+                <option value="Is a strong brand name more important than a strong product?">Marketing: Is a strong brand name more important than a strong product?</option>
+                <option value="Should companies give more importance to reviews and ratings?">Marketing: Should companies give more importance to reviews and ratings?</option>
+                <option value="Is door-to-door marketing still relevant today?">Marketing: Is door-to-door marketing still relevant today?</option>
+                <option value="Should every product have an eco-friendly packaging option?">Marketing: Should every product have an eco-friendly packaging option?</option>
+                <option value="Is repeat customer business more valuable than new customers?">Marketing: Is repeat customer business more valuable than new customers?</option>
+                <option value="Should brands avoid using models with unrealistic body standards?">Marketing: Should brands avoid using models with unrealistic body standards?</option>
+                <option value="Is it good for a company to change its logo often?">Marketing: Is it good for a company to change its logo often?</option>
+                <option value="Should companies match competitor prices immediately?">Marketing: Should companies match competitor prices immediately?</option>
+                <option value="Is storytelling in ads more effective than showing product features?">Marketing: Is storytelling in ads more effective than showing product features?</option>
+                <option value="Should local businesses use social media over newspaper ads?">Marketing: Should local businesses use social media over newspaper ads?</option>
+                <option value="Is a limited-time offer a good way to boost sales?">Marketing: Is a limited-time offer a good way to boost sales?</option>
+                <option value="Should companies give free trials before asking for payment?">Marketing: Should companies give free trials before asking for payment?</option>
+                <option value="Is it necessary for every business to have a website today?">Marketing: Is it necessary for every business to have a website today?</option>
+                <option value="Should brands use nostalgia to connect with older customers?">Marketing: Should brands use nostalgia to connect with older customers?</option>
+                <option value="Is aggressive marketing during festivals a good strategy?">Marketing: Is aggressive marketing during festivals a good strategy?</option>
+                <option value="Should companies avoid targeting ads at very young audiences?">Marketing: Should companies avoid targeting ads at very young audiences?</option>
+                <option value="Is customer trust built more by ads or by product quality?">Marketing: Is customer trust built more by ads or by product quality?</option>
+                <option value="Should a company change its marketing strategy for every city?">Marketing: Should a company change its marketing strategy for every city?</option>
+                <option value="Is it a good idea to launch a product without any advertising?">Marketing: Is it a good idea to launch a product without any advertising?</option>
+                <option value="Should brands collaborate with other brands for joint promotions?">Marketing: Should brands collaborate with other brands for joint promotions?</option>
               </optgroup>
 
               <optgroup label="📊 Business Analytics & Growth Science">
