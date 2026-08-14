@@ -484,19 +484,19 @@ const handleLeaveRoom = async () => {
     <div id="gd-pipeline-container" className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 space-y-6">
       {!activeRoom ? (
         /* Room Creation / Join Setup Screen */
-        <div className="max-w-2xl mx-auto bg-white border border-slate-200/90 rounded-3xl p-8 shadow-sm space-y-8">
+        <div className="max-w-2xl mx-auto bg-white border border-ink-200/90 rounded-3xl p-8 shadow-sm space-y-8">
           <div className="text-center space-y-2">
-            <span className="font-mono text-xs text-indigo-600 bg-indigo-50 px-3.5 py-1 rounded-full uppercase font-bold tracking-wider">
+            <span className="font-mono text-xs text-accent-600 bg-accent-50 px-3.5 py-1 rounded-full uppercase font-bold tracking-wider">
               Real-time Camera & Mic Interconnect
             </span>
-            <h1 className="text-3xl font-black text-slate-900 font-['Hanken_Grotesk',sans-serif] tracking-tight">
+            <h1 className="text-3xl font-black text-ink-900 tracking-tight">
               Group Discussion Simulations
             </h1>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-ink-600">
               Create a custom GD room code to practice with peers or interact with AI members in real-time.
             </p>
             {turnConfigured === false && (
-              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2 inline-block">
+              <p className="text-[11px] text-highlight-700 bg-highlight-50 border border-highlight-200 rounded-xl px-3 py-2 mt-2 inline-block">
                 Camera/mic is set up for same-network calls. For friends on a different WiFi or mobile data, ask whoever runs this app to add TURN server credentials in <code>.env</code> — chat will still work either way.
               </p>
             )}
@@ -504,25 +504,25 @@ const handleLeaveRoom = async () => {
 
           {/* Display Name */}
           <div className="space-y-2">
-            <label className="text-xs font-mono font-bold text-slate-700 uppercase tracking-wider">Your Display Name</label>
+            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Your Display Name</label>
             <input
               type="text"
               placeholder="e.g. Priya"
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
               maxLength={30}
-              className="w-full p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs"
+              className="w-full p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-sm font-semibold text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs"
             />
-            <p className="text-[11px] text-slate-500">This is what your friends will see when you join or create a room.</p>
+            <p className="text-[11px] text-ink-500">This is what your friends will see when you join or create a room.</p>
           </div>
 
           {/* Topic Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-mono font-bold text-slate-700 uppercase tracking-wider">MBA Group Discussion Case Topic (By Domain)</label>
+            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">MBA Group Discussion Case Topic (By Domain)</label>
             <select
               value={selectedTopic}
               onChange={e => setSelectedTopic(e.target.value)}
-              className="w-full p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs"
+              className="w-full p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-sm font-semibold text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs"
             >
               <optgroup label="💼 Finance & Financial Markets">
                 <option value="Generative AI Disruption in Financial Services, Asset Management & Private Equity">
@@ -591,18 +591,18 @@ const handleLeaveRoom = async () => {
             <button
               onClick={() => handleCreateRoom('ai_assisted')}
               disabled={isConnecting}
-              className="p-6 bg-slate-900 hover:bg-slate-800 text-white rounded-3xl text-left transition-all space-y-3 group shadow-lg border border-slate-800 disabled:opacity-60"
+              className="p-6 bg-ink-900 hover:bg-ink-800 text-white rounded-3xl text-left transition-all space-y-3 group shadow-lg border border-ink-800 disabled:opacity-60"
             >
-              <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-accent-500/20 text-accent-300 flex items-center justify-center">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-base font-['Hanken_Grotesk',sans-serif]">Practice with AI Candidates</h3>
-                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                <h3 className="font-bold text-base">Practice with AI Candidates</h3>
+                <p className="text-xs text-ink-300 mt-1 leading-relaxed">
                   AI candidates (Alex, Sophia, David) automatically join and interact using voice & text. Friends can still join this same room live with the code below.
                 </p>
               </div>
-              <span className="text-xs font-mono text-indigo-300 font-bold inline-flex items-center gap-1 pt-1">
+              <span className="text-xs font-mono text-accent-300 font-bold inline-flex items-center gap-1 pt-1">
                 {isConnecting ? 'Connecting…' : 'Start AI Room Session →'}
               </span>
             </button>
@@ -610,25 +610,25 @@ const handleLeaveRoom = async () => {
             <button
               onClick={() => handleCreateRoom('peer')}
               disabled={isConnecting}
-              className="p-6 bg-indigo-50/60 border border-indigo-200/80 hover:border-indigo-300 rounded-3xl text-left transition-all space-y-3 group shadow-xs disabled:opacity-60"
+              className="p-6 bg-accent-50/60 border border-accent-200/80 hover:border-accent-300 rounded-3xl text-left transition-all space-y-3 group shadow-xs disabled:opacity-60"
             >
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200">
+              <div className="w-10 h-10 rounded-2xl bg-accent-600 text-white flex items-center justify-center shadow-md shadow-accent-200">
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-base text-slate-900 font-['Hanken_Grotesk',sans-serif]">Create Peer Room Code</h3>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                <h3 className="font-bold text-base text-ink-900">Create Peer Room Code</h3>
+                <p className="text-xs text-ink-600 mt-1 leading-relaxed">
                   Generates a live room code — share it with a friend and they'll land in the same room, with real camera/mic and chat.
                 </p>
               </div>
-              <span className="text-xs font-mono text-indigo-600 font-bold inline-flex items-center gap-1 pt-1">
+              <span className="text-xs font-mono text-accent-600 font-bold inline-flex items-center gap-1 pt-1">
                 {isConnecting ? 'Connecting…' : 'Generate Room Code →'}
               </span>
             </button>
           </div>
 
           {/* Join with Room Code */}
-          <div className="pt-4 border-t border-slate-200 flex flex-col gap-3">
+          <div className="pt-4 border-t border-ink-200 flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <input
                 type="text"
@@ -636,23 +636,23 @@ const handleLeaveRoom = async () => {
                 value={roomCodeInput}
                 onChange={e => setRoomCodeInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
-                className="flex-1 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-sm font-mono focus:outline-none focus:border-indigo-600 shadow-xs"
+                className="flex-1 p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-sm font-mono focus:outline-none focus:border-accent-600 shadow-xs"
               />
               <button
                 onClick={handleJoinRoom}
                 disabled={isConnecting || !roomCodeInput.trim()}
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-6 py-3.5 rounded-2xl text-xs transition-all flex items-center gap-2 shadow-md shadow-indigo-200"
+                className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white font-bold px-6 py-3.5 rounded-2xl text-xs transition-all flex items-center gap-2 shadow-md shadow-accent-200"
               >
                 <LogIn className="w-4 h-4" /> {isConnecting ? 'Joining…' : 'Join Room'}
               </button>
             </div>
             {joinError && (
-              <div className="flex items-start gap-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
+              <div className="flex items-start gap-2 text-xs text-danger-700 bg-danger-50 border border-danger-200 rounded-xl p-3">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{joinError}</span>
               </div>
             )}
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-ink-500">
               Ask whoever created the room to read you their exact code (it's case-insensitive, but they must still be in the room — codes expire once the host leaves).
             </p>
           </div>
@@ -661,25 +661,25 @@ const handleLeaveRoom = async () => {
         /* Active Group Discussion Room Stage */
         <div className="space-y-6">
           {/* Room Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 text-white p-5 px-7 rounded-3xl shadow-xl border border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-ink-900 text-white p-5 px-7 rounded-3xl shadow-xl border border-ink-800">
             <div>
               <div className="flex items-center gap-3">
-                <span className="px-3 py-0.5 bg-indigo-500/20 text-indigo-300 font-mono text-xs font-bold rounded-full border border-indigo-500/30">
+                <span className="px-3 py-0.5 bg-accent-500/20 text-accent-300 font-mono text-xs font-bold rounded-full border border-accent-500/30">
                   LIVE GD ROOM
                 </span>
-                <span className="font-mono text-xs text-slate-400">Room Code: <strong className="text-white font-mono">{activeRoom.code}</strong></span>
-                <button onClick={copyRoomCode} className="p-1 hover:text-indigo-400 transition-colors">
-                  {copiedCode ? <Check className="w-3.5 h-3.5 text-indigo-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span className="font-mono text-xs text-ink-400">Room Code: <strong className="text-white font-mono">{activeRoom.code}</strong></span>
+                <button onClick={copyRoomCode} className="p-1 hover:text-accent-400 transition-colors">
+                  {copiedCode ? <Check className="w-3.5 h-3.5 text-accent-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
-              <h2 className="text-lg font-bold mt-1 font-['Hanken_Grotesk',sans-serif] line-clamp-1">
+              <h2 className="text-lg font-bold mt-1 line-clamp-1">
                 {activeRoom.topic}
               </h2>
             </div>
 
             <button
               onClick={handleLeaveRoom}
-              className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold px-5 py-2.5 rounded-xl text-xs transition-all"
+              className="bg-danger-500/20 hover:bg-danger-500/30 text-danger-300 border border-danger-500/30 font-bold px-5 py-2.5 rounded-xl text-xs transition-all"
             >
               Leave Room
             </button>
@@ -690,7 +690,7 @@ const handleLeaveRoom = async () => {
             <div className="lg:col-span-2 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 {/* User Camera Tile */}
-                <div className="relative aspect-video bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-sm group">
+                <div className="relative aspect-video bg-ink-950 rounded-2xl overflow-hidden border border-ink-800 shadow-sm group">
                   <video
                     ref={el => {
                       localVideoRef.current = el;
@@ -704,13 +704,13 @@ const handleLeaveRoom = async () => {
                     className={`w-full h-full object-cover ${!videoEnabled ? 'hidden' : ''}`}
                   />
                   {!videoEnabled && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 space-y-2">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-500 space-y-2">
                       <VideoOff className="w-8 h-8" />
                       <span className="text-xs font-mono">Camera Muted</span>
                     </div>
                   )}
-                  <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-2 border border-white/10">
-                    <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                  <div className="absolute bottom-3 left-3 bg-ink-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-2 border border-white/10">
+                    <span className="w-2 h-2 rounded-full bg-accent-400 animate-pulse"></span>
                     You (Candidate)
                   </div>
                 </div>
@@ -719,19 +719,19 @@ const handleLeaveRoom = async () => {
                 {remoteParticipants.map(p => {
                   const stream = p.socketId ? remoteStreams[p.socketId] : undefined;
                   return (
-                    <div key={p.socketId || p.id} className="relative aspect-video bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-sm flex items-center justify-center">
+                    <div key={p.socketId || p.id} className="relative aspect-video bg-ink-900 rounded-2xl overflow-hidden border border-ink-800 shadow-sm flex items-center justify-center">
                       {isRealPersonRole(p.role) && stream ? (
                         <RemoteVideoTile stream={stream} socketId={p.socketId as string} remoteVideoRefs={remoteVideoRefs} />
                       ) : isRealPersonRole(p.role) ? (
-                        <div className="flex flex-col items-center gap-2 text-slate-500">
-                          <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="flex flex-col items-center gap-2 text-ink-500">
+                          <div className="w-3 h-3 border-2 border-accent-500 border-t-transparent rounded-full animate-spin"></div>
                           <span className="text-[10px] font-mono">Connecting camera…</span>
                         </div>
                       ) : (
                         <img src={p.avatar} alt={p.name} className="w-full h-full object-cover opacity-80" />
                       )}
-                      <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-2 border border-white/10">
-                        <span className={`w-2 h-2 rounded-full ${p.isSpeaking ? 'bg-indigo-400 animate-ping' : 'bg-slate-500'}`}></span>
+                      <div className="absolute bottom-3 left-3 bg-ink-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-2 border border-white/10">
+                        <span className={`w-2 h-2 rounded-full ${p.isSpeaking ? 'bg-accent-400 animate-ping' : 'bg-ink-500'}`}></span>
                         {p.name}
                       </div>
                     </div>
@@ -740,11 +740,11 @@ const handleLeaveRoom = async () => {
               </div>
 
               {/* Hardware Controls */}
-              <div className="flex justify-center items-center gap-4 p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
+              <div className="flex justify-center items-center gap-4 p-4 bg-white border border-ink-200/90 rounded-2xl shadow-xs">
                 <button
                   onClick={toggleVideo}
                   className={`p-3 px-5 rounded-xl transition-all flex items-center gap-2 text-xs font-bold ${
-                    videoEnabled ? 'bg-slate-900 text-white' : 'bg-rose-50 text-rose-600 border border-rose-200'
+                    videoEnabled ? 'bg-ink-900 text-white' : 'bg-danger-50 text-danger-600 border border-danger-200'
                   }`}
                 >
                   {videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
@@ -754,7 +754,7 @@ const handleLeaveRoom = async () => {
                 <button
                   onClick={toggleMic}
                   className={`p-3 px-5 rounded-xl transition-all flex items-center gap-2 text-xs font-bold ${
-                    micEnabled ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
+                    micEnabled ? 'bg-accent-600 text-white shadow-md shadow-accent-200' : 'bg-danger-50 text-danger-600 border border-danger-200'
                   }`}
                 >
                   {micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
@@ -764,12 +764,12 @@ const handleLeaveRoom = async () => {
             </div>
 
             {/* Right Column: Discussion Transcript & AI Moderator Insights */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm flex flex-col justify-between h-[520px]">
-              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
-                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-indigo-600" /> Discussion Transcript
+            <div className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm flex flex-col justify-between h-[520px]">
+              <div className="border-b border-ink-100 pb-3 flex justify-between items-center">
+                <h3 className="font-bold text-ink-900 text-sm flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 text-accent-600" /> Discussion Transcript
                 </h3>
-                <span className="text-[10px] font-mono text-slate-500">Live Audio STT</span>
+                <span className="text-[10px] font-mono text-ink-500">Live Audio STT</span>
               </div>
 
               {/* Message List */}
@@ -777,42 +777,42 @@ const handleLeaveRoom = async () => {
                 {activeRoom.messages.map(m => (
                   <div key={m.id} className="space-y-1">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-900">{m.senderName}</span>
-                      <span className="text-[10px] font-mono text-slate-400">{m.timestamp}</span>
+                      <span className="text-xs font-bold text-ink-900">{m.senderName}</span>
+                      <span className="text-[10px] font-mono text-ink-400">{m.timestamp}</span>
                     </div>
-                    <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-2xl border border-slate-100 leading-relaxed">
+                    <p className="text-xs text-ink-700 bg-ink-50 p-3 rounded-2xl border border-ink-100 leading-relaxed">
                       {m.text}
                     </p>
                     {m.aiInsight && (
-                      <div className="p-3 bg-indigo-50 border border-indigo-200/80 rounded-xl text-[11px] text-indigo-950 flex items-start gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                      <div className="p-3 bg-accent-50 border border-accent-200/80 rounded-xl text-[11px] text-accent-950 flex items-start gap-2">
+                        <Sparkles className="w-3.5 h-3.5 text-accent-600 shrink-0 mt-0.5" />
                         <span><strong>Moderator Insight:</strong> {m.aiInsight}</span>
                       </div>
                     )}
                   </div>
                 ))}
                 {isAiProcessing && (
-                  <div className="text-xs text-slate-400 italic flex items-center gap-2 p-2">
-                    <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="text-xs text-ink-400 italic flex items-center gap-2 p-2">
+                    <div className="w-3 h-3 border-2 border-accent-600 border-t-transparent rounded-full animate-spin"></div>
                     AI Candidate is formulating response...
                   </div>
                 )}
               </div>
 
               {/* Speech Input / Chat Box */}
-              <div className="pt-3 border-t border-slate-100 flex gap-2">
+              <div className="pt-3 border-t border-ink-100 flex gap-2">
                 <input
                   type="text"
                   placeholder="Speak or type your GD argument..."
                   value={messageText}
                   onChange={e => setMessageText(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-xs focus:outline-none focus:border-indigo-600 shadow-xs"
+                  className="flex-1 p-3 bg-ink-50 border border-ink-200/80 rounded-2xl text-xs focus:outline-none focus:border-accent-600 shadow-xs"
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!messageText.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-4 py-3 rounded-2xl text-xs transition-all flex items-center gap-1 shadow-md shadow-indigo-200"
+                  className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white font-bold px-4 py-3 rounded-2xl text-xs transition-all flex items-center gap-1 shadow-md shadow-accent-200"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>
