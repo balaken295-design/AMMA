@@ -1,1 +1,84 @@
 @import "tailwindcss";
+
+/*
+  ============================================================
+  DESIGN TOKENS — single source of truth for the whole site.
+  Change a hex value here and it updates EVERYWHERE that class
+  is used (bg-accent-600, text-ink-900, border-ink-200, etc.)
+  ============================================================
+*/
+@theme {
+  /* Global typeface: formal serif, used site-wide */
+  --font-sans: 'Times New Roman', Times, 'Liberation Serif', serif;
+
+  /* INK — replaces "slate". Warm charcoal neutrals for text/surfaces. */
+  --color-ink-50: #f8f8f7;
+  --color-ink-100: #f0f0ee;
+  --color-ink-200: #e2e1dc;
+  --color-ink-300: #c9c7bf;
+  --color-ink-400: #a6a399;
+  --color-ink-500: #838075;
+  --color-ink-600: #656257;
+  --color-ink-700: #4d4a42;
+  --color-ink-800: #322f2a;
+  --color-ink-900: #201e1b;
+  --color-ink-950: #131211;
+
+  /* ACCENT — replaces "indigo". Muted navy, the one interactive color. */
+  --color-accent-50: #f1f4f8;
+  --color-accent-100: #e1e8f0;
+  --color-accent-200: #c3d1e1;
+  --color-accent-300: #9ab2cb;
+  --color-accent-400: #6f8dae;
+  --color-accent-500: #4d6f92;
+  --color-accent-600: #395a79;
+  --color-accent-700: #2e4763;
+  --color-accent-800: #263a50;
+  --color-accent-900: #1f2f41;
+  --color-accent-950: #14202d;
+
+  /* SUCCESS — replaces "emerald". Muted sage. */
+  --color-success-50: #f2f6f1;
+  --color-success-100: #e1ebdd;
+  --color-success-200: #c7d9c0;
+  --color-success-300: #a8c29d;
+  --color-success-400: #89aa7c;
+  --color-success-500: #6e8f63;
+  --color-success-600: #57744e;
+  --color-success-700: #445c3d;
+  --color-success-800: #33452e;
+  --color-success-900: #253320;
+
+  /* DANGER — replaces "rose"/"red". Muted brick. */
+  --color-danger-50: #f8efee;
+  --color-danger-100: #efd9d6;
+  --color-danger-200: #e2bcb7;
+  --color-danger-300: #cf9891;
+  --color-danger-400: #b97a71;
+  --color-danger-500: #a85c52;
+  --color-danger-600: #8e4a41;
+  --color-danger-700: #723a33;
+  --color-danger-800: #582c27;
+  --color-danger-900: #40201c;
+  --color-danger-950: #2a1512;
+
+  /* HIGHLIGHT — replaces "amber". Soft muted gold, used sparingly. */
+  --color-highlight-50: #faf6ec;
+  --color-highlight-100: #f1e7cb;
+  --color-highlight-200: #e5d29e;
+  --color-highlight-300: #d6ba6e;
+  --color-highlight-400: #c2a04a;
+  --color-highlight-500: #b08d3e;
+  --color-highlight-600: #96741f;
+  --color-highlight-700: #7a5e1a;
+  --color-highlight-800: #5f4915;
+
+  /* PAPER — the warm off-white page background, replaces plain "white". */
+  --color-paper: #fbfaf8;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  background-color: var(--color-paper);
+  color: var(--color-ink-900);
+}
