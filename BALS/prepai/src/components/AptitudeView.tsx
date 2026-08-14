@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { VERBAL_TOPICS, LOGICAL_TOPICS, QUANTS_TOPICS, SAMPLE_QUESTIONS, getTopicQuestions } from '../data/aptitudeData';
+import { VERBAL_TOPICS, LOGICAL_TOPICS, QUANTS_TOPICS, CURRENT_AFFAIRS_TOPICS, SAMPLE_QUESTIONS, getTopicQuestions } from '../data/aptitudeData';
 import { TopicItem, Question, UserProfile } from '../types';
 import { BookOpen, CheckCircle, Clock, Play, HelpCircle, ArrowLeft, Award, Sparkles, Search, ChevronRight, FileText } from 'lucide-react';
 
 interface AptitudeViewProps {
-  initialCategory?: 'verbal' | 'logical' | 'quants';
+  initialCategory?: 'verbal' | 'logical' | 'quants' | 'current_affairs';
   userProfile?: UserProfile;
   onAddXP?: (xpAmount: number, domain?: string, scorePercent?: number) => void;
 }
@@ -14,7 +14,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
   userProfile, 
   onAddXP 
 }) => {
-  const [activeCategory, setActiveCategory] = useState<'verbal' | 'logical' | 'quants'>(initialCategory);
+  const [activeCategory, setActiveCategory] = useState<'verbal' | 'logical' | 'quants' | 'current_affairs'>(initialCategory);
   const [selectedTopic, setSelectedTopic] = useState<TopicItem | null>(null);
   const [viewMode, setViewMode] = useState<'learn' | 'test' | 'module_test'>('learn');
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,6 +31,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
     verbal: VERBAL_TOPICS,
     logical: LOGICAL_TOPICS,
     quants: QUANTS_TOPICS,
+    current_affairs: CURRENT_AFFAIRS_TOPICS,
   };
 
   const currentTopics = categoryTopicsMap[activeCategory].filter(t =>
@@ -38,71 +39,30 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
     t.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const startTopicTest = async (topic: TopicItem) => {
+  // Aptitude tests are always sourced from the official static question bank
+  // (src/data/aptitudeData.ts) — no AI-generated questions are used here.
+  const startTopicTest = (topic: TopicItem) => {
     setSelectedTopic(topic);
     setViewMode('test');
     setTestSubmitted(false);
     setUserAnswers({});
     setIsLoadingQuestions(true);
-
-    // Topic test generates 20 deep gaming questions
-    try {
-      const res = await fetch('/api/gemini/generate-questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicTitle: topic.title, category: topic.category, count: 20, domain: selectedDomain }),
-      });
-      const data = await res.json();
-      if (data.success && data.questions && data.questions.length >= 20) {
-        setCurrentQuestions(data.questions);
-      } else if (data.success && data.questions && data.questions.length > 0) {
-        const filled = [...data.questions];
-        const extra = getTopicQuestions(topic.id, topic.title, 20, selectedDomain);
-        extra.forEach(q => {
-          if (filled.length < 20 && !filled.some(f => f.question === q.question)) {
-            filled.push(q);
-          }
-        });
-        setCurrentQuestions(filled);
-      } else {
-        const fallbacks = getTopicQuestions(topic.id, topic.title, 20, selectedDomain);
-        setCurrentQuestions(fallbacks);
-      }
-    } catch {
-      const fallbacks = getTopicQuestions(topic.id, topic.title, 20, selectedDomain);
-      setCurrentQuestions(fallbacks);
-    } finally {
-      setIsLoadingQuestions(false);
-    }
+    const questions = getTopicQuestions(topic.id, topic.title, 20, topic.category);
+    setCurrentQuestions(questions);
+    setIsLoadingQuestions(false);
   };
 
-  const startModuleTest = async () => {
+  const startModuleTest = () => {
     setSelectedTopic(null);
     setViewMode('module_test');
     setTestSubmitted(false);
     setUserAnswers({});
     setIsLoadingQuestions(true);
 
-    const categoryTitle = activeCategory === 'verbal' ? 'Verbal Aptitude Overall' : activeCategory === 'logical' ? 'Logical Aptitude Overall' : 'Quantitative Aptitude Overall';
-
-    // Overall Topic Module Test generates 30 deep gaming questions
-    try {
-      const res = await fetch('/api/gemini/generate-questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicTitle: categoryTitle, category: activeCategory, count: 30, domain: selectedDomain }),
-      });
-      const data = await res.json();
-      if (data.success && data.questions && data.questions.length >= 30) {
-        setCurrentQuestions(data.questions);
-      } else {
-        setCurrentQuestions(getTopicQuestions('module_test', categoryTitle, 30, selectedDomain));
-      }
-    } catch {
-      setCurrentQuestions(getTopicQuestions('module_test', categoryTitle, 30, selectedDomain));
-    } finally {
-      setIsLoadingQuestions(false);
-    }
+    const categoryTitle = activeCategory === 'verbal' ? 'Verbal Aptitude Overall' : activeCategory === 'logical' ? 'Logical Aptitude Overall' : activeCategory === 'current_affairs' ? 'Current Affairs Overall' : 'Quantitative Aptitude Overall';
+    const questions = getTopicQuestions('module_test', categoryTitle, 30, activeCategory);
+    setCurrentQuestions(questions);
+    setIsLoadingQuestions(false);
   };
 
   const handleSelectOption = (questionIdx: number, optionIdx: number) => {
@@ -213,6 +173,14 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             }`}
           >
             Quantitative ({QUANTS_TOPICS.length})
+          </button>
+          <button
+            onClick={() => { setActiveCategory('current_affairs'); setSelectedTopic(null); }}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeCategory === 'current_affairs' ? 'bg-accent-600 text-white shadow-md shadow-accent-600/20' : 'text-ink-600 hover:text-ink-900'
+            }`}
+          >
+            Current Affairs ({CURRENT_AFFAIRS_TOPICS.length})
           </button>
         </div>
       </div>
@@ -430,7 +398,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             {isLoadingQuestions ? (
               <div className="py-16 text-center space-y-3">
                 <div className="w-8 h-8 border-4 border-accent-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="text-sm text-ink-600 font-medium">Generating AI test questions...</p>
+                <p className="text-sm text-ink-600 font-medium">Loading questions from the question bank...</p>
               </div>
             ) : currentQuestions.length === 0 ? (
               <div className="py-12 text-center text-ink-500">
