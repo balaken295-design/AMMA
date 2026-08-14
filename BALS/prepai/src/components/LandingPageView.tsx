@@ -17,14 +17,14 @@ interface LandingPageViewProps {
  * every section (header, hero, cards, console, footer) draws from the
  * same warm, consistent palette instead of drifting section to section.
  *
- *   paper       #FBF7EF   page background, warm ivory
- *   paper-2     #F3ECDB   card / panel background
- *   ink         #1E2A22   headlines, high-contrast text (forest-black)
+ *   paper       #fbfaf8   page background, warm ivory
+ *   paper-2     #f8f8f7   card / panel background
+ *   ink         #201e1b   headlines, high-contrast text (forest-black)
  *   muted       #6B6355   body copy, secondary text (warm taupe)
- *   forest      #2F4A3B   primary accent — buttons, icon fills
- *   forest-dark #1F3327   header/footer bookend bands
- *   brass       #B98B4E   secondary accent — labels, highlights, CTA text
- *   brass-light #E7C68F   hover states, subtle fills
+ *   forest      #2e4763   primary accent — buttons, icon fills
+ *   forest-dark #1f2f41   header/footer bookend bands
+ *   brass       #96741f   secondary accent — labels, highlights, CTA text
+ *   brass-light #e5d29e   hover states, subtle fills
  * ------------------------------------------------------------------- */
 
 const ROUNDS = [
@@ -102,7 +102,7 @@ const CornerFold: React.FC<{ className?: string }> = ({ className = '' }) => (
     className={`absolute top-0 right-0 w-5 h-5 ${className}`}
     style={{
       clipPath: 'polygon(100% 0, 0 0, 100% 100%)',
-      background: 'linear-gradient(135deg, #E7C68F, #B98B4E)',
+      background: 'linear-gradient(135deg, #e5d29e, #96741f)',
     }}
   />
 );
@@ -170,17 +170,17 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
   return (
     <div
       id="landing-page-container"
-      className="min-h-screen bg-[#FBF7EF] text-[#1E2A22] flex flex-col font-['Inter',sans-serif] selection:bg-[#E7C68F] selection:text-[#1E2A22]"
+      className="min-h-screen bg-[#fbfaf8] text-[#201e1b] flex flex-col selection:bg-[#e5d29e] selection:text-[#201e1b]"
     >
       {/* ============================= HEADER ============================= */}
-      <header className="fixed top-0 inset-x-0 z-50 border-b border-[#1E2A22]/10 bg-[#FBF7EF]/92 backdrop-blur-md">
+      <header className="fixed top-0 inset-x-0 z-50 border-b border-[#201e1b]/10 bg-[#fbfaf8]/92 backdrop-blur-md">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between">
           <button onClick={scrollToTop} className="flex items-center gap-2.5 group" aria-label="Back to top">
-            <span className="w-9 h-9 rounded-full bg-[#2F4A3B] flex items-center justify-center text-[#F3ECDB] font-bold text-sm font-['Fraunces',serif] group-hover:scale-105 transition-transform">
+            <span className="w-9 h-9 rounded-full bg-[#2e4763] flex items-center justify-center text-[#f8f8f7] font-bold text-sm group-hover:scale-105 transition-transform">
               B
             </span>
-            <span className="font-['Fraunces',serif] font-semibold text-lg tracking-tight text-[#1E2A22]">
-              MBA <span className="text-[#B98B4E]">BJD</span>
+            <span className=" font-semibold text-lg tracking-tight text-[#201e1b]">
+              MBA <span className="text-[#96741f]">BJD</span>
               <span className="block -mt-1 text-[9px] font-mono font-normal tracking-[0.22em] text-[#6B6355]">
                 PLACEMENT PREP STUDIO
               </span>
@@ -192,7 +192,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
               <button
                 key={link.href}
                 onClick={() => handleNavClick(link.href)}
-                className="px-3.5 py-2 rounded-full hover:text-[#1E2A22] hover:bg-[#1E2A22]/5 transition-colors"
+                className="px-3.5 py-2 rounded-full hover:text-[#201e1b] hover:bg-[#201e1b]/5 transition-colors"
               >
                 {link.label}
               </button>
@@ -203,7 +203,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             {onOpenLoginModal && (
               <button
                 onClick={onOpenLoginModal}
-                className="flex items-center gap-1.5 bg-white hover:bg-[#F3ECDB] text-[#1E2A22] font-semibold px-3.5 py-2 rounded-full border border-[#1E2A22]/12 text-xs transition-all shadow-sm"
+                className="flex items-center gap-1.5 bg-white hover:bg-[#f8f8f7] text-[#201e1b] font-semibold px-3.5 py-2 rounded-full border border-[#201e1b]/12 text-xs transition-all shadow-sm"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -216,14 +216,14 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             )}
             <button
               onClick={() => onStartApp('dashboard')}
-              className="bg-[#2F4A3B] hover:bg-[#243A2E] text-[#F3ECDB] text-xs font-bold px-5 py-2.5 rounded-full transition-all flex items-center gap-2 shadow-sm"
+              className="bg-[#2e4763] hover:bg-[#243A2E] text-[#f8f8f7] text-xs font-bold px-5 py-2.5 rounded-full transition-all flex items-center gap-2 shadow-sm"
             >
               Enter Dashboard <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           <button
-            className="md:hidden p-2 text-[#1E2A22]"
+            className="md:hidden p-2 text-[#201e1b]"
             onClick={() => setMobileNavOpen((v) => !v)}
             aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
           >
@@ -232,12 +232,12 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
         </div>
 
         {mobileNavOpen && (
-          <div className="md:hidden border-t border-[#1E2A22]/10 bg-[#FBF7EF] px-4 py-4 space-y-1">
+          <div className="md:hidden border-t border-[#201e1b]/10 bg-[#fbfaf8] px-4 py-4 space-y-1">
             {NAV_LINKS.map((link) => (
               <button
                 key={link.href}
                 onClick={() => handleNavClick(link.href)}
-                className="block w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold text-[#1E2A22] hover:bg-[#1E2A22]/5"
+                className="block w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold text-[#201e1b] hover:bg-[#201e1b]/5"
               >
                 {link.label}
               </button>
@@ -246,14 +246,14 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
               {onOpenLoginModal && (
                 <button
                   onClick={onOpenLoginModal}
-                  className="flex-1 bg-white border border-[#1E2A22]/12 text-[#1E2A22] font-semibold px-4 py-2.5 rounded-full text-xs"
+                  className="flex-1 bg-white border border-[#201e1b]/12 text-[#201e1b] font-semibold px-4 py-2.5 rounded-full text-xs"
                 >
                   {userProfile?.isLoggedIn ? userProfile.name : 'Sign in'}
                 </button>
               )}
               <button
                 onClick={() => onStartApp('dashboard')}
-                className="flex-1 bg-[#2F4A3B] text-[#F3ECDB] font-bold px-4 py-2.5 rounded-full text-xs"
+                className="flex-1 bg-[#2e4763] text-[#f8f8f7] font-bold px-4 py-2.5 rounded-full text-xs"
               >
                 Enter Dashboard
               </button>
@@ -274,15 +274,15 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
         />
         <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 md:pt-24 md:pb-28">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#1E2A22]/10 text-[#B98B4E] text-[10px] font-mono font-bold tracking-[0.18em] uppercase shadow-sm">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#201e1b]/10 text-[#96741f] text-[10px] font-mono font-bold tracking-[0.18em] uppercase shadow-sm">
               <Feather className="w-3.5 h-3.5" />
               Built for MBA & Engineering Placement Season
             </div>
 
-            <h1 className="mt-6 font-['Fraunces',serif] font-semibold text-[2.5rem] sm:text-6xl lg:text-[4.5rem] leading-[1.05] tracking-tight text-[#1E2A22]">
+            <h1 className="mt-6 font-semibold text-[2.5rem] sm:text-6xl lg:text-[4.5rem] leading-[1.05] tracking-tight text-[#201e1b]">
               Placement season has a rhythm.
               <br />
-              <span className="text-[#B98B4E] italic">Practice it until it's yours.</span>
+              <span className="text-[#96741f] italic">Practice it until it's yours.</span>
             </h1>
 
             <p className="mt-6 text-base sm:text-lg text-[#6B6355] leading-relaxed max-w-xl">
@@ -293,28 +293,28 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             <div className="mt-9 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => onStartApp('interview')}
-                className="bg-[#2F4A3B] hover:bg-[#243A2E] text-[#F3ECDB] font-bold px-7 py-3.5 rounded-full text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                className="bg-[#2e4763] hover:bg-[#243A2E] text-[#f8f8f7] font-bold px-7 py-3.5 rounded-full text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
               >
                 <Video className="w-4 h-4" /> Take your first mock interview
               </button>
               <button
                 onClick={() => onStartApp('aptitude')}
-                className="bg-white hover:bg-[#F3ECDB] border border-[#1E2A22]/12 text-[#1E2A22] font-bold px-7 py-3.5 rounded-full text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                className="bg-white hover:bg-[#f8f8f7] border border-[#201e1b]/12 text-[#201e1b] font-bold px-7 py-3.5 rounded-full text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
               >
-                <BookOpen className="w-4 h-4 text-[#B98B4E]" /> Start an aptitude drill
+                <BookOpen className="w-4 h-4 text-[#96741f]" /> Start an aptitude drill
               </button>
             </div>
           </div>
 
-          <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-px bg-[#1E2A22]/10 rounded-2xl overflow-hidden border border-[#1E2A22]/10">
+          <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-px bg-[#201e1b]/10 rounded-2xl overflow-hidden border border-[#201e1b]/10">
             {[
               { label: 'Rounds', value: '03' },
               { label: 'Topic modules', value: '32+' },
               { label: 'Mock test', value: '90Q / 90m' },
               { label: 'Camera + mic', value: 'Live' },
             ].map((stat) => (
-              <div key={stat.label} className="bg-[#FBF7EF] px-5 py-4">
-                <div className="font-mono text-2xl font-bold text-[#2F4A3B]">{stat.value}</div>
+              <div key={stat.label} className="bg-[#fbfaf8] px-5 py-4">
+                <div className="font-mono text-2xl font-bold text-[#2e4763]">{stat.value}</div>
                 <div className="mt-1 text-[10px] font-mono uppercase tracking-widest text-[#6B6355]">{stat.label}</div>
               </div>
             ))}
@@ -325,10 +325,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       {/* ============================== ROUNDS ============================== */}
       <section id="rounds" className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="max-w-2xl mb-12">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#B98B4E]">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#96741f]">
             The Format
           </span>
-          <h2 className="mt-3 font-['Fraunces',serif] font-semibold text-3xl sm:text-4xl text-[#1E2A22]">
+          <h2 className="mt-3 font-semibold text-3xl sm:text-4xl text-[#201e1b]">
             Three rounds. One placement season.
           </h2>
           <p className="mt-3 text-sm text-[#6B6355] leading-relaxed">
@@ -343,23 +343,23 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             return (
               <div
                 key={r.tab}
-                className="group relative rounded-2xl border border-[#1E2A22]/10 bg-white p-6 hover:border-[#B98B4E]/50 hover:shadow-md transition-all overflow-hidden"
+                className="group relative rounded-2xl border border-[#201e1b]/10 bg-white p-6 hover:border-[#96741f]/50 hover:shadow-md transition-all overflow-hidden"
               >
                 <CornerFold />
                 <div className="flex items-start justify-between">
-                  <span className="font-['Fraunces',serif] text-4xl font-semibold text-[#1E2A22]/10">{r.round}</span>
-                  <span className="w-11 h-11 rounded-full bg-[#2F4A3B]/10 border border-[#2F4A3B]/20 flex items-center justify-center text-[#2F4A3B]">
+                  <span className=" text-4xl font-semibold text-[#201e1b]/10">{r.round}</span>
+                  <span className="w-11 h-11 rounded-full bg-[#2e4763]/10 border border-[#2e4763]/20 flex items-center justify-center text-[#2e4763]">
                     <Icon className="w-5 h-5" />
                   </span>
                 </div>
 
-                <h3 className="mt-5 font-['Fraunces',serif] font-semibold text-xl text-[#1E2A22]">{r.name}</h3>
-                <p className="mt-1 text-[11px] font-mono uppercase tracking-wider text-[#B98B4E]">{r.tagline}</p>
+                <h3 className="mt-5 font-semibold text-xl text-[#201e1b]">{r.name}</h3>
+                <p className="mt-1 text-[11px] font-mono uppercase tracking-wider text-[#96741f]">{r.tagline}</p>
                 <p className="mt-3 text-sm text-[#6B6355] leading-relaxed">{r.description}</p>
 
                 <button
                   onClick={() => onStartApp(r.tab)}
-                  className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-[#2F4A3B] hover:text-[#B98B4E] transition-colors"
+                  className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-[#2e4763] hover:text-[#96741f] transition-colors"
                 >
                   {r.cta} <ArrowRight className="w-4 h-4" />
                 </button>
@@ -370,13 +370,13 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       </section>
 
       {/* ========================= DOMAIN TRACK SELECTOR ===================== */}
-      <section id="tracks" className="border-y border-[#1E2A22]/10 bg-[#F3ECDB]" style={ledgerLines}>
+      <section id="tracks" className="border-y border-[#201e1b]/10 bg-[#f8f8f7]" style={ledgerLines}>
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#B98B4E]">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#96741f]">
               Pick Your Track
             </span>
-            <h2 className="mt-3 font-['Fraunces',serif] font-semibold text-3xl sm:text-4xl text-[#1E2A22]">
+            <h2 className="mt-3 font-semibold text-3xl sm:text-4xl text-[#201e1b]">
               Every round, tailored to your target role
             </h2>
           </div>
@@ -388,8 +388,8 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
                 onClick={() => setActiveTrack(i)}
                 className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all border ${
                   activeTrack === i
-                    ? 'bg-[#2F4A3B] text-[#F3ECDB] border-[#2F4A3B]'
-                    : 'bg-white text-[#6B6355] border-[#1E2A22]/12 hover:border-[#B98B4E]/50 hover:text-[#1E2A22]'
+                    ? 'bg-[#2e4763] text-[#f8f8f7] border-[#2e4763]'
+                    : 'bg-white text-[#6B6355] border-[#201e1b]/12 hover:border-[#96741f]/50 hover:text-[#201e1b]'
                 }`}
               >
                 {t.label}
@@ -397,16 +397,16 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             ))}
           </div>
 
-          <div className="max-w-2xl mx-auto p-8 rounded-2xl border border-[#1E2A22]/10 bg-white text-center relative overflow-hidden shadow-sm">
+          <div className="max-w-2xl mx-auto p-8 rounded-2xl border border-[#201e1b]/10 bg-white text-center relative overflow-hidden shadow-sm">
             <CornerFold />
-            <div className="w-14 h-14 mx-auto rounded-full bg-[#2F4A3B]/10 border border-[#2F4A3B]/20 flex items-center justify-center text-[#2F4A3B]">
+            <div className="w-14 h-14 mx-auto rounded-full bg-[#2e4763]/10 border border-[#2e4763]/20 flex items-center justify-center text-[#2e4763]">
               <TrackIcon className="w-7 h-7" />
             </div>
-            <h3 className="mt-4 font-['Fraunces',serif] font-semibold text-xl text-[#1E2A22]">{track.title}</h3>
+            <h3 className="mt-4 font-semibold text-xl text-[#201e1b]">{track.title}</h3>
             <p className="mt-3 text-sm text-[#6B6355] leading-relaxed max-w-lg mx-auto">{track.description}</p>
             <button
               onClick={() => onStartApp('interview')}
-              className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#B98B4E] hover:underline"
+              className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#96741f] hover:underline"
             >
               Practice this track <ArrowRight className="w-4 h-4" />
             </button>
@@ -416,10 +416,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
 
       {/* =========================== LIVE TRIAL PANEL ======================= */}
       <section id="try-demo" className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="rounded-2xl border border-[#1E2A22]/10 bg-white overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#1E2A22]/10 px-6 py-4 bg-[#F3ECDB]">
+        <div className="rounded-2xl border border-[#201e1b]/10 bg-white overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#201e1b]/10 px-6 py-4 bg-[#f8f8f7]">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#B98B4E]" />
+              <span className="w-2 h-2 rounded-full bg-[#96741f]" />
               <span className="font-mono text-[11px] text-[#6B6355] uppercase tracking-wider">
                 Practice notebook — page 1
               </span>
@@ -429,20 +429,20 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
 
           <div className="p-6 lg:p-10 space-y-6">
             <div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#B98B4E]">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#96741f]">
                 Test your case response, right now
               </span>
-              <h2 className="mt-2 font-['Fraunces',serif] font-semibold text-2xl sm:text-3xl text-[#1E2A22]">
+              <h2 className="mt-2 font-semibold text-2xl sm:text-3xl text-[#201e1b]">
                 No sign-up needed for round one.
               </h2>
             </div>
 
             <div className="max-w-3xl space-y-4">
-              <div className="p-4 rounded-xl bg-[#FBF7EF] border border-[#1E2A22]/10 space-y-2">
-                <span className="text-[10px] font-mono font-bold text-[#B98B4E] uppercase tracking-wider">
+              <div className="p-4 rounded-xl bg-[#fbfaf8] border border-[#201e1b]/10 space-y-2">
+                <span className="text-[10px] font-mono font-bold text-[#96741f] uppercase tracking-wider">
                   McKinsey case prompt
                 </span>
-                <p className="text-sm text-[#1E2A22] leading-relaxed">
+                <p className="text-sm text-[#201e1b] leading-relaxed">
                   A major European airline is seeing a 15% decline in operating profitability
                   despite passenger volumes staying stable. How would you structure your initial
                   root-cause diagnosis?
@@ -454,29 +454,29 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
                 placeholder="Type your structured response here (e.g., Profit = Revenue − Costs; analyze yield per seat vs. fuel & crew fixed costs)…"
                 value={quickSampleAnswer}
                 onChange={(e) => setQuickSampleAnswer(e.target.value)}
-                className="w-full p-4 bg-[#FBF7EF] border border-[#1E2A22]/12 rounded-xl text-sm text-[#1E2A22] placeholder:text-[#6B6355]/60 focus:outline-none focus:border-[#B98B4E] transition-colors"
+                className="w-full p-4 bg-[#fbfaf8] border border-[#201e1b]/12 rounded-xl text-sm text-[#201e1b] placeholder:text-[#6B6355]/60 focus:outline-none focus:border-[#96741f] transition-colors"
               />
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <button
                   onClick={handleEvaluateSample}
                   disabled={!quickSampleAnswer.trim() || isEvaluating}
-                  className="bg-[#2F4A3B] hover:bg-[#243A2E] disabled:opacity-40 disabled:cursor-not-allowed text-[#F3ECDB] font-bold px-6 py-3 rounded-full text-xs transition-all flex items-center justify-center gap-2"
+                  className="bg-[#2e4763] hover:bg-[#243A2E] disabled:opacity-40 disabled:cursor-not-allowed text-[#f8f8f7] font-bold px-6 py-3 rounded-full text-xs transition-all flex items-center justify-center gap-2"
                 >
                   {isEvaluating ? 'Analyzing framework…' : 'Evaluate my response'}
                 </button>
 
                 <button
                   onClick={() => onStartApp('interview')}
-                  className="text-xs font-bold text-[#B98B4E] hover:text-[#a67940] transition-colors flex items-center justify-center gap-1.5"
+                  className="text-xs font-bold text-[#96741f] hover:text-[#a67940] transition-colors flex items-center justify-center gap-1.5"
                 >
                   <Play className="w-3.5 h-3.5" /> Launch the full Interview Forge
                 </button>
               </div>
 
               {quickFeedback && (
-                <div className="p-4 rounded-xl bg-[#E7C68F]/25 border border-[#B98B4E]/40 text-sm text-[#1E2A22] space-y-1.5">
-                  <div className="font-bold font-mono text-[#B98B4E] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                <div className="p-4 rounded-xl bg-[#e5d29e]/25 border border-[#96741f]/40 text-sm text-[#201e1b] space-y-1.5">
+                  <div className="font-bold font-mono text-[#96741f] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" /> AI case assessment
                   </div>
                   <p className="leading-relaxed">{quickFeedback}</p>
@@ -488,13 +488,13 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       </section>
 
       {/* ============================== JOURNEY ============================== */}
-      <section id="journey" className="border-t border-[#1E2A22]/10 bg-[#F3ECDB] py-20" style={ledgerLines}>
+      <section id="journey" className="border-t border-[#201e1b]/10 bg-[#f8f8f7] py-20" style={ledgerLines}>
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl mb-12">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#B98B4E]">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#96741f]">
               Your Progress
             </span>
-            <h2 className="mt-3 font-['Fraunces',serif] font-semibold text-3xl sm:text-4xl text-[#1E2A22]">
+            <h2 className="mt-3 font-semibold text-3xl sm:text-4xl text-[#201e1b]">
               From first-timer to placement-ready
             </h2>
             <p className="mt-3 text-sm text-[#6B6355] leading-relaxed">
@@ -522,12 +522,12 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="relative p-6 rounded-2xl border border-[#1E2A22]/10 bg-white overflow-hidden shadow-sm">
+                <div key={item.title} className="relative p-6 rounded-2xl border border-[#201e1b]/10 bg-white overflow-hidden shadow-sm">
                   <CornerFold />
-                  <span className="w-11 h-11 rounded-full bg-[#2F4A3B]/10 border border-[#2F4A3B]/20 flex items-center justify-center text-[#2F4A3B]">
+                  <span className="w-11 h-11 rounded-full bg-[#2e4763]/10 border border-[#2e4763]/20 flex items-center justify-center text-[#2e4763]">
                     <Icon className="w-5 h-5" />
                   </span>
-                  <h3 className="mt-4 font-['Fraunces',serif] font-semibold text-lg text-[#1E2A22]">{item.title}</h3>
+                  <h3 className="mt-4 font-semibold text-lg text-[#201e1b]">{item.title}</h3>
                   <p className="mt-2 text-sm text-[#6B6355] leading-relaxed">{item.copy}</p>
                 </div>
               );
@@ -537,13 +537,13 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
       </section>
 
       {/* ============================== FOOTER ============================== */}
-      <footer className="bg-[#1F3327] text-[#C9CFC7] py-12">
+      <footer className="bg-[#1f2f41] text-[#C9CFC7] py-12">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs">
           <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-full bg-[#B98B4E] flex items-center justify-center text-[#1F3327] font-bold text-sm font-['Fraunces',serif]">
+            <span className="w-8 h-8 rounded-full bg-[#96741f] flex items-center justify-center text-[#1f2f41] font-bold text-sm">
               B
             </span>
-            <span className="text-[#F3ECDB] font-semibold text-sm font-['Fraunces',serif]">MBA <span className="text-[#B98B4E]">BJD</span></span>
+            <span className="text-[#f8f8f7] font-semibold text-sm">MBA <span className="text-[#96741f]">BJD</span></span>
           </div>
 
           <p className="text-center md:text-left">
@@ -551,10 +551,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           </p>
 
           <div className="flex items-center gap-5">
-            <button onClick={() => onStartApp('dashboard')} className="text-[#F3ECDB] hover:text-[#E7C68F] font-semibold transition-colors">
+            <button onClick={() => onStartApp('dashboard')} className="text-[#f8f8f7] hover:text-[#e5d29e] font-semibold transition-colors">
               Dashboard
             </button>
-            <button onClick={() => onStartApp('aptitude')} className="text-[#F3ECDB] hover:text-[#E7C68F] font-semibold transition-colors">
+            <button onClick={() => onStartApp('aptitude')} className="text-[#f8f8f7] hover:text-[#e5d29e] font-semibold transition-colors">
               Aptitude Engine
             </button>
           </div>
@@ -566,7 +566,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
         <button
           onClick={scrollToTop}
           aria-label="Back to top"
-          className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-[#2F4A3B] hover:bg-[#243A2E] text-[#F3ECDB] flex items-center justify-center shadow-lg transition-all"
+          className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-[#2e4763] hover:bg-[#243A2E] text-[#f8f8f7] flex items-center justify-center shadow-lg transition-all"
         >
           <ChevronUp className="w-5 h-5" />
         </button>
