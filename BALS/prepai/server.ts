@@ -17,7 +17,10 @@ const io = new SocketIOServer(httpServer, {
 });
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
+// Resume text payloads are small (a few KB of plain text) but the default
+// 100kb express.json() limit is tight once JSON-escaped, so this route
+// group gets a slightly higher cap.
+app.use(express.json({ limit: "2mb" }));
 
 // In-memory fallback database for candidate results when MONGODB_URI is absent
 const inMemoryStore = {
@@ -1082,36 +1085,171 @@ app.post("/api/gemini/gd-evaluation", async (req, res) => {
 });
 
 // API Endpoint 3: Interactive Step-by-Step AI Interviewer Turn
-app.post("/api/gemini/interview-step", async (req, res) => {
-  const { role, stepNumber, previousQuestions, userAnswer } = req.body;
+// API Endpoint: Parse an uploaded resume (plain text, already extracted
+// client-side from the PDF/DOCX) into structured fields, plus a set of
+// dropdown "focus" options that reference the candidate's actual resume
+// content — used to drive the AI interview instead of a generic case study.
+app.post("/api/gemini/resume-parse", async (req, res) => {
+  const { resumeText, domain } = req.body;
+
+  if (!resumeText || !String(resumeText).trim()) {
+    return res.status(400).json({ success: false, error: "resumeText is required" });
+  }
+
   const ai = getGeminiClient();
+
+  // Heuristic fallback (no Gemini key configured): still lets the flow work,
+  // just without resume-specific focus options.
+  if (!ai) {
+    return res.json({
+      success: true,
+      resumeSummary: {
+        candidateName: "Candidate",
+        headline: `${domain || "General"} track candidate`,
+        skills: [],
+        projects: [],
+        experience: [],
+        education: [],
+        focusOptions: [
+          { id: "mixed", label: "Mixed — let the AI pick", instruction: "Ask a balanced mix of questions grounded in the resume text provided." },
+          { id: "general", label: `General ${domain || ""} round based on my resume`.trim(), instruction: "Ask general questions appropriate for the chosen domain, referencing the resume where possible." },
+        ],
+      },
+    });
+  }
+
+  try {
+    const prompt = `You are helping set up a realistic, resume-based mock interview (not a canned case study).
+Read the candidate's resume text below and extract structured information, then propose 4-6 interview "focus options" a candidate could pick from a dropdown before the interview starts. Each focus option must reference something SPECIFIC and REAL from this resume (an actual project name, company, or skill mentioned) — never generic placeholders.
+
+Target domain for this interview: "${domain || "General Management"}"
+
+Resume text:
+"""
+${String(resumeText).slice(0, 12000)}
+"""
+
+Return:
+1. candidateName (best guess from resume, else "Candidate")
+2. headline (one line summarizing their profile)
+3. skills (array of specific skills found)
+4. projects (array of {name, description} — real projects found in the resume)
+5. experience (array of {company, roleTitle, description} — real roles found)
+6. education (array of strings)
+7. focusOptions: 4-6 options like:
+   - one per notable project ("Ask about my [Project Name]")
+   - one per notable role/internship ("Ask about my time at [Company]")
+   - one for skills ("Ask about my [specific skills]")
+   - one general HR/domain-fit round based on the whole resume
+   - one "Mixed — let the AI pick"
+   Each option needs: id (short slug), label (short, first-person, shown in a dropdown), instruction (1-2 sentences telling the interviewer AI exactly what resume detail to probe and how, in the style of a real interviewer, not a case-study prompt).`;
+
+    const response = await withRetry(() => ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            candidateName: { type: Type.STRING },
+            headline: { type: Type.STRING },
+            skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+            projects: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: { name: { type: Type.STRING }, description: { type: Type.STRING } },
+                required: ["name", "description"],
+              },
+            },
+            experience: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  company: { type: Type.STRING },
+                  roleTitle: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                },
+                required: ["company", "roleTitle", "description"],
+              },
+            },
+            education: { type: Type.ARRAY, items: { type: Type.STRING } },
+            focusOptions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.STRING },
+                  label: { type: Type.STRING },
+                  instruction: { type: Type.STRING },
+                },
+                required: ["id", "label", "instruction"],
+              },
+            },
+          },
+          required: ["candidateName", "focusOptions"],
+        },
+      },
+    }), 2, 600);
+
+    const resumeSummary = JSON.parse(response.text || "{}");
+    return res.json({ success: true, resumeSummary });
+  } catch (error) {
+    console.error("Error parsing resume:", error);
+    return res.status(500).json({ success: false, error: "Failed to parse resume" });
+  }
+});
+
+app.post("/api/gemini/interview-step", async (req, res) => {
+  const { domain, resumeSummary, focusLabel, focusInstruction, stepNumber, previousQuestions, userAnswer } = req.body;
+  const ai = getGeminiClient();
+  const domainLabel = domain || "General Management";
+  const candidateName = resumeSummary?.candidateName || "the candidate";
 
   if (!ai) {
     const questionsByStep: Record<number, string> = {
-      1: `Welcome! Let's examine your strategic background for ${role}. How would you structure a 30-second elevator synthesis summarizing your executive value proposition and core domain framework?`,
-      2: `Excellent start. Now let's dive into a core business case: In your role as a ${role}, how would you approach a situation where gross profit margins are compressing despite a 20% increase in top-line revenue?`,
-      3: `Suppose your executive team is debating an acquisition or market entry. How do you apply MECE structuring and sensitivity analysis to mitigate downside financial risk?`,
-      4: `Behavioral leadership check: Describe a high-stakes cross-functional disagreement you navigated between Finance, Marketing, and Operations. How did you align key executive stakeholders?`
+      1: `Hi ${candidateName}, thanks for joining. Walk me through your background and why you're a fit for a ${domainLabel} role.`,
+      2: `${focusLabel ? `Let's talk about "${focusLabel.replace(/^Ask about /i, "")}"` : "Let's go deeper on your resume"} — what was your specific contribution, and what would you do differently now?`,
+      3: `From a ${domainLabel} lens, how did you measure success in that work, and what trade-offs did you have to make?`,
+      4: `Tell me about a time something didn't go to plan in that project or role — how did you handle it?`
     };
 
     return res.json({
       success: true,
-      nextQuestion: questionsByStep[stepNumber] || `Thank you for those comprehensive insights. Do you have any questions for the boardroom panel regarding strategic growth targets for the ${role} position?`,
-      feedback: userAnswer ? `Excellent executive tone! Using the MECE framework and quantifying financial impact (e.g., 'Targeted a 15% EBITDA expansion') significantly elevated your response.` : null,
+      nextQuestion: questionsByStep[stepNumber] || `Thanks, ${candidateName} — that's helpful. Do you have any questions for me about the ${domainLabel} role?`,
+      feedback: userAnswer ? `Good detail — grounding your answer in specifics from your resume (numbers, your actual role) makes it land better with a real interviewer.` : null,
       isFinished: stepNumber > 4
     });
   }
 
   try {
-    const prompt = `You are an expert AI Technical Interviewer conducting a multi-step interview for the position of "${role}".
+    const resumeContext = resumeSummary
+      ? `Candidate: ${resumeSummary.candidateName || "Candidate"}
+Headline: ${resumeSummary.headline || "N/A"}
+Skills: ${(resumeSummary.skills || []).join(", ") || "N/A"}
+Projects: ${(resumeSummary.projects || []).map((p: any) => `${p.name} — ${p.description}`).join(" | ") || "N/A"}
+Experience: ${(resumeSummary.experience || []).map((e: any) => `${e.roleTitle} at ${e.company} — ${e.description}`).join(" | ") || "N/A"}
+Education: ${(resumeSummary.education || []).join(", ") || "N/A"}`
+      : "No resume on file — ask general questions for the domain.";
+
+    const prompt = `You are a real, experienced human interviewer conducting a natural, conversational interview for a "${domainLabel}" role. This is NOT a scripted case-study interview — do not pose invented business-case scenarios. Instead, ask the way a real interviewer would: reference the candidate's ACTUAL resume details below, ask them to elaborate, probe specifics, ask follow-ups on what they say.
+
+Candidate's resume:
+${resumeContext}
+
+Chosen interview focus: ${focusLabel || "Mixed — let the AI pick"}
+Focus guidance: ${focusInstruction || "Cover a natural mix of the candidate's resume highlights relevant to the domain."}
+
 Step Number: ${stepNumber} / 5.
 Previous Transcript:
 ${previousQuestions ? previousQuestions.map((q: any) => `Q: ${q.question}\nA: ${q.userAnswer || "N/A"}`).join("\n") : "Interview starting."}
 
 Candidate's last answer: "${userAnswer || ""}"
 
-1. Provide constructive 1-2 sentence real-time feedback on the candidate's last answer (highlighting strengths like STAR method, technical keywords, and areas to improve).
-2. Generate the next progressive interview question appropriate for step ${stepNumber}.
+1. Provide constructive 1-2 sentence real-time feedback on the candidate's last answer.
+2. Generate the next question — it must sound like something a real interviewer would say out loud, and should reference a specific resume detail (project, company, skill) whenever one is available, rather than a generic prompt.
 3. Indicate if the interview is finished (isFinished = true if step > 4).`;
 
     const response = await withRetry(() => ai.models.generateContent({
@@ -1142,8 +1280,8 @@ Candidate's last answer: "${userAnswer || ""}"
     console.error("Error in interview step:", error);
     return res.json({
       success: true,
-      nextQuestion: `Describe your experience with microservices architecture and container orchestration in high-traffic environments.`,
-      feedback: `Solid fundamentals! Mentioning fault isolation and Kubernetes metrics strengthens this response.`,
+      nextQuestion: `Tell me more about your role in ${resumeSummary?.projects?.[0]?.name || "your most recent project"} — what exactly did you own?`,
+      feedback: `Good start — try to quantify the impact next time (numbers, outcomes) since that's what stands out to a real interviewer.`,
       isFinished: stepNumber > 4
     });
   }
