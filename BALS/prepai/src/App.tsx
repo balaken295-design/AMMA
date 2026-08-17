@@ -10,11 +10,41 @@ import { EvaluationSummaryView } from './components/EvaluationSummaryView';
 import { GoogleLoginModal } from './components/GoogleLoginModal';
 import { InterviewEvaluation, UserProfile, INITIAL_USER_PROFILE, MBADomain } from './types';
 
+type Tab = 'landing' | 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation';
+type Category = 'verbal' | 'logical' | 'quants';
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'landing' | 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation'>('landing');
-  const [selectedCategory, setSelectedCategory] = useState<'verbal' | 'logical' | 'quants'>('verbal');
+  const [activeTab, setActiveTab] = useState<Tab>('landing');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('verbal');
   const [lastEvaluation, setLastEvaluation] = useState<InterviewEvaluation | undefined>(undefined);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+
+  // The app previously never touched browser history, so every screen
+  // change was invisible to the Back button — pressing Back had nowhere
+  // real to go and just dumped the user onto the landing page. `navigate`
+  // pushes a real history entry per screen; a popstate listener below
+  // reads it back out when the user presses Back/Forward, so Back now
+  // returns to the ACTUAL previous screen instead of jumping home.
+  const navigate = (tab: Tab, category?: Category) => {
+    if (category) setSelectedCategory(category);
+    setActiveTab(tab);
+    window.history.pushState({ tab, category }, '', window.location.pathname);
+  };
+
+  useEffect(() => {
+    // Give the initial screen a real history entry to land on.
+    window.history.replaceState({ tab: activeTab, category: selectedCategory }, '', window.location.pathname);
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as { tab?: Tab; category?: Category } | null;
+      if (state?.category) setSelectedCategory(state.category);
+      setActiveTab(state?.tab ?? 'landing');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     try {
@@ -119,7 +149,7 @@ export default function App() {
         streakDays: prev.streakDays === 0 ? 1 : prev.streakDays,
       };
     });
-    setActiveTab('evaluation');
+    navigate('evaluation');
   };
 
   const handleCompleteGD = (evaluation: any) => {
@@ -140,11 +170,8 @@ export default function App() {
     });
   };
 
-  const handleStartAppFromLanding = (targetTab: 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation' = 'dashboard', category?: 'verbal' | 'logical' | 'quants') => {
-    if (category) {
-      setSelectedCategory(category);
-    }
-    setActiveTab(targetTab);
+  const handleStartAppFromLanding = (targetTab: 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation' = 'dashboard', category?: Category) => {
+    navigate(targetTab, category);
   };
 
   // Dedicated "go home" handler, wired to a control rendered directly by
@@ -153,7 +180,7 @@ export default function App() {
   // click handler wasn't wired to setActiveTab('landing') it would look
   // "stuck" — present but unresponsive. This button always works,
   // regardless of what Header does internally.
-  const handleGoHome = () => setActiveTab('landing');
+  const handleGoHome = () => navigate('landing');
 
   return (
     <div id="app-root" className="min-h-screen bg-paper text-ink-900 flex flex-col">
@@ -161,7 +188,7 @@ export default function App() {
       {activeTab !== 'landing' && (
         <Header
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={navigate}
           userProfile={userProfile}
           onOpenLoginModal={() => setIsLoginModalOpen(true)}
         />
@@ -194,11 +221,8 @@ export default function App() {
 
         {activeTab === 'dashboard' && (
           <DashboardView
-            setActiveTab={setActiveTab}
-            onSelectCategory={(cat) => {
-              setSelectedCategory(cat);
-              setActiveTab('aptitude');
-            }}
+            setActiveTab={navigate}
+            onSelectCategory={(cat) => navigate('aptitude', cat)}
             userProfile={userProfile}
             onOpenLoginModal={() => setIsLoginModalOpen(true)}
           />
@@ -223,7 +247,7 @@ export default function App() {
         {activeTab === 'evaluation' && (
           <EvaluationSummaryView
             evaluation={lastEvaluation}
-            onStartNextPath={() => setActiveTab('aptitude')}
+            onStartNextPath={() => navigate('aptitude')}
           />
         )}
       </main>
