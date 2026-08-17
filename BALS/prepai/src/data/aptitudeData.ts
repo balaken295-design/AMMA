@@ -1,4 +1,13 @@
 import { TopicItem, Question } from '../types';
+import { APTITUDE_QUESTION_BANK, APTITUDE_QUESTION_BANK_EXTRA } from './aptitudeQuestionBank';
+
+// Merge both real question-bank sources into one lookup by topicId.
+const REAL_QUESTION_BANK: Record<string, Question[]> = {};
+for (const src of [APTITUDE_QUESTION_BANK, APTITUDE_QUESTION_BANK_EXTRA]) {
+  for (const [topicId, questions] of Object.entries(src)) {
+    REAL_QUESTION_BANK[topicId] = [...(REAL_QUESTION_BANK[topicId] || []), ...questions];
+  }
+}
 
 export const VERBAL_TOPICS: TopicItem[] = [
   {
@@ -169,6 +178,96 @@ export const VERBAL_TOPICS: TopicItem[] = [
         question: 'Argument: "Sales rose after installing solar panels; solar panels caused sales growth." What assumption is made?',
         solution: 'Assumes no other external factor (e.g., marketing campaign) caused the sales rise.',
         tip: 'Correlation does not automatically equal causation.'
+      }
+    ]
+  },
+  {
+    id: 'extra_spelling_correction',
+    title: 'Spelling Correction',
+    category: 'verbal',
+    description: 'Spot commonly misspelt words and identify the correctly spelled option under time pressure.',
+    concepts: [
+      'Learn frequently confused spellings (e.g., "Receive" vs "Recieve", "Occurrence" vs "Occurence").',
+      'Watch for letter-order swaps and doubled/missing consonants in distractor options.',
+      'Read every option fully before choosing — near-miss spellings are designed to trick a quick scan.'
+    ],
+    examples: [
+      {
+        question: 'Choose the correctly spelled word (commonly misspelt as \'Recieve\').',
+        solution: 'The correct spelling is "Receive" — i before e except after c.',
+        tip: 'Memorize the "i before e, except after c" rule for this common error pattern.'
+      }
+    ]
+  },
+  {
+    id: 'extra_homophones',
+    title: 'Homophones',
+    category: 'verbal',
+    description: 'Distinguish between words that sound alike but differ in spelling and meaning, such as "their/there/they\'re".',
+    concepts: [
+      'Homophones share pronunciation but not meaning or spelling — context decides the correct choice.',
+      'Common sets: their/there/they\'re, its/it\'s, to/too/two, where/wear/we\'re.',
+      'Substitute the full meaning into the sentence mentally to check which spelling fits.'
+    ],
+    examples: [
+      {
+        question: 'Choose the correctly spelled homophone that means \'possessive form meaning belonging to them\'.',
+        solution: '"Their" is the possessive form; "there" indicates place and "they\'re" is a contraction of "they are".',
+        tip: 'Expand contractions like "they\'re" to "they are" to quickly test if it fits the sentence.'
+      }
+    ]
+  },
+  {
+    id: 'extra_analogies',
+    title: 'Word Analogies',
+    category: 'verbal',
+    description: 'Identify the relationship between a given pair of words and apply the same relationship to a new pair.',
+    concepts: [
+      'First define the exact relationship in the given pair (e.g., function, category, cause-effect).',
+      'Apply that same precise relationship to the answer options — surface similarity is not enough.',
+      'Common relationship types: object-to-place, part-to-whole, cause-to-effect, worker-to-tool.'
+    ],
+    examples: [
+      {
+        question: 'Doctor is to Hospital as Teacher is to ?',
+        solution: 'A Doctor works at a Hospital, so a Teacher works at a School.',
+        tip: 'State the relationship as a short sentence first: "A [Doctor] works at a [Hospital]."'
+      }
+    ]
+  },
+  {
+    id: 'extra_active_and_passive_voice',
+    title: 'Active and Passive Voice',
+    category: 'verbal',
+    description: 'Convert sentences correctly between active and passive voice while preserving tense and meaning.',
+    concepts: [
+      'Passive voice structure: Object + form of "be" + past participle + "by" + Subject.',
+      'The tense of the original sentence must be preserved in the converted sentence.',
+      'Watch for tense-shift traps in distractor options (e.g., present written as past).'
+    ],
+    examples: [
+      {
+        question: 'Choose the correct passive voice of: \'Meena writes the project every day.\'',
+        solution: '"The project is written by Meena every day." — present simple tense is kept, subject and object are swapped.',
+        tip: 'Identify the tense first, then apply the matching "be" verb form (is/was/has been, etc.) in the passive.'
+      }
+    ]
+  },
+  {
+    id: 'extra_direct_and_indirect_speech',
+    title: 'Direct and Indirect Speech',
+    category: 'verbal',
+    description: 'Convert quoted speech into reported speech, adjusting pronouns, tenses, and time references correctly.',
+    concepts: [
+      'Tense generally shifts one step back (present simple → past simple, etc.) in indirect speech.',
+      'Pronouns change to match the perspective of the reporter, not the original speaker.',
+      'Time and place words shift too: "today" → "that day", "here" → "there", "tomorrow" → "the next day".'
+    ],
+    examples: [
+      {
+        question: 'Change into indirect speech: Priya said, "I am playing football."',
+        solution: 'Priya said that she was playing football — present continuous shifts to past continuous, and "I" becomes "she".',
+        tip: 'Change the tense first, then fix the pronoun to match who is reporting the speech.'
       }
     ]
   }
@@ -393,6 +492,96 @@ export const LOGICAL_TOPICS: TopicItem[] = [
         question: 'A cube of 3cm cut into 1cm smaller cubes. How many small cubes have 3 sides painted?',
         solution: '8 (Always the 8 corner cubes).',
         tip: '3-side painted cubes are always equal to 8 regardless of size.'
+      }
+    ]
+  },
+  {
+    id: 'extra_classification',
+    title: 'Classification',
+    category: 'logical',
+    description: 'Group items by their common underlying property and spot the one item that does not belong.',
+    concepts: [
+      'Determine the common category (fruit, vegetable, animal, etc.) shared by most items.',
+      'The odd one out breaks that shared category, even if it looks superficially similar.',
+      'Check multiple possible groupings (by type, function, origin) before finalizing the answer.'
+    ],
+    examples: [
+      {
+        question: 'Find the odd one out: Apple, Mango, Banana, Potato',
+        solution: 'Potato — the rest are fruits, while Potato is a vegetable.',
+        tip: 'Name the shared category out loud first, then test each item against it.'
+      }
+    ]
+  },
+  {
+    id: 'extra_classification_odd_one_out',
+    title: 'Odd One Out',
+    category: 'logical',
+    description: 'Identify the item in a group that does not share the defining characteristic of the others.',
+    concepts: [
+      'Look beyond surface similarity — group by function, category, or origin, not just topic.',
+      'Proper nouns can be a trap: a place name mixed with river names, for instance.',
+      'Eliminate items you are confident belong to the group first, narrowing down the outlier.'
+    ],
+    examples: [
+      {
+        question: 'Find the odd one out: Ganges, Yamuna, Brahmaputra, Himalayas',
+        solution: 'Himalayas — the rest are rivers, while Himalayas is a mountain range.',
+        tip: 'Watch for one item from a related but different category (e.g., a mountain among rivers).'
+      }
+    ]
+  },
+  {
+    id: 'extra_logical_analogy',
+    title: 'Logical Analogy',
+    category: 'logical',
+    description: 'Identify the underlying logical or functional relationship between a pair of terms and extend it to a new pair.',
+    concepts: [
+      'Define the relationship precisely: measurement-to-unit, container-to-contents, cause-to-effect.',
+      'Logical analogies often test measurement units, classifications, or functional pairings.',
+      'Reject options that share only a topic with the term but not the same relationship type.'
+    ],
+    examples: [
+      {
+        question: 'Kilogram : Weight :: Metre : ?',
+        solution: 'Length — a Kilogram measures Weight, and a Metre measures Length.',
+        tip: 'Express the relationship as "[Unit] measures [Quantity]" and apply it to the second pair.'
+      }
+    ]
+  },
+  {
+    id: 'extra_logical_sequence_of_words',
+    title: 'Logical Sequence of Words',
+    category: 'logical',
+    description: 'Arrange a set of words into their correct logical order based on size, rank, process, or hierarchy.',
+    concepts: [
+      'Identify the ordering principle first: smallest-to-largest, chronological, or hierarchical.',
+      'Common sequences include units of measurement, stages of a process, or organizational rank.',
+      'Eliminate options that violate the ordering principle at even one position.'
+    ],
+    examples: [
+      {
+        question: 'Arrange the following in the correct logical order (Units of writing, smallest to largest): Sentence, Word, Chapter, Paragraph',
+        solution: 'Word, Sentence, Paragraph, Chapter — building from the smallest writing unit to the largest.',
+        tip: 'For writing units, always start from the single word and build upward.'
+      }
+    ]
+  },
+  {
+    id: 'extra_venn_diagrams',
+    title: 'Venn Diagrams',
+    category: 'logical',
+    description: 'Represent the logical relationship between three given classes using overlapping or separate circles.',
+    concepts: [
+      'Determine whether each pair of classes overlaps, is fully contained, or is entirely separate.',
+      'Three intersecting circles represent classes that can all overlap with one another.',
+      'A class fully inside another (e.g., Doctors inside Professionals) is shown as a smaller circle within a larger one.'
+    ],
+    examples: [
+      {
+        question: 'Which diagram best represents the relationship between the classes: Teachers, Musicians, Women?',
+        solution: 'Three intersecting circles — a person can belong to any combination of these three groups at once.',
+        tip: 'Ask: can any single item belong to all three classes simultaneously? If yes, the circles must intersect.'
       }
     ]
   }
@@ -942,7 +1131,13 @@ export const SAMPLE_QUESTIONS: Record<string, Question[]> = {
 
 // Fallback dynamic generator to ensure EVERY topic ID produces at least 20 to 30 high-quality deep gaming questions for MBA Professionals
 export const getTopicQuestions = (topicId: string, topicTitle: string = 'Aptitude Practice', count: number = 30, domain?: string): Question[] => {
-  const existing = SAMPLE_QUESTIONS[topicId];
+  // Prefer the real, curated question bank over sample/AI-generated filler.
+  const realBank = REAL_QUESTION_BANK[topicId];
+  if (realBank && realBank.length >= count) {
+    return realBank.slice(0, count);
+  }
+
+  const existing = realBank && realBank.length > 0 ? realBank : SAMPLE_QUESTIONS[topicId];
   if (existing && existing.length >= count) {
     return existing.slice(0, count);
   }
