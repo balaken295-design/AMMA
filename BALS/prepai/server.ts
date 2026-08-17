@@ -1287,6 +1287,92 @@ Candidate's last answer: "${userAnswer || ""}"
   }
 });
 
+// API Endpoint 3.5: Company-specific interview questions. Used for the
+// follow-up rounds once the interview's 3 fixed starter questions are done,
+// when the candidate entered a target company on the setup screen. Mirrors
+// /api/gemini/interview-step but grounds every question in the named
+// organization (business model, recent strategy, culture) instead of a
+// generic domain prompt.
+app.post("/api/gemini/company-interview-step", async (req, res) => {
+  const { domain, resumeSummary, targetCompany, stepNumber, previousQuestions, userAnswer } = req.body;
+  const ai = getGeminiClient();
+  const domainLabel = domain || "General Management";
+  const company = (targetCompany || "").trim() || "the company";
+  const candidateName = resumeSummary?.candidateName || "the candidate";
+
+  if (!ai) {
+    const questionsByStep: Record<number, string> = {
+      1: `What do you know about ${company}'s business model and where it's headed, and why does that appeal to you for a ${domainLabel} role?`,
+      2: `${company} operates in a competitive market — how would you approach adding value here in your first 90 days?`,
+      3: `Tell me about a time you had to adapt to a fast-changing situation — how does that experience translate to working at ${company}?`,
+    };
+    return res.json({
+      success: true,
+      nextQuestion: questionsByStep[stepNumber] || `Thanks, ${candidateName} — do you have any questions for me about the role at ${company}?`,
+      feedback: userAnswer ? `Good detail — tying your answer to something specific about ${company} (a product, value, or recent move) makes it land better.` : null,
+      isFinished: stepNumber > 3,
+    });
+  }
+
+  try {
+    const resumeContext = resumeSummary
+      ? `Candidate: ${resumeSummary.candidateName || "Candidate"}
+Headline: ${resumeSummary.headline || "N/A"}
+Skills: ${(resumeSummary.skills || []).join(", ") || "N/A"}
+Projects: ${(resumeSummary.projects || []).map((p: any) => `${p.name} — ${p.description}`).join(" | ") || "N/A"}
+Experience: ${(resumeSummary.experience || []).map((e: any) => `${e.roleTitle} at ${e.company} — ${e.description}`).join(" | ") || "N/A"}`
+      : "No resume on file — ask general company-fit questions.";
+
+    const prompt = `You are a real interviewer at "${company}", conducting a ${domainLabel} interview. The candidate has already answered three standard opening questions (tell me about yourself, strengths/weaknesses, why should we hire you). Now ask questions specific to THIS company: its business model, recent strategy/products/news, industry position, or culture — plus how the candidate's background (below) fits it.
+
+Candidate's resume:
+${resumeContext}
+
+Step Number (company round): ${stepNumber} / 3.
+Previous Transcript:
+${previousQuestions ? previousQuestions.map((q: any) => `Q: ${q.question}\nA: ${q.userAnswer || "N/A"}`).join("\n") : "Company round starting."}
+
+Candidate's last answer: "${userAnswer || ""}"
+
+1. Provide constructive 1-2 sentence feedback on the candidate's last answer.
+2. Generate the next question — it must be specific to "${company}" (not generic), sound like something a real interviewer at that company would ask, and reference the candidate's resume where relevant.
+3. Indicate if this round is finished (isFinished = true if step > 3).`;
+
+    const response = await withRetry(() => ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            feedback: { type: Type.STRING },
+            nextQuestion: { type: Type.STRING },
+            isFinished: { type: Type.BOOLEAN },
+          },
+          required: ["nextQuestion", "isFinished"],
+        },
+      },
+    }), 2, 600);
+
+    const data = JSON.parse(response.text || "{}");
+    return res.json({
+      success: true,
+      nextQuestion: data.nextQuestion,
+      feedback: data.feedback,
+      isFinished: data.isFinished,
+    });
+  } catch (error) {
+    console.error("Error in company interview step:", error);
+    return res.json({
+      success: true,
+      nextQuestion: `What draws you to ${company} specifically, beyond the role itself?`,
+      feedback: `Good start — naming something concrete about ${company} (a product, a value, recent news) makes this stronger.`,
+      isFinished: stepNumber > 3,
+    });
+  }
+});
+
 // API Endpoint 4: Comprehensive Final Interview Evaluation Report
 app.post("/api/gemini/interview-evaluation", async (req, res) => {
   const { role, qaPairs } = req.body;
