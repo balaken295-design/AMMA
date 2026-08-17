@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VERBAL_TOPICS, LOGICAL_TOPICS, QUANTS_TOPICS, SAMPLE_QUESTIONS, getTopicQuestions } from '../data/aptitudeData';
+import { VERBAL_TOPICS, LOGICAL_TOPICS, QUANTS_TOPICS, SAMPLE_QUESTIONS, getTopicQuestions, getModuleTestQuestions } from '../data/aptitudeData';
 import { TopicItem, Question, UserProfile } from '../types';
 import { BookOpen, CheckCircle, Clock, Play, HelpCircle, ArrowLeft, Award, Sparkles, Search, ChevronRight, FileText } from 'lucide-react';
 
