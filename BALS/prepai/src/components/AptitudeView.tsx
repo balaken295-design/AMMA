@@ -68,8 +68,6 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
     setUserAnswers(prev => ({ ...prev, [questionIdx]: optionIdx }));
   };
 
-  const [selectedDomain, setSelectedDomain] = useState<'All' | 'Finance' | 'HR' | 'Marketing' | 'Business Analytics' | 'Operations' | 'Strategy'>('All');
-
   const handleSubmitTest = async () => {
     let score = 0;
     currentQuestions.forEach((q, idx) => {
@@ -84,7 +82,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
     const xpEarned = score * 50;
 
     if (onAddXP) {
-      onAddXP(xpEarned, selectedDomain !== 'All' ? selectedDomain : undefined, scorePercent);
+      onAddXP(xpEarned, undefined, scorePercent);
     }
 
     // Save score to MongoDB Atlas / Backend
@@ -98,8 +96,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
           topicTitle: selectedTopic ? selectedTopic.title : `${activeCategory.toUpperCase()} Module Test`,
           score: score,
           totalQuestions: currentQuestions.length,
-          category: activeCategory,
-          domain: selectedDomain
+          category: activeCategory
         })
       });
     } catch (err) {
@@ -149,7 +146,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
         {/* Category Pills */}
         <div className="flex items-center gap-2 bg-ink-100 p-1.5 rounded-2xl border border-ink-200/80 self-start md:self-auto">
           <button
-            onClick={() => { setActiveCategory('verbal'); setSelectedTopic(null); }}
+            onClick={() => { setActiveCategory('verbal'); setSelectedTopic(null); setViewMode('learn'); setCurrentQuestions([]); }}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeCategory === 'verbal' ? 'bg-accent-600 text-white shadow-md shadow-accent-600/20' : 'text-ink-600 hover:text-ink-900'
             }`}
@@ -157,7 +154,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             Verbal ({VERBAL_TOPICS.length})
           </button>
           <button
-            onClick={() => { setActiveCategory('logical'); setSelectedTopic(null); }}
+            onClick={() => { setActiveCategory('logical'); setSelectedTopic(null); setViewMode('learn'); setCurrentQuestions([]); }}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeCategory === 'logical' ? 'bg-accent-600 text-white shadow-md shadow-accent-600/20' : 'text-ink-600 hover:text-ink-900'
             }`}
@@ -165,7 +162,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             Logical ({LOGICAL_TOPICS.length})
           </button>
           <button
-            onClick={() => { setActiveCategory('quants'); setSelectedTopic(null); }}
+            onClick={() => { setActiveCategory('quants'); setSelectedTopic(null); setViewMode('learn'); setCurrentQuestions([]); }}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeCategory === 'quants' ? 'bg-accent-600 text-white shadow-md shadow-accent-600/20' : 'text-ink-600 hover:text-ink-900'
             }`}
@@ -200,26 +197,9 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             </button>
           </div>
 
-          {/* MBA Domain Filter & Search Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-1.5 bg-white p-2 rounded-2xl border border-ink-200/90 shadow-xs">
-              <span className="text-[11px] font-mono font-bold text-ink-500 uppercase tracking-wider px-2">MBA Domain:</span>
-              {(['All', 'Finance', 'HR', 'Marketing', 'Business Analytics', 'Operations', 'Strategy'] as const).map(d => (
-                <button
-                  key={d}
-                  onClick={() => setSelectedDomain(d)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    selectedDomain === d
-                      ? 'bg-ink-900 text-white shadow-xs'
-                      : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative max-w-xs">
+          {/* Search Bar */}
+          <div className="flex items-center justify-end">
+            <div className="relative max-w-xs w-full sm:w-auto">
               <Search className="w-4 h-4 absolute left-4 top-3 text-ink-400" />
               <input
                 type="text"
