@@ -174,13 +174,16 @@ export default function App() {
     navigate(targetTab, category);
   };
 
-  // Dedicated "go home" handler, wired to a control rendered directly by
-  // App itself (not by Header). Previously the only way back to the
-  // landing page was a "Home" tab inside <Header>, and if that tab's
-  // click handler wasn't wired to setActiveTab('landing') it would look
-  // "stuck" — present but unresponsive. This button always works,
-  // regardless of what Header does internally.
-  const handleGoHome = () => navigate('landing');
+  // The visible "Back" control (top-left arrow) was previously wired to
+  // always jump straight to landing, no matter what screen you were on —
+  // that was the actual bug. It should behave like a real Back action:
+  // return to whatever screen you came from. Since every screen change
+  // now pushes a real history entry (see `navigate` above), the browser's
+  // own history stack already knows the right previous screen — we just
+  // ask it to go back one step, and the popstate listener updates
+  // activeTab/selectedCategory accordingly. Header's own "Home" tab still
+  // uses `navigate('landing')` directly for an explicit jump to landing.
+  const handleGoBack = () => window.history.back();
 
   return (
     <div id="app-root" className="min-h-screen bg-paper text-ink-900 flex flex-col">
@@ -194,14 +197,12 @@ export default function App() {
         />
       )}
 
-      {/* Always-available Back button. Rendered outside of Header so it
-          keeps working even if the Header component's own Home tab has a
-          wiring bug. Safe to remove once Header's Home tab is confirmed
-          fixed. */}
+      {/* Always-available Back button. Goes to the actual previous screen
+          (via browser history), not straight to landing. */}
       {activeTab !== 'landing' && (
         <button
-          onClick={handleGoHome}
-          aria-label="Back to home"
+          onClick={handleGoBack}
+          aria-label="Go back"
           className="fixed top-4 left-4 z-[60] flex items-center gap-1.5 bg-white hover:bg-ink-50 text-ink-800 font-bold px-3.5 py-2 rounded-xl border border-ink-300 text-xs shadow-md transition-all"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
