@@ -1,7 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { InterviewQuestion, InterviewEvaluation } from '../types';
-import { Video, VideoOff, Mic, MicOff, Send, Sparkles, Award, Bot, CheckCircle2, Volume2, Activity, Play } from 'lucide-react';
+import { InterviewQuestion, InterviewEvaluation, MBADomain, ResumeSummary, InterviewFocusOption } from '../types';
+import { Video, VideoOff, Mic, MicOff, Send, Sparkles, Award, Bot, CheckCircle2, Volume2, Activity, Play, Upload, FileText, Loader2 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver, type FaceLandmarkerResult } from '@mediapipe/tasks-vision';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import mammoth from 'mammoth';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+
+const DOMAIN_OPTIONS: MBADomain[] = ['Finance', 'HR', 'Marketing', 'Business Analytics', 'Operations', 'Strategy'];
+
+// Extracts raw text from an uploaded resume file, client-side, so the
+// backend only ever has to deal with plain text regardless of whether the
+// candidate uploaded a PDF or a Word doc.
+async function extractResumeText(file: File): Promise<string> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.pdf') || file.type === 'application/pdf') {
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item: any) => item.str).join(' ') + '\n';
+    }
+    return text;
+  }
+  if (name.endsWith('.docx') || file.type.includes('wordprocessingml')) {
+    const buffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+    return result.value;
+  }
+  // Plain text / fallback
+  return file.text();
+}
 
 interface AIInterviewViewProps {
   onCompleteInterview: (evaluation: InterviewEvaluation) => void;
@@ -26,7 +58,22 @@ function matrixToEuler(m: Float32Array | number[]) {
 const EYE_CONTACT_WINDOW = 30;
 
 export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInterview }) => {
-  const [selectedRole, setSelectedRole] = useState('Management Consulting Associate (McKinsey, BCG, Bain Case Interview)');
+  // Domain tab (replaces the old fixed case-study role list)
+  const [selectedDomain, setSelectedDomain] = useState<MBADomain>('Strategy');
+
+  // Resume upload + parsing
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [isParsingResume, setIsParsingResume] = useState(false);
+  const [resumeParseError, setResumeParseError] = useState<string | null>(null);
+  const [resumeSummary, setResumeSummary] = useState<ResumeSummary | null>(null);
+  const [selectedFocusId, setSelectedFocusId] = useState<string>('');
+
+  const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
+  // Display label used in the HUD / evaluation title — combines domain + candidate name once resume is parsed
+  const selectedRole = resumeSummary
+    ? `${selectedDomain} Interview — ${resumeSummary.candidateName}`
+    : `${selectedDomain} Interview`;
+
   const [sessionStarted, setSessionStarted] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [questionsHistory, setQuestionsHistory] = useState<InterviewQuestion[]>([]);
@@ -176,7 +223,39 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     }
   };
 
+  const handleResumeUpload = async (file: File) => {
+    setResumeFile(file);
+    setResumeSummary(null);
+    setSelectedFocusId('');
+    setResumeParseError(null);
+    setIsParsingResume(true);
+    try {
+      const resumeText = await extractResumeText(file);
+      if (!resumeText.trim()) throw new Error('empty');
+
+      const res = await fetch('/api/gemini/resume-parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeText, domain: selectedDomain }),
+      });
+      const data = await res.json();
+      if (data.success && data.resumeSummary) {
+        setResumeSummary(data.resumeSummary);
+        const firstOption = data.resumeSummary.focusOptions?.[0];
+        if (firstOption) setSelectedFocusId(firstOption.id);
+      } else {
+        throw new Error(data.error || 'parse failed');
+      }
+    } catch (err) {
+      console.warn('Resume parsing failed:', err);
+      setResumeParseError("Couldn't read that resume. Try a text-based PDF or DOCX (not a scanned image).");
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
+
   const handleStartSession = async () => {
+    if (!resumeSummary) return;
     setSessionStarted(true);
     setCurrentStep(1);
     setQuestionsHistory([]);
@@ -186,7 +265,13 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       const res = await fetch('/api/gemini/interview-step', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: selectedRole, stepNumber: 1 }),
+        body: JSON.stringify({
+          domain: selectedDomain,
+          resumeSummary,
+          focusLabel: selectedFocus?.label,
+          focusInstruction: selectedFocus?.instruction,
+          stepNumber: 1,
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -194,7 +279,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         speakText(data.nextQuestion);
       }
     } catch {
-      const defaultQ = "Welcome! Let's begin with your MBA profile. How would you structure a market-entry framework for a multinational consumer goods brand evaluating expansion into Southeast Asia?";
+      const defaultQ = `Hi ${resumeSummary.candidateName}, thanks for joining — walk me through your background and what drew you to ${selectedDomain}.`;
       setCurrentQuestionText(defaultQ);
       speakText(defaultQ);
     } finally {
@@ -259,7 +344,10 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          role: selectedRole,
+          domain: selectedDomain,
+          resumeSummary,
+          focusLabel: selectedFocus?.label,
+          focusInstruction: selectedFocus?.instruction,
           stepNumber: nextStepNum,
           previousQuestions: updatedHistory,
           userAnswer: lastAnswer
@@ -313,19 +401,81 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
             </p>
           </div>
 
+          {/* Domain Tab */}
           <div className="space-y-2">
-            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">MBA Specialization & Role Track</label>
-            <select
-              value={selectedRole}
-              onChange={e => setSelectedRole(e.target.value)}
-              className="w-full p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-sm font-semibold text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs"
+            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Interview Domain</label>
+            <div className="flex flex-wrap gap-2">
+              {DOMAIN_OPTIONS.map(domain => (
+                <button
+                  key={domain}
+                  type="button"
+                  onClick={() => setSelectedDomain(domain)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                    selectedDomain === domain
+                      ? 'bg-accent-600 border-accent-600 text-white shadow-md shadow-accent-200'
+                      : 'bg-ink-50 border-ink-200/80 text-ink-700 hover:border-accent-400'
+                  }`}
+                >
+                  {domain}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Resume Upload */}
+          <div className="space-y-2">
+            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Upload Your Resume</label>
+            <p className="text-xs text-ink-500">
+              Questions are generated from your actual resume — no case studies, just what a real interviewer would ask you.
+            </p>
+            <label
+              htmlFor="resume-upload-input"
+              className="w-full flex items-center gap-3 p-4 bg-ink-50 border border-dashed border-ink-300 rounded-2xl cursor-pointer hover:border-accent-500 transition-colors"
             >
-              <option value="Management Consulting Associate (McKinsey, BCG, Bain Case Interview)">Management Consulting Associate (McKinsey, BCG, Bain Case Interview)</option>
-              <option value="Product Manager - Tech & AI Growth (FAANG & Unicorns)">Product Manager - Tech & AI Growth (FAANG & Unicorns)</option>
-              <option value="Investment Banking Associate (M&A, Valuation & DCF Modeling)">Investment Banking Associate (M&A, Valuation & DCF Modeling)</option>
-              <option value="Corporate Strategy & Brand Director (FMCG & Fortune 500)">Corporate Strategy & Brand Director (FMCG & Fortune 500)</option>
-              <option value="Global Operations & Supply Chain Leader (Logistics & Cost Reduction)">Global Operations & Supply Chain Leader (Logistics & Cost Reduction)</option>
-              <option value="Venture Capital & Private Equity Investment Analyst">Venture Capital & Private Equity Investment Analyst</option>
+              {isParsingResume ? (
+                <Loader2 className="w-5 h-5 text-accent-600 animate-spin shrink-0" />
+              ) : resumeSummary ? (
+                <CheckCircle2 className="w-5 h-5 text-accent-600 shrink-0" />
+              ) : (
+                <Upload className="w-5 h-5 text-ink-400 shrink-0" />
+              )}
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-ink-900 truncate">
+                  {isParsingResume ? 'Reading your resume…' : resumeFile ? resumeFile.name : 'Choose PDF or DOCX'}
+                </div>
+                {resumeSummary && !isParsingResume && (
+                  <div className="text-xs text-ink-500 truncate">{resumeSummary.headline || `Parsed for ${resumeSummary.candidateName}`}</div>
+                )}
+              </div>
+              <input
+                id="resume-upload-input"
+                type="file"
+                accept=".pdf,.docx"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) handleResumeUpload(file);
+                }}
+              />
+            </label>
+            {resumeParseError && (
+              <p className="text-xs text-red-600 font-semibold">{resumeParseError}</p>
+            )}
+          </div>
+
+          {/* Focus Dropdown — populated once resume is parsed */}
+          <div className="space-y-2">
+            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">What should the interviewer ask about?</label>
+            <select
+              value={selectedFocusId}
+              onChange={e => setSelectedFocusId(e.target.value)}
+              disabled={!resumeSummary}
+              className="w-full p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-sm font-semibold text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {!resumeSummary && <option value="">Upload a resume first</option>}
+              {resumeSummary?.focusOptions.map(option => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
             </select>
           </div>
 
@@ -340,7 +490,8 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
 
           <button
             onClick={handleStartSession}
-            className="w-full bg-accent-600 hover:bg-accent-500 text-white font-bold py-3.5 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-md shadow-accent-200"
+            disabled={!resumeSummary || isParsingResume}
+            className="w-full bg-accent-600 hover:bg-accent-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-md shadow-accent-200"
           >
             <Play className="w-4 h-4" /> Begin AI Interview Session
           </button>
