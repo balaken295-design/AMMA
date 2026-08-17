@@ -58,8 +58,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
     setUserAnswers({});
     setIsLoadingQuestions(true);
 
-    const categoryTitle = activeCategory === 'verbal' ? 'Verbal Aptitude Overall' : activeCategory === 'logical' ? 'Logical Aptitude Overall' : 'Quantitative Aptitude Overall';
-    const questions = getTopicQuestions('module_test', categoryTitle, 30, activeCategory);
+  const questions = getModuleTestQuestions(activeCategory, 30);
     setCurrentQuestions(questions);
     setIsLoadingQuestions(false);
   };
