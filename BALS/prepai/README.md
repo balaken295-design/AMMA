@@ -23,9 +23,9 @@
 - Verbal, Logical Reasoning, and Quantitative batteries aligned to CAT/GMAT/GRE-style questions, each with step-by-step explanations.
 - AI-generated questions via Gemini when configured, with a built-in offline fallback bank (guaranteed no duplicate questions within a single set).
 
-### 5. Real Google Sign-In + MongoDB Atlas
+### 5. Real Google Sign-In + Postgres
 - Sign-in is verified server-side against Google (via `google-auth-library`) — not a demo/mock login.
-- Candidate XP, level, aptitude scores, interview evaluations, and GD history persist to MongoDB Atlas per account, with a safe in-memory fallback if `MONGODB_URI` isn't set (useful for local dev).
+- Candidate XP, level, aptitude scores, interview evaluations, and GD history persist to Postgres per account, with a safe in-memory fallback if `DATABASE_URL` isn't set (useful for local dev).
 
 ---
 
@@ -35,7 +35,7 @@
 - **Backend**: Node.js, Express, Socket.IO, tsx (dev) / esbuild (prod bundle)
 - **Auth**: Google Identity Services + `google-auth-library` (server-side token verification)
 - **AI SDK**: `@google/genai` (Gemini)
-- **Database**: MongoDB Atlas via the official `mongodb` driver
+- **Database**: Postgres via the official `pg` driver (tables auto-created on first connect)
 - **Realtime**: Socket.IO for GD room signaling, native WebRTC (with TURN relay support) for camera/mic
 
 ---
@@ -60,7 +60,7 @@ Copy `.env.example` to `.env` and fill in what you have. At minimum, `GEMINI_API
 | Variable | Required for | If missing |
 |---|---|---|
 | `GEMINI_API_KEY` | AI-generated questions, AI interviewer, AI GD candidates | Falls back to the built-in offline question bank |
-| `MONGODB_URI` | Persisting scores/progress across sessions | Falls back to in-memory storage (resets on server restart) |
+| `DATABASE_URL` | Persisting scores/progress across sessions | Falls back to in-memory storage (resets on server restart) |
 | `GOOGLE_CLIENT_ID` + `VITE_GOOGLE_CLIENT_ID` | Real Google Sign-In | Sign-in button shows a "not configured" notice; app still works signed-out |
 | `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | GD video calls across different networks | GD calls still work on the same WiFi/network, but fail across different networks |
 
@@ -84,7 +84,7 @@ This app needs a **persistent Node process** (for Socket.IO and WebRTC signaling
    **Start command:** `npm start`
 4. Set all the environment variables from `.env.example` in the host's dashboard (never commit `.env` — it's already gitignored).
 5. Once deployed, go back to Google Cloud Console → your OAuth client → **Authorized JavaScript origins** and add your live URL, or Google Sign-In will fail with a redirect/origin mismatch.
-6. Visit `/api/db/status` to confirm MongoDB connected successfully.
+6. Visit `/api/db/status` to confirm Postgres connected successfully.
 
 The server reads its port from `process.env.PORT` (falls back to `3000` locally), which is what most hosts (Render, Railway, Cloud Run) require.
 
@@ -103,12 +103,14 @@ To make calls work across any two networks (different WiFi, mobile data, etc.), 
 
 ---
 
-## Connecting MongoDB Atlas
+## Connecting Postgres
 
-1. Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
-2. Create a database user, and under Network Access allow `0.0.0.0/0` (required for cloud deployments, since the host's outbound IP isn't fixed).
-3. Copy your connection string and set it as `MONGODB_URI`.
-4. Verify at `/api/db/status`.
+**On Render:** create a new Postgres instance from the dashboard, then link it to this Web Service — Render sets `DATABASE_URL` automatically, no manual copy/paste needed.
+
+**Elsewhere (Railway, Fly.io, your own Postgres, etc.):**
+1. Create a Postgres database/instance.
+2. Copy its connection string and set it as `DATABASE_URL` (format: `postgres://user:password@host:port/dbname`).
+3. Verify at `/api/db/status` — tables (`user_profiles`, `aptitude_scores`, `interview_evaluations`) are created automatically on first successful connection, no manual migration needed.
 
 ---
 
@@ -130,7 +132,7 @@ To make calls work across any two networks (different WiFi, mobile data, etc.), 
 ├── .gitignore
 ├── README.md
 ├── package.json           # Dependencies & npm scripts
-├── server.ts               # Express + Socket.IO server: Gemini, MongoDB, Google auth, WebRTC signaling
+├── server.ts               # Express + Socket.IO server: Gemini, Postgres, Google auth, WebRTC signaling
 ├── metadata.json
 └── src/
     ├── App.tsx                        # Root app state & routing
