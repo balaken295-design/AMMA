@@ -1146,7 +1146,7 @@ Do NOT repeat phrasing, sentence structure, or arguments already used earlier in
 Vary your opening words each time — do not always start with "That's a" or "Building on". Also provide a brief 1-sentence "aiInsight" for the candidate on how to improve their GD score, varying its phrasing too.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.5-flash-lite",
       contents: prompt,
       config: {
         temperature: 1.0,
@@ -1378,7 +1378,7 @@ Candidate's last answer: "${userAnswer || ""}"
 3. Indicate if the interview is finished (isFinished = true if step > 4).`;
 
     const response = await withRetry(() => ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.5-flash-lite",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -1464,7 +1464,7 @@ Candidate's last answer: "${userAnswer || ""}"
 3. Indicate if this round is finished (isFinished = true if step > 3).`;
 
     const response = await withRetry(() => ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.5-flash-lite",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
