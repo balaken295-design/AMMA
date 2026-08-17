@@ -13,6 +13,23 @@ import { InterviewEvaluation, UserProfile, INITIAL_USER_PROFILE, MBADomain } fro
 type Tab = 'landing' | 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation';
 type Category = 'verbal' | 'logical' | 'quants';
 
+// Fixed app hierarchy: Back always goes to a screen's logical parent, not
+// "wherever the browser history happens to say you came from." This matters
+// because Landing has shortcut buttons that jump straight into Aptitude/
+// Interview/GD, skipping Dashboard — with plain browser-history back, that
+// path would send Back to Landing while the normal Dashboard-first path
+// sends Back to Dashboard, which is inconsistent. This map makes it the
+// same either way: every leaf screen's parent is Dashboard, and Dashboard's
+// parent is Landing.
+const PARENT_TAB: Record<Tab, Tab> = {
+  landing: 'landing',
+  dashboard: 'landing',
+  aptitude: 'dashboard',
+  gd: 'dashboard',
+  interview: 'dashboard',
+  evaluation: 'dashboard',
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('landing');
   const [selectedCategory, setSelectedCategory] = useState<Category>('verbal');
@@ -174,16 +191,11 @@ export default function App() {
     navigate(targetTab, category);
   };
 
-  // The visible "Back" control (top-left arrow) was previously wired to
-  // always jump straight to landing, no matter what screen you were on —
-  // that was the actual bug. It should behave like a real Back action:
-  // return to whatever screen you came from. Since every screen change
-  // now pushes a real history entry (see `navigate` above), the browser's
-  // own history stack already knows the right previous screen — we just
-  // ask it to go back one step, and the popstate listener updates
-  // activeTab/selectedCategory accordingly. Header's own "Home" tab still
-  // uses `navigate('landing')` directly for an explicit jump to landing.
-  const handleGoBack = () => window.history.back();
+  // The visible "Back" control (top-left arrow) now always goes to the
+  // current screen's fixed logical parent (see PARENT_TAB above), so it
+  // behaves identically no matter how you arrived at the current screen —
+  // via Dashboard, or via a Landing-page shortcut that skipped Dashboard.
+  const handleGoBack = () => navigate(PARENT_TAB[activeTab]);
 
   return (
     <div id="app-root" className="min-h-screen bg-paper text-ink-900 flex flex-col">
