@@ -10,6 +10,18 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 const DOMAIN_OPTIONS: MBADomain[] = ['Finance', 'HR', 'Marketing', 'Business Analytics', 'Operations', 'Strategy'];
 
+// Every interview opens with the same three questions, asked client-side
+// with no AI call — consistent across every candidate/domain. Once these
+// are answered, remaining steps become company-specific (if a target
+// company was entered) or resume-focus questions (unchanged fallback).
+const STARTER_QUESTIONS = [
+  'Tell me about yourself.',
+  'What are your key strengths and weaknesses?',
+  'Why should we hire you for this role?',
+];
+const STARTER_COUNT = STARTER_QUESTIONS.length;
+const TOTAL_STEPS = STARTER_COUNT + 3; // 3 fixed openers + 3 follow-up rounds
+
 // Extracts raw text from an uploaded resume file, client-side, so the
 // backend only ever has to deal with plain text regardless of whether the
 // candidate uploaded a PDF or a Word doc.
@@ -68,10 +80,14 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const [resumeSummary, setResumeSummary] = useState<ResumeSummary | null>(null);
   const [selectedFocusId, setSelectedFocusId] = useState<string>('');
 
+  // Target company — separate from the resume/domain inputs. When set, the
+  // post-starter questions are generated specifically for this organization.
+  const [targetCompany, setTargetCompany] = useState<string>('');
+
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   // Display label used in the HUD / evaluation title — combines domain + candidate name once resume is parsed
   const selectedRole = resumeSummary
-    ? `${selectedDomain} Interview — ${resumeSummary.candidateName}`
+    ? `${selectedDomain} Interview — ${resumeSummary.candidateName}${targetCompany.trim() ? ` @ ${targetCompany.trim()}` : ''}`
     : `${selectedDomain} Interview`;
 
   const [sessionStarted, setSessionStarted] = useState(false);
@@ -259,32 +275,11 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     setSessionStarted(true);
     setCurrentStep(1);
     setQuestionsHistory([]);
-    setIsGenerating(true);
-
-    try {
-      const res = await fetch('/api/gemini/interview-step', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          domain: selectedDomain,
-          resumeSummary,
-          focusLabel: selectedFocus?.label,
-          focusInstruction: selectedFocus?.instruction,
-          stepNumber: 1,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCurrentQuestionText(data.nextQuestion);
-        speakText(data.nextQuestion);
-      }
-    } catch {
-      const defaultQ = `Hi ${resumeSummary.candidateName}, thanks for joining — walk me through your background and what drew you to ${selectedDomain}.`;
-      setCurrentQuestionText(defaultQ);
-      speakText(defaultQ);
-    } finally {
-      setIsGenerating(false);
-    }
+    // Question 1 is always the same fixed starter — no AI call needed, so
+    // the interview begins instantly instead of waiting on a round trip.
+    const firstQuestion = STARTER_QUESTIONS[0];
+    setCurrentQuestionText(firstQuestion);
+    speakText(firstQuestion);
   };
 
   const handleNextStep = async () => {
@@ -304,7 +299,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     const lastAnswer = userAnswerInput;
     setUserAnswerInput('');
 
-    if (currentStep >= 4) {
+    if (currentStep >= TOTAL_STEPS) {
       // Complete interview and fetch final evaluation report
       try {
         const res = await fetch('/api/gemini/interview-evaluation', {
@@ -339,8 +334,27 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     const nextStepNum = currentStep + 1;
     setCurrentStep(nextStepNum);
 
+    // Steps 1..STARTER_COUNT are the fixed openers — no AI call, just move
+    // to the next constant question with a short generic acknowledgement.
+    if (nextStepNum <= STARTER_COUNT) {
+      const fixedQ = STARTER_QUESTIONS[nextStepNum - 1];
+      setCurrentQuestionText(fixedQ);
+      setCurrentFeedback(null);
+      speakText(fixedQ);
+      setIsGenerating(false);
+      return;
+    }
+
+    // Past the openers: if a target company was entered, ask the AI for a
+    // question tailored to that organization; otherwise fall back to the
+    // existing resume-focus question flow (unchanged behavior).
+    const endpoint = targetCompany.trim()
+      ? '/api/gemini/company-interview-step'
+      : '/api/gemini/interview-step';
+    const companyStepNumber = nextStepNum - STARTER_COUNT;
+
     try {
-      const res = await fetch('/api/gemini/interview-step', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -348,7 +362,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
           resumeSummary,
           focusLabel: selectedFocus?.label,
           focusInstruction: selectedFocus?.instruction,
-          stepNumber: nextStepNum,
+          targetCompany: targetCompany.trim(),
+          stepNumber: targetCompany.trim() ? companyStepNumber : nextStepNum,
           previousQuestions: updatedHistory,
           userAnswer: lastAnswer
         })
@@ -360,7 +375,9 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         speakText(data.nextQuestion);
       }
     } catch {
-      const fallbackQ = "How would you handle a conflict within your development team regarding architectural choices?";
+      const fallbackQ = targetCompany.trim()
+        ? `What do you know about ${targetCompany.trim()}'s recent strategy or products, and why does it appeal to you?`
+        : "How would you handle a conflict within your development team regarding architectural choices?";
       setCurrentQuestionText(fallbackQ);
       speakText(fallbackQ);
     } finally {
@@ -420,6 +437,23 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Target Company — separate from domain/resume. Optional: when
+              filled in, the follow-up rounds (after the 3 fixed starters)
+              are generated specifically for this organization. */}
+          <div className="space-y-2 p-4 bg-ink-50 border border-ink-200/80 rounded-2xl">
+            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Target Company (optional)</label>
+            <p className="text-xs text-ink-500">
+              Enter the company you're interviewing with — the AI will tailor later questions to it (strategy, culture, role fit).
+            </p>
+            <input
+              type="text"
+              placeholder="e.g. TCS, Infosys, Zomato, Deloitte"
+              value={targetCompany}
+              onChange={e => setTargetCompany(e.target.value)}
+              className="w-full p-3.5 bg-white border border-ink-200/80 rounded-2xl text-sm font-semibold text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs"
+            />
           </div>
 
           {/* Resume Upload */}
@@ -502,7 +536,7 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
           <div className="flex justify-between items-center bg-ink-900 text-white p-5 px-7 rounded-3xl shadow-xl border border-ink-800">
             <div>
               <span className="text-[10px] font-mono text-accent-300 font-bold uppercase tracking-wider">
-                Step {currentStep} of 4 • Progressive Interview
+                Step {currentStep} of {TOTAL_STEPS} • Progressive Interview
               </span>
               <h2 className="text-lg font-bold">{selectedRole}</h2>
             </div>
@@ -592,13 +626,13 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
                 )}
 
                 <div className="flex justify-between items-center pt-2">
-                  <span className="text-[10px] font-mono text-ink-400">Step {currentStep} / 4</span>
+                  <span className="text-[10px] font-mono text-ink-400">Step {currentStep} / {TOTAL_STEPS}</span>
                   <button
                     onClick={handleNextStep}
                     disabled={!userAnswerInput.trim() || isGenerating}
                     className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all flex items-center gap-2 shadow-md shadow-accent-200"
                   >
-                    {isGenerating ? "Processing..." : currentStep >= 4 ? "Finish & View Evaluation Report" : "Submit Answer & Next Question"}
+                    {isGenerating ? "Processing..." : currentStep >= TOTAL_STEPS ? "Finish & View Evaluation Report" : "Submit Answer & Next Question"}
                   </button>
                 </div>
               </div>
