@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { createServer as createHttpServer } from "http";
-import { MongoClient, Db } from "mongodb";
+import { Pool } from "pg";
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { OAuth2Client } from "google-auth-library";
 
@@ -22,28 +22,136 @@ const PORT = Number(process.env.PORT) || 3000;
 // group gets a slightly higher cap.
 app.use(express.json({ limit: "2mb" }));
 
-// In-memory fallback database for candidate results when MONGODB_URI is absent
+// In-memory fallback database for candidate results when DATABASE_URL is absent.
+// NOTE: this only survives until the process restarts (Render free/starter
+// tiers restart and sleep routinely) — it exists so a save at least persists
+// for the lifetime of the running process, and so profile lookups below
+// have something real to check instead of silently no-op'ing.
 const inMemoryStore = {
   scores: [] as any[],
-  interviews: [] as any[]
+  interviews: [] as any[],
+  profiles: new Map<string, any>(),
 };
 
-// Lazy MongoDB Atlas client connection
-let mongoDbInstance: Db | null = null;
-const getMongoDb = async (): Promise<Db | null> => {
-  const uri = process.env.MONGODB_URI;
+// Lazy Postgres connection pool (Render Postgres sets DATABASE_URL automatically
+// once the database is linked to this service; falls back to PG_URL for other hosts).
+let pgPool: Pool | null = null;
+let pgReady: Promise<boolean> | null = null;
+
+const initSchema = async (pool: Pool) => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      email TEXT PRIMARY KEY,
+      name TEXT,
+      avatar TEXT,
+      is_logged_in BOOLEAN DEFAULT true,
+      xp INTEGER DEFAULT 0,
+      level INTEGER DEFAULT 1,
+      level_title TEXT,
+      streak_days INTEGER DEFAULT 0,
+      readiness_score INTEGER DEFAULT 0,
+      completed_tests INTEGER DEFAULT 0,
+      completed_interviews INTEGER DEFAULT 0,
+      completed_gds INTEGER DEFAULT 0,
+      domain_scores JSONB DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS aptitude_scores (
+      id SERIAL PRIMARY KEY,
+      candidate_name TEXT,
+      topic_id TEXT,
+      topic_title TEXT,
+      score INTEGER,
+      total_questions INTEGER,
+      category TEXT,
+      domain TEXT,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interview_evaluations (
+      id SERIAL PRIMARY KEY,
+      candidate_name TEXT,
+      evaluation JSONB,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+};
+
+const getPg = async (): Promise<Pool | null> => {
+  const uri = process.env.DATABASE_URL || process.env.PG_URL;
   if (!uri) return null;
-  if (mongoDbInstance) return mongoDbInstance;
-  try {
-    const client = new MongoClient(uri);
-    await client.connect();
-    mongoDbInstance = client.db('prepai_mba');
-    console.log('Successfully connected to MongoDB Atlas cluster');
-    return mongoDbInstance;
-  } catch (err) {
-    console.warn('MongoDB Atlas connection attempt failed:', err);
-    return null;
+  if (pgPool) return pgPool;
+  if (!pgReady) {
+    pgReady = (async () => {
+      try {
+        const pool = new Pool({
+          connectionString: uri,
+          ssl: uri.includes("localhost") ? false : { rejectUnauthorized: false },
+        });
+        await initSchema(pool);
+        pgPool = pool;
+        console.log("Successfully connected to Postgres and verified schema");
+        return true;
+      } catch (err) {
+        console.warn("Postgres connection attempt failed:", err);
+        pgReady = null;
+        return false;
+      }
+    })();
   }
+  const ok = await pgReady;
+  return ok ? pgPool : null;
+};
+
+// Maps a DB row (snake_case) to the camelCase shape the frontend expects.
+const rowToProfile = (row: any) => ({
+  email: row.email,
+  name: row.name,
+  avatar: row.avatar,
+  isLoggedIn: row.is_logged_in,
+  xp: row.xp,
+  level: row.level,
+  levelTitle: row.level_title,
+  streakDays: row.streak_days,
+  readinessScore: row.readiness_score,
+  completedTests: row.completed_tests,
+  completedInterviews: row.completed_interviews,
+  completedGDs: row.completed_gds,
+  domainScores: row.domain_scores,
+  updatedAt: row.updated_at,
+});
+
+const upsertProfile = async (pool: Pool, profile: any) => {
+  await pool.query(
+    `INSERT INTO user_profiles
+       (email, name, avatar, is_logged_in, xp, level, level_title, streak_days,
+        readiness_score, completed_tests, completed_interviews, completed_gds,
+        domain_scores, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, now())
+     ON CONFLICT (email) DO UPDATE SET
+       name = EXCLUDED.name,
+       avatar = EXCLUDED.avatar,
+       is_logged_in = EXCLUDED.is_logged_in,
+       xp = EXCLUDED.xp,
+       level = EXCLUDED.level,
+       level_title = EXCLUDED.level_title,
+       streak_days = EXCLUDED.streak_days,
+       readiness_score = EXCLUDED.readiness_score,
+       completed_tests = EXCLUDED.completed_tests,
+       completed_interviews = EXCLUDED.completed_interviews,
+       completed_gds = EXCLUDED.completed_gds,
+       domain_scores = EXCLUDED.domain_scores,
+       updated_at = now()`,
+    [
+      profile.email, profile.name, profile.avatar, profile.isLoggedIn ?? true,
+      profile.xp ?? 0, profile.level ?? 1, profile.levelTitle, profile.streakDays ?? 0,
+      profile.readinessScore ?? 0, profile.completedTests ?? 0, profile.completedInterviews ?? 0,
+      profile.completedGDs ?? 0, JSON.stringify(profile.domainScores ?? {}),
+    ]
+  );
 };
 
 // ICE server config for WebRTC (Group Discussion camera/mic connections).
@@ -71,11 +179,11 @@ app.get("/api/ice-servers", (req, res) => {
 
 // Database Status Route
 app.get("/api/db/status", async (req, res) => {
-  const db = await getMongoDb();
-  if (db) {
-    return res.json({ connected: true, mode: "MongoDB Atlas Cloud", database: "prepai_mba" });
+  const pool = await getPg();
+  if (pool) {
+    return res.json({ connected: true, mode: "Postgres (Render)", database: "prepai_mba" });
   }
-  return res.json({ connected: false, mode: "In-Memory Local Fallback", note: "Add MONGODB_URI in .env to connect MongoDB Atlas" });
+  return res.json({ connected: false, mode: "In-Memory Local Fallback", note: "Add DATABASE_URL in .env to connect Postgres" });
 });
 
 // Save Aptitude Score Route
@@ -92,13 +200,17 @@ app.post("/api/db/save-score", async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  const db = await getMongoDb();
-  if (db) {
+  const pool = await getPg();
+  if (pool) {
     try {
-      await db.collection("aptitude_scores").insertOne(scoreRecord);
-      return res.json({ success: true, storage: "MongoDB Atlas", record: scoreRecord });
+      await pool.query(
+        `INSERT INTO aptitude_scores (candidate_name, topic_id, topic_title, score, total_questions, category, domain)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [candidateName, topicId, topicTitle, score, totalQuestions, category, domain]
+      );
+      return res.json({ success: true, storage: "Postgres", record: scoreRecord });
     } catch (e) {
-      console.error("MongoDB Atlas insert error:", e);
+      console.error("Postgres insert error:", e);
     }
   }
 
@@ -115,13 +227,16 @@ app.post("/api/db/save-interview", async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  const db = await getMongoDb();
-  if (db) {
+  const pool = await getPg();
+  if (pool) {
     try {
-      await db.collection("interview_evaluations").insertOne(interviewRecord);
-      return res.json({ success: true, storage: "MongoDB Atlas", record: interviewRecord });
+      await pool.query(
+        `INSERT INTO interview_evaluations (candidate_name, evaluation) VALUES ($1,$2)`,
+        [candidateName, JSON.stringify(evaluation)]
+      );
+      return res.json({ success: true, storage: "Postgres", record: interviewRecord });
     } catch (e) {
-      console.error("MongoDB Atlas insert error:", e);
+      console.error("Postgres insert error:", e);
     }
   }
 
@@ -129,28 +244,25 @@ app.post("/api/db/save-interview", async (req, res) => {
   return res.json({ success: true, storage: "In-Memory Fallback", record: interviewRecord });
 });
 
-// Save or Update User Profile Route (MongoDB Atlas)
+// Save or Update User Profile Route (Postgres)
 app.post("/api/db/user-profile", async (req, res) => {
   const { profile } = req.body;
   if (!profile || !profile.email) {
     return res.status(400).json({ success: false, error: "Missing profile or email" });
   }
 
-  const db = await getMongoDb();
-  if (db) {
+  const pool = await getPg();
+  if (pool) {
     try {
-      await db.collection("user_profiles").updateOne(
-        { email: profile.email },
-        { $set: { ...profile, updatedAt: new Date().toISOString() } },
-        { upsert: true }
-      );
-      return res.json({ success: true, storage: "MongoDB Atlas", profile });
+      await upsertProfile(pool, profile);
+      return res.json({ success: true, storage: "Postgres", profile });
     } catch (e) {
-      console.error("MongoDB Atlas profile upsert error:", e);
+      console.error("Postgres profile upsert error:", e);
     }
   }
 
-  return res.json({ success: true, storage: "In-Memory Local", profile });
+  inMemoryStore.profiles.set(profile.email, { ...profile, updatedAt: new Date().toISOString() });
+  return res.json({ success: true, storage: "In-Memory Fallback", profile });
 });
 
 // Get User Profile by email Route
@@ -160,16 +272,21 @@ app.get("/api/db/user-profile", async (req, res) => {
     return res.status(400).json({ success: false, error: "Missing email parameter" });
   }
 
-  const db = await getMongoDb();
-  if (db) {
+  const pool = await getPg();
+  if (pool) {
     try {
-      const doc = await db.collection("user_profiles").findOne({ email });
-      if (doc) {
-        return res.json({ success: true, profile: doc });
+      const result = await pool.query(`SELECT * FROM user_profiles WHERE email = $1`, [email]);
+      if (result.rows.length > 0) {
+        return res.json({ success: true, profile: rowToProfile(result.rows[0]) });
       }
     } catch (e) {
-      console.error("MongoDB Atlas profile get error:", e);
+      console.error("Postgres profile get error:", e);
     }
+  }
+
+  const cached = inMemoryStore.profiles.get(email);
+  if (cached) {
+    return res.json({ success: true, profile: cached, storage: "In-Memory Fallback" });
   }
 
   return res.json({ success: false, message: "Profile not found in database" });
@@ -208,16 +325,26 @@ app.post("/api/auth/google", async (req, res) => {
   const name = payload.name || email.split("@")[0];
   const avatar = payload.picture || "";
 
-  const db = await getMongoDb();
-  if (db) {
+  const pool = await getPg();
+  if (pool) {
     try {
-      const existing = await db.collection("user_profiles").findOne({ email });
-      if (existing) {
-        return res.json({ success: true, profile: existing });
+      const result = await pool.query(`SELECT * FROM user_profiles WHERE email = $1`, [email]);
+      if (result.rows.length > 0) {
+        return res.json({ success: true, profile: rowToProfile(result.rows[0]) });
       }
     } catch (e) {
-      console.error("MongoDB Atlas profile lookup error:", e);
+      console.error("Postgres profile lookup error:", e);
     }
+  }
+
+  // Postgres absent or the lookup above failed — before assuming this is a
+  // first-time sign-in, check the in-memory fallback too. Previously this
+  // step was skipped entirely whenever `pool` was falsy, so every login
+  // without a working DB connection silently overwrote real progress
+  // with a fresh 0-XP profile.
+  const cachedExisting = inMemoryStore.profiles.get(email);
+  if (cachedExisting) {
+    return res.json({ success: true, profile: cachedExisting, storage: "In-Memory Fallback" });
   }
 
   // First-time sign-in: start fresh at 0 XP.
@@ -228,16 +355,14 @@ app.post("/api/auth/google", async (req, res) => {
     domainScores: { Finance: 0, HR: 0, Marketing: 0, "Business Analytics": 0, Operations: 0, Strategy: 0 },
   };
 
-  if (db) {
+  if (pool) {
     try {
-      await db.collection("user_profiles").updateOne(
-        { email },
-        { $set: { ...freshProfile, updatedAt: new Date().toISOString() } },
-        { upsert: true }
-      );
+      await upsertProfile(pool, freshProfile);
     } catch (e) {
-      console.error("MongoDB Atlas profile create error:", e);
+      console.error("Postgres profile create error:", e);
     }
+  } else {
+    inMemoryStore.profiles.set(email, { ...freshProfile, updatedAt: new Date().toISOString() });
   }
 
   return res.json({ success: true, profile: freshProfile });
@@ -245,14 +370,14 @@ app.post("/api/auth/google", async (req, res) => {
 
 // Get Candidate History Route
 app.get("/api/db/history", async (req, res) => {
-  const db = await getMongoDb();
-  if (db) {
+  const pool = await getPg();
+  if (pool) {
     try {
-      const scores = await db.collection("aptitude_scores").find().sort({ createdAt: -1 }).limit(20).toArray();
-      const interviews = await db.collection("interview_evaluations").find().sort({ createdAt: -1 }).limit(20).toArray();
-      return res.json({ success: true, storage: "MongoDB Atlas", scores, interviews });
+      const scores = (await pool.query(`SELECT * FROM aptitude_scores ORDER BY created_at DESC LIMIT 20`)).rows;
+      const interviews = (await pool.query(`SELECT * FROM interview_evaluations ORDER BY created_at DESC LIMIT 20`)).rows;
+      return res.json({ success: true, storage: "Postgres", scores, interviews });
     } catch (e) {
-      console.error("MongoDB Atlas query error:", e);
+      console.error("Postgres query error:", e);
     }
   }
 
