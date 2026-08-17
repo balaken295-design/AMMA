@@ -1347,3 +1347,41 @@ export const getTopicQuestions = (topicId: string, topicTitle: string = 'Aptitud
 
 export const ALL_TOPICS: TopicItem[] = [...VERBAL_TOPICS, ...LOGICAL_TOPICS, ...QUANTS_TOPICS];
 
+// Builds a "Boss Quest" / module test by pooling REAL questions from every
+// topic in the given category (drawn from the real question bank), then
+// shuffling and slicing to the requested count. This replaces the old
+// approach of passing a fixed literal topicId ('module_test') into
+// getTopicQuestions for every category, which always hit the same generic
+// AI-fallback branch and produced near-identical boss questions regardless
+// of whether you were in Verbal, Logical, or Quants.
+export const getModuleTestQuestions = (category: 'verbal' | 'logical' | 'quants', count: number = 30): Question[] => {
+  const topics = category === 'verbal' ? VERBAL_TOPICS : category === 'logical' ? LOGICAL_TOPICS : QUANTS_TOPICS;
+
+  const pool: Question[] = [];
+  for (const topic of topics) {
+    const real = REAL_QUESTION_BANK[topic.id];
+    if (real && real.length) {
+      pool.push(...real);
+    }
+  }
+
+  // Fisher-Yates shuffle so each Boss Quest attempt draws a fresh, varied
+  // mix from across the category's topics rather than the same fixed order.
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  if (pool.length >= count) {
+    return pool.slice(0, count);
+  }
+
+  // Not enough real questions yet to fill the category — top up with
+  // generated questions, keyed per-category so each category still gets
+  // distinct filler rather than sharing one 'module_test' cache key.
+  const categoryTitle = category === 'verbal' ? 'Verbal Aptitude Overall' : category === 'logical' ? 'Logical Aptitude Overall' : 'Quantitative Aptitude Overall';
+  const needed = count - pool.length;
+  const generated = getTopicQuestions(`module_test_${category}`, categoryTitle, needed, category);
+  return [...pool, ...generated];
+};
+
