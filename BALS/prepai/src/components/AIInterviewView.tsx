@@ -101,8 +101,97 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
   // Live video feed
   const [videoEnabled, setVideoEnabled] = useState(true);
-  const [micEnabled, setMicEnabled] = useState(true);
+  // Mic starts OFF for speech-to-text purposes — the candidate opts in by
+  // tapping "Speak Answer". (Camera/mic hardware access for the HUD below
+  // is separate and unaffected by this.)
+  const [micEnabled, setMicEnabled] = useState(false);
   const localVideoRef = useRef<HTMLVideoElement>(null);
+
+  // --- Speech-to-text (Web Speech API) -----------------------------------
+  // Nothing in this component previously converted spoken audio into text —
+  // the mic toggle existed but did nothing, so the only way to answer was
+  // to type. This wires real recognition in so speaking fills the answer
+  // box exactly the way typing does.
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useRef<any>(null);
+  const shouldListenRef = useRef(false);
+  const answerBaseRef = useRef(''); // finalized transcript so far, before the current interim chunk
+
+  useEffect(() => {
+    const SpeechRecognitionCtor: any =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      setSpeechSupported(false);
+      return;
+    }
+    const recognition = new SpeechRecognitionCtor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      let finalChunk = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalChunk += transcript + ' ';
+        else interim += transcript;
+      }
+      if (finalChunk) {
+        answerBaseRef.current = (answerBaseRef.current + ' ' + finalChunk).trim();
+      }
+      setUserAnswerInput((answerBaseRef.current + ' ' + interim).trim());
+    };
+
+    recognition.onerror = (event: any) => {
+      console.warn('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        shouldListenRef.current = false;
+        setIsListening(false);
+        setMicEnabled(false);
+      }
+      // 'no-speech' and similar are benign — onend below restarts automatically.
+    };
+
+    // Browsers (Chrome especially) silently end recognition after a few
+    // seconds of silence even in continuous mode. Auto-restart while the
+    // candidate still intends to be speaking, so they don't have to keep
+    // re-tapping the mic mid-answer.
+    recognition.onend = () => {
+      if (shouldListenRef.current) {
+        try { recognition.start(); } catch { /* already running */ }
+      } else {
+        setIsListening(false);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    return () => {
+      shouldListenRef.current = false;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try { recognition.stop(); } catch { /* noop */ }
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  const toggleMic = () => {
+    const next = !micEnabled;
+    setMicEnabled(next);
+    if (next) {
+      // Keep whatever's already in the box (typed or from a previous
+      // speaking turn) and append new speech onto it, same as typing more.
+      answerBaseRef.current = userAnswerInput;
+      shouldListenRef.current = true;
+      try { recognitionRef.current?.start(); setIsListening(true); } catch { /* already starting */ }
+    } else {
+      shouldListenRef.current = false;
+      try { recognitionRef.current?.stop(); } catch { /* noop */ }
+      setIsListening(false);
+    }
+  };
 
   // Live posture / eye-contact HUD, computed from the actual camera feed
   // via MediaPipe FaceLandmarker instead of being hardcoded.
@@ -298,6 +387,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     setQuestionsHistory(updatedHistory);
     const lastAnswer = userAnswerInput;
     setUserAnswerInput('');
+    answerBaseRef.current = ''; // start the next answer's transcript fresh
 
     if (currentStep >= TOTAL_STEPS) {
       // Complete interview and fetch final evaluation report
@@ -541,7 +631,13 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
               <h2 className="text-lg font-bold">{selectedRole}</h2>
             </div>
             <button
-              onClick={() => setSessionStarted(false)}
+              onClick={() => {
+                shouldListenRef.current = false;
+                try { recognitionRef.current?.stop(); } catch { /* noop */ }
+                setIsListening(false);
+                setMicEnabled(false);
+                setSessionStarted(false);
+              }}
               className="text-xs text-ink-400 hover:text-white transition-colors"
             >
               Cancel Session
@@ -606,7 +702,23 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
 
               {/* Answer Input */}
               <div className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm space-y-3">
-                <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Your Spoken / Written Answer</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Your Spoken / Written Answer</label>
+                  {speechSupported && (
+                    <button
+                      type="button"
+                      onClick={toggleMic}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${
+                        isListening
+                          ? 'bg-danger-50 text-danger-600 border border-danger-200 animate-pulse'
+                          : 'bg-accent-50 text-accent-700 border border-accent-200 hover:border-accent-400'
+                      }`}
+                    >
+                      {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                      {isListening ? 'Stop Speaking' : 'Speak Answer'}
+                    </button>
+                  )}
+                </div>
                 <textarea
                   rows={3}
                   placeholder="Record speech or type your response here..."
@@ -614,6 +726,9 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
                   onChange={e => setUserAnswerInput(e.target.value)}
                   className="w-full p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-xs text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs"
                 ></textarea>
+                {!speechSupported && (
+                  <p className="text-[10px] text-ink-400">Voice input isn't supported in this browser — try Chrome/Edge, or just type your answer.</p>
+                )}
 
                 {currentFeedback && (
                   <div className="p-3.5 bg-accent-50 border border-accent-200/80 rounded-2xl text-xs text-accent-950 flex items-start gap-2">
