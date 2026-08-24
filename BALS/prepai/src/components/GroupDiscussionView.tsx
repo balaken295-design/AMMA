@@ -588,9 +588,9 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
             ...prev,
             participants: [
               ...prev.participants,
-              { id: 'p_alex', name: 'Alex (AI Engineer)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200', role: 'ai', isSpeaking: false, micEnabled: true, videoEnabled: true },
-              { id: 'p_sophia', name: 'Sophia (AI Policy Analyst)', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200', role: 'ai', isSpeaking: false, micEnabled: true, videoEnabled: true },
-              { id: 'p_david', name: 'David (AI Product Mgr)', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200', role: 'ai', isSpeaking: false, micEnabled: true, videoEnabled: true },
+              { id: 'p_alex', name: 'Rahul (MBA Student)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200', role: 'ai', isSpeaking: false, micEnabled: true, videoEnabled: true },
+              { id: 'p_sophia', name: 'Ananya (BBA Student)', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200', role: 'ai', isSpeaking: false, micEnabled: true, videoEnabled: true },
+              { id: 'p_david', name: 'Karthik (MBA Student)', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200', role: 'ai', isSpeaking: false, micEnabled: true, videoEnabled: true },
             ],
           } : prev);
         }
