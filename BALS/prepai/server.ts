@@ -1090,23 +1090,23 @@ Critical variety requirements — questions must NOT feel repetitive:
 // Shared pools of varied fallback lines so repeated calls without a Gemini key
 // (or when Gemini errors out) don't say the exact same thing every time.
 const GD_FALLBACK_LINES: Record<string, ((topic: string) => string)[]> = {
-  'Alex': [
-    (topic) => `I partially agree, but from an implementation angle on ${topic} we need to weigh scalability against cost before a rapid rollout.`,
-    (topic) => `Interesting take. On ${topic}, though, I'd want to see a pilot phase first to de-risk the technical rollout.`,
-    (topic) => `Building on that — for ${topic}, the engineering lift is non-trivial, so phased delivery beats a big-bang launch.`,
-    (topic) => `Fair point, but has anyone considered the maintenance overhead ${topic} would add to existing systems?`,
+  'Rahul': [
+    (topic) => `I partially agree, but from a practical angle on ${topic}, we should think about what's actually feasible for someone our age right now.`,
+    (topic) => `Interesting take. On ${topic}, though, I'd want to see how this plays out for a student with limited savings before fully agreeing.`,
+    (topic) => `Building on that — for ${topic}, I think a lot depends on financial discipline, which most of us are still figuring out.`,
+    (topic) => `Fair point, but has anyone considered how ${topic} would actually work once we're managing our own money after graduation?`,
   ],
-  'Sophia': [
-    (topic) => `Building on that, data security and regulatory compliance are just as critical for ${topic}. Early auditing avoids delays later.`,
-    (topic) => `From a policy lens, ${topic} raises some compliance questions we shouldn't gloss over.`,
-    (topic) => `I'd push back slightly — the regulatory landscape around ${topic} varies a lot by region, so a one-size plan is risky.`,
-    (topic) => `Good points so far, but stakeholder governance around ${topic} needs a clearer owner.`,
+  'Ananya': [
+    (topic) => `Building on that, I think we also need to consider how ${topic} affects people from different economic backgrounds, not just our own experience.`,
+    (topic) => `From what I've read for class, ${topic} raises some fairness questions we shouldn't gloss over.`,
+    (topic) => `I'd push back slightly — ${topic} probably looks very different in a metro city versus a small town, so a single opinion won't fit everyone.`,
+    (topic) => `Good points so far, but I feel like ${topic} needs more real-life examples, not just theory from our textbooks.`,
   ],
-  'David': [
-    (topic) => `Strong point! Beyond that, user adoption for ${topic} will hinge on intuitive UX and clear onboarding.`,
-    (topic) => `I'd add that customer research should shape how we roll out ${topic}, not just internal assumptions.`,
-    (topic) => `Agreed, though from a product standpoint ${topic} needs a crisper success metric before we commit resources.`,
-    (topic) => `Nice framing — for ${topic}, I'd prioritize a small user test before scaling further.`,
+  'Karthik': [
+    (topic) => `Strong point! Beyond that, I think ${topic} really comes down to habits — most of us just haven't been taught this properly.`,
+    (topic) => `I'd add that our own experience as students should shape how we think about ${topic}, not just what we've heard from our parents.`,
+    (topic) => `Agreed, though I think ${topic} needs a clearer starting point — like, where would a college student even begin?`,
+    (topic) => `Nice framing — for ${topic}, I'd rather we talk about a realistic first step than the ideal scenario.`,
   ],
 };
 
@@ -1135,13 +1135,13 @@ async function generateGdTurn({ roomTopic, participantName, participantRole, tra
 
   try {
     const recentTexts = (transcript || []).map((m: any) => m.text).filter(Boolean);
-    const prompt = `You are playing the role of ${participantName}, a ${participantRole} in a professional Group Discussion on the topic: "${roomTopic}".
+    const prompt = `You are playing the role of ${participantName}, a fellow MBA/BBA student — NOT a working professional — participating in a college Group Discussion practice session on the topic: "${roomTopic}". Speak like a student reasoning things out (referencing classes, internships, campus life, personal experience, general awareness), not like an industry expert citing corporate jargon like "regulatory landscape" or "stakeholder governance".
 Recent Discussion Transcript:
 ${transcript && transcript.length ? transcript.map((m: any) => `${m.senderName}: ${m.text}`).join("\n") : "Discussion started."}
 
 Candidate just said: "${lastUserMessage}"
 
-Provide a realistic 2-3 sentence contribution in character as ${participantName}. Agree, add a nuanced perspective, or respectfully challenge.
+Provide a realistic 2-3 sentence contribution in character as ${participantName}, a student peer. Agree, add a nuanced perspective, or respectfully challenge.
 Do NOT repeat phrasing, sentence structure, or arguments already used earlier in the transcript (avoid: ${recentTexts.slice(-6).join(" | ") || "none yet"}).
 Vary your opening words each time — do not always start with "That's a" or "Building on". Also provide a brief 1-sentence "aiInsight" for the candidate on how to improve their GD score, varying its phrasing too.`;
 
@@ -1696,9 +1696,9 @@ interface GDRoomState {
 const gdRooms = new Map<string, GDRoomState>();
 
 const AI_PARTICIPANTS = [
-  { name: 'Alex (AI Engineer)', id: 'p_alex', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' },
-  { name: 'Sophia (AI Policy Analyst)', id: 'p_sophia', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200' },
-  { name: 'David (AI Product Mgr)', id: 'p_david', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200' },
+  { name: 'Rahul (MBA Student)', id: 'p_alex', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' },
+  { name: 'Ananya (BBA Student)', id: 'p_sophia', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200' },
+  { name: 'Karthik (MBA Student)', id: 'p_david', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200' },
 ];
 
 function generateRoomCode(): string {
