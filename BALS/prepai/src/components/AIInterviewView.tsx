@@ -322,8 +322,24 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.0;
-      utterance.onstart = () => setIsAiSpeaking(true);
-      utterance.onend = () => setIsAiSpeaking(false);
+      const wasListening = shouldListenRef.current;
+      utterance.onstart = () => {
+        setIsAiSpeaking(true);
+        // Stop listening while the AI talks so the mic doesn't pick up its
+        // own voice through the speakers and mistake it for your answer.
+        if (wasListening) {
+          shouldListenRef.current = false;
+          try { recognitionRef.current?.stop(); } catch { /* noop */ }
+        }
+      };
+      utterance.onend = () => {
+        setIsAiSpeaking(false);
+        if (wasListening) {
+          answerBaseRef.current = '';
+          shouldListenRef.current = true;
+          try { recognitionRef.current?.start(); setIsListening(true); } catch { /* noop */ }
+        }
+      };
       window.speechSynthesis.speak(utterance);
     }
   };
@@ -372,7 +388,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   };
 
   const handleNextStep = async () => {
-    if (!userAnswerInput.trim()) return;
+    if (!userAnswerInput.trim() || isGenerating) return;
 
     setIsGenerating(true);
     const newHistoryItem: InterviewQuestion = {
@@ -474,6 +490,34 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       setIsGenerating(false);
     }
   };
+
+  // --- Auto-advance on silence -------------------------------------------
+  // While the mic is listening, every new chunk of recognized speech (final
+  // or interim) resets this timer. If nothing new comes in for this long,
+  // treat the candidate as done answering: submit automatically and let the
+  // interviewer speak the next question — no manual "Submit" tap needed.
+  const SILENCE_AUTO_ADVANCE_MS = 10000; // 10s of silence → auto-submit & advance
+  const silenceTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!isListening || !sessionStarted) {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      return;
+    }
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = setTimeout(() => {
+      if (userAnswerInput.trim()) {
+        handleNextStep();
+      }
+    }, SILENCE_AUTO_ADVANCE_MS);
+    return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userAnswerInput, isListening, sessionStarted]);
 
 const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEvaluation => ({
   role: selectedRole,
@@ -728,6 +772,9 @@ const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEval
                 ></textarea>
                 {!speechSupported && (
                   <p className="text-[10px] text-ink-400">Voice input isn't supported in this browser — try Chrome/Edge, or just type your answer.</p>
+                )}
+                {isListening && (
+                  <p className="text-[10px] text-ink-400">Go quiet for {SILENCE_AUTO_ADVANCE_MS / 1000}s once you're done and it'll submit and move to the next question automatically.</p>
                 )}
 
                 {currentFeedback && (
