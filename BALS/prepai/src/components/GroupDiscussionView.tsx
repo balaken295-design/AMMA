@@ -244,6 +244,72 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
   const [messageText, setMessageText] = useState('');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
+  // --- Speech-to-text (Web Speech API) -----------------------------------
+  // The "Mic Active" button previously only enabled/disabled the raw
+  // WebRTC audio track sent to peers — nothing ever transcribed what was
+  // said into the chat box, so the only way to contribute was to type.
+  // This makes speaking fill the message box the same way typing does.
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useRef<any>(null);
+  const shouldListenRef = useRef(false);
+  const messageBaseRef = useRef('');
+
+  useEffect(() => {
+    const SpeechRecognitionCtor: any =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      setSpeechSupported(false);
+      return;
+    }
+    const recognition = new SpeechRecognitionCtor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      let finalChunk = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalChunk += transcript + ' ';
+        else interim += transcript;
+      }
+      if (finalChunk) {
+        messageBaseRef.current = (messageBaseRef.current + ' ' + finalChunk).trim();
+      }
+      setMessageText((messageBaseRef.current + ' ' + interim).trim());
+    };
+
+    recognition.onerror = (event: any) => {
+      console.warn('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        shouldListenRef.current = false;
+        setIsListening(false);
+      }
+    };
+
+    // Auto-restart after the browser's silence timeout, as long as the
+    // mic is still meant to be on — a GD turn can have pauses mid-thought.
+    recognition.onend = () => {
+      if (shouldListenRef.current) {
+        try { recognition.start(); } catch { /* already running */ }
+      } else {
+        setIsListening(false);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    return () => {
+      shouldListenRef.current = false;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try { recognition.stop(); } catch { /* noop */ }
+      recognitionRef.current = null;
+    };
+  }, []);
+
   // Start camera/mic once on mount, and fetch ICE server config (STUN + TURN
   // if the host has configured a TURN server) so calls across different
   // networks have a chance to connect, not just same-network calls.
@@ -295,11 +361,21 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
   };
 
   const toggleMic = () => {
-    setMicEnabled(!micEnabled);
+    const next = !micEnabled;
+    setMicEnabled(next);
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getAudioTracks().forEach(track => {
-        track.enabled = !micEnabled;
+        track.enabled = next;
       });
+    }
+    if (next) {
+      messageBaseRef.current = messageText;
+      shouldListenRef.current = true;
+      try { recognitionRef.current?.start(); setIsListening(true); } catch { /* already starting */ }
+    } else {
+      shouldListenRef.current = false;
+      try { recognitionRef.current?.stop(); } catch { /* noop */ }
+      setIsListening(false);
     }
   };
 
@@ -593,6 +669,9 @@ const handleLeaveRoom = async () => {
   if (activeRoom && socketRef.current) {
     socketRef.current.emit('gd:leave', { code: activeRoom.code });
   }
+  shouldListenRef.current = false;
+  try { recognitionRef.current?.stop(); } catch { /* noop */ }
+  setIsListening(false);
   teardownSocket();
   setActiveRoom(null);
   setSelfSocketId(null);
@@ -602,6 +681,7 @@ const handleLeaveRoom = async () => {
     if (!messageText.trim() || !activeRoom || !socketRef.current) return;
     socketRef.current.emit('gd:message', { code: activeRoom.code, text: messageText });
     setMessageText('');
+    messageBaseRef.current = ''; // next turn's transcript starts fresh
   };
 
   const copyRoomCode = () => {
@@ -1027,7 +1107,9 @@ const handleLeaveRoom = async () => {
                 <h3 className="font-bold text-ink-900 text-sm flex items-center gap-2">
                   <Volume2 className="w-4 h-4 text-accent-600" /> Discussion Transcript
                 </h3>
-                <span className="text-[10px] font-mono text-ink-500">Live Audio STT</span>
+                <span className={`text-[10px] font-mono ${isListening ? 'text-danger-600 animate-pulse' : 'text-ink-500'}`}>
+                  {isListening ? '● Listening' : speechSupported ? 'Live Audio STT' : 'STT unsupported — type instead'}
+                </span>
               </div>
 
               {/* Message List */}
