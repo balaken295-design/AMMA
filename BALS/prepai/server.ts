@@ -1886,5 +1886,7 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, "0.0.0.0", () => {
-   console.log(`MBA BJD server running on ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`);
+  console.log(`MBA BJD server running on ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`);
+});
+
 startServer();
