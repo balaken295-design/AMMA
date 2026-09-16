@@ -27,7 +27,6 @@ const PARENT_TAB: Record<Tab, Tab> = {
   aptitude: 'dashboard',
   gd: 'dashboard',
   interview: 'dashboard',
-  evaluation: 'dashboard',
 };
 
 export default function App() {
