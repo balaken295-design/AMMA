@@ -265,7 +265,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
     const recognition = new SpeechRecognitionCtor();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
+   recognition.lang = 'en-IN';
 
     recognition.onresult = (event: any) => {
       let interim = '';
@@ -282,12 +282,19 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
     };
 
     recognition.onerror = (event: any) => {
-      console.warn('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        shouldListenRef.current = false;
-        setIsListening(false);
-      }
-    };
+  console.warn('Speech recognition error:', event.error);
+  if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+    shouldListenRef.current = false;
+    setIsListening(false);
+    setSpeechError('Microphone access was blocked. Click the lock icon in your address bar and allow the microphone, then click "Mic Active" again.');
+  } else if (event.error === 'no-speech') {
+    setSpeechError(null); // benign — recognition auto-restarts
+  } else if (event.error === 'audio-capture') {
+    setSpeechError('No microphone was found. Check that a mic is connected and not in use by another app.');
+  } else if (event.error === 'network') {
+    setSpeechError('Speech recognition needs an internet connection to work.');
+  }
+};
 
     // Auto-restart after the browser's silence timeout, as long as the
     // mic is still meant to be on — a GD turn can have pauses mid-thought.
