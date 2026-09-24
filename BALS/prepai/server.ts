@@ -385,12 +385,12 @@ app.get("/api/db/history", async (req, res) => {
 });
 
 // Initialize Gemini SDK with User-Agent header as required
-const getGeminiClient = () => {
-  if (!process.env.GEMINI_API_KEY) {
+const createGeminiClient = (apiKey?: string) => {
+  if (!apiKey) {
     return null;
   }
   return new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
+    apiKey,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
@@ -398,6 +398,14 @@ const getGeminiClient = () => {
     },
   });
 };
+
+// General AI features use GEMINI_API_KEY.
+// AI Interview is deliberately isolated to its own key so its Gemini quota
+// cannot silently switch to the general key when the interview quota is hit.
+// On Render, set AI_INTERVIEW_GEMINI_API_KEY to a key dedicated to the
+// interview/resume routes.
+const getGeminiClient = () => createGeminiClient(process.env.GEMINI_API_KEY);
+const getInterviewGeminiClient = () => createGeminiClient(process.env.AI_INTERVIEW_GEMINI_API_KEY);
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
@@ -1221,7 +1229,7 @@ app.post("/api/gemini/resume-parse", async (req, res) => {
     return res.status(400).json({ success: false, error: "resumeText is required" });
   }
 
-  const ai = getGeminiClient();
+  const ai = getInterviewGeminiClient();
 
   // Heuristic fallback (no Gemini key configured): still lets the flow work,
   // just without resume-specific focus options.
@@ -1329,7 +1337,7 @@ Return:
 
 app.post("/api/gemini/interview-step", async (req, res) => {
   const { domain, resumeSummary, focusLabel, focusInstruction, stepNumber, previousQuestions, userAnswer } = req.body;
-  const ai = getGeminiClient();
+  const ai = getInterviewGeminiClient();
   const domainLabel = domain || "General Management";
   const candidateName = resumeSummary?.candidateName || "the candidate";
 
@@ -1420,7 +1428,7 @@ Candidate's last answer: "${userAnswer || ""}"
 // generic domain prompt.
 app.post("/api/gemini/company-interview-step", async (req, res) => {
   const { domain, resumeSummary, targetCompany, stepNumber, previousQuestions, userAnswer } = req.body;
-  const ai = getGeminiClient();
+  const ai = getInterviewGeminiClient();
   const domainLabel = domain || "General Management";
   const company = (targetCompany || "").trim() || "the company";
   const candidateName = resumeSummary?.candidateName || "the candidate";
@@ -1501,7 +1509,7 @@ Candidate's last answer: "${userAnswer || ""}"
 // API Endpoint 4: Comprehensive Final Interview Evaluation Report
 app.post("/api/gemini/interview-evaluation", async (req, res) => {
   const { role, qaPairs } = req.body;
-  const ai = getGeminiClient();
+  const ai = getInterviewGeminiClient();
 
   if (!ai) {
     return res.json({
