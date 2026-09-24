@@ -94,11 +94,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const speechUiFrameRef = useRef<number | null>(null);
   const pendingSpeechTextRef = useRef<string | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const voiceActivityRef = useRef(false);
-  const lastVoiceTimeRef = useRef(0);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -225,10 +220,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try { recognition.abort(); } catch {}
       if (speechUiFrameRef.current !== null) cancelAnimationFrame(speechUiFrameRef.current);
       speechUiFrameRef.current = null;
-      try { micStreamRef.current?.getTracks().forEach(track => track.stop()); } catch {}
-      micStreamRef.current = null;
-      try { audioContextRef.current?.close(); } catch {}
-      audioContextRef.current = null;
       recognitionRef.current = null;
     };
   }, []);
@@ -246,11 +237,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       setIsListening(false);
       setMicEnabled(false);
       setSpeechError(null);
-      try { micStreamRef.current?.getTracks().forEach(track => track.stop()); } catch {}
-      micStreamRef.current = null;
-      try { audioContextRef.current?.close(); } catch {}
-      audioContextRef.current = null;
-      analyserRef.current = null;
       return;
     }
 
@@ -261,59 +247,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     ignoreSpeechResultsRef.current = false;
     shouldListenRef.current = true;
     setSpeechError('Listening…');
-
-    // Ask for a processed microphone stream once. SpeechRecognition itself
-    // still owns the browser recognition pipeline, but these constraints make
-    // the browser apply hardware/OS-level echo cancellation, noise suppression
-    // and automatic gain control where supported.
-    navigator.mediaDevices?.getUserMedia?.({
-      audio: {
-        noiseSuppression: true,
-        echoCancellation: true,
-        autoGainControl: true,
-        channelCount: 1,
-      },
-    }).then(stream => {
-      if (!shouldListenRef.current) {
-        stream.getTracks().forEach(track => track.stop());
-        return;
-      }
-      micStreamRef.current?.getTracks().forEach(track => track.stop());
-      micStreamRef.current = stream;
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          const ctx = new AudioCtx();
-          const source = ctx.createMediaStreamSource(stream);
-          const analyser = ctx.createAnalyser();
-          analyser.fftSize = 512;
-          analyser.smoothingTimeConstant = 0.65;
-          source.connect(analyser);
-          audioContextRef.current = ctx;
-          analyserRef.current = analyser;
-          const data = new Uint8Array(analyser.fftSize);
-          const sample = () => {
-            if (!shouldListenRef.current || !analyserRef.current) return;
-            analyserRef.current.getByteTimeDomainData(data);
-            let sum = 0;
-            for (let i = 0; i < data.length; i++) {
-              const v = (data[i] - 128) / 128;
-              sum += v * v;
-            }
-            const rms = Math.sqrt(sum / data.length);
-            if (rms > 0.018) {
-              voiceActivityRef.current = true;
-              lastVoiceTimeRef.current = performance.now();
-            } else if (performance.now() - lastVoiceTimeRef.current > 900) {
-              voiceActivityRef.current = false;
-            }
-            requestAnimationFrame(sample);
-          };
-          lastVoiceTimeRef.current = performance.now();
-          sample();
-        }
-      } catch {}
-    }).catch(() => {});
 
     try {
       recognitionRef.current.start();
