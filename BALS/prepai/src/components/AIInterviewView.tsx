@@ -103,6 +103,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const speechActiveRef = useRef(false);
   const lastSpeechAtRef = useRef(0);
   const vadCalibrationFramesRef = useRef(0);
+  const recognitionStartingRef = useRef(false);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -142,6 +143,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
+      recognitionStartingRef.current = false;
       setIsListening(true);
       setMicEnabled(true);
       setSpeechError('Listening…');
@@ -207,12 +209,17 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         shouldListenRef.current = false;
+        stopVoiceActivityMonitor();
         setIsListening(false);
         setMicEnabled(false);
         setSpeechError('Microphone access was blocked. Allow microphone access for this site, then try again.');
       } else if (event.error === 'no-speech') {
         setSpeechError('Listening…');
       } else if (event.error === 'audio-capture') {
+        shouldListenRef.current = false;
+        stopVoiceActivityMonitor();
+        setIsListening(false);
+        setMicEnabled(false);
         setSpeechError('No microphone was found. Check your microphone and try again.');
       } else if (event.error === 'network') {
         setSpeechError('Speech recognition needs an internet connection.');
@@ -226,9 +233,14 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         // Give the browser a short transition window before restarting. This
         // avoids start/stop race conditions that can add noticeable gaps.
         window.setTimeout(() => {
-          if (!shouldListenRef.current) return;
-          try { recognition.start(); } catch {}
-        }, 25);
+          if (!shouldListenRef.current || recognitionStartingRef.current) return;
+          recognitionStartingRef.current = true;
+          try { recognition.start(); } catch (error) {
+            console.warn('Speech recognition restart failed:', error);
+          } finally {
+            recognitionStartingRef.current = false;
+          }
+        }, 40);
       } else {
         setIsListening(false);
         setMicEnabled(false);
@@ -344,25 +356,17 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     }
   };
 
-  const prepareMicrophone = async () => {
-    try {
-      const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      permissionStream.getTracks().forEach(track => track.stop());
-      return true;
-    } catch (error) {
-      console.warn('Microphone permission check failed:', error);
-      setSpeechError('Microphone access is required for voice input. Allow microphone access and try again.');
-      return false;
-    }
-  };
-
   const toggleMic = async () => {
-    if (!recognitionRef.current) return;
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      setSpeechError('Voice recognition is not ready yet. Please wait a moment and try again.');
+      return;
+    }
 
     if (shouldListenRef.current) {
       shouldListenRef.current = false;
       ignoreSpeechResultsRef.current = true;
-      try { recognitionRef.current?.abort(); } catch {}
+      try { recognition.abort(); } catch {}
       stopVoiceActivityMonitor();
       speechBaseRef.current = userAnswerInput.trim();
       interimSpeechRef.current = '';
@@ -374,34 +378,58 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       return;
     }
 
-    const micReady = await prepareMicrophone();
-    if (!micReady) return;
-
-    const vadReady = await startVoiceActivityMonitor();
-    if (!vadReady) {
-      setSpeechError('Could not access the microphone audio monitor. Please check your microphone and try again.');
-      return;
-    }
-
-    // Capture the current editable text as the base. Voice recognition only
-    // appends new speech to this value, so deleting old words is never undone.
+    // Start Chrome/Edge SpeechRecognition FIRST. The VAD is only a background
+    // noise monitor; it must never block the Speak Answer button from starting.
     speechBaseRef.current = userAnswerInput.trim();
     interimSpeechRef.current = '';
     lastFinalChunkRef.current = { text: '', at: 0 };
+    vadCalibrationFramesRef.current = 0;
+    speechActiveRef.current = false;
+    lastSpeechAtRef.current = 0;
     ignoreSpeechResultsRef.current = false;
     shouldListenRef.current = true;
     setSpeechError('Listening…');
+    setIsListening(true);
+    setMicEnabled(true);
+
+    if (recognitionStartingRef.current) return;
+    recognitionStartingRef.current = true;
 
     try {
-      recognitionRef.current.start();
-      setIsListening(true);
-      setMicEnabled(true);
+      try {
+        recognition.start();
+      } catch (error: any) {
+        // A previous browser recognition session may still be closing.
+        // Retry once instead of making the button appear dead.
+        if (String(error?.name || '').toLowerCase().includes('invalidstate')) {
+          await new Promise(resolve => window.setTimeout(resolve, 150));
+          if (shouldListenRef.current) recognition.start();
+        } else {
+          throw error;
+        }
+      }
+
+      // Start VAD after ASR has successfully been requested. Failure of the
+      // optional monitor must not disable speech recognition.
+      if (shouldListenRef.current) {
+        void startVoiceActivityMonitor().then(vadReady => {
+          if (!vadReady && shouldListenRef.current) {
+            console.warn('Voice activity monitor unavailable; continuing with browser speech recognition.');
+          }
+        });
+      }
     } catch (error) {
       console.warn('Speech recognition start failed:', error);
       shouldListenRef.current = false;
+      ignoreSpeechResultsRef.current = true;
+      recognitionStartingRef.current = false;
+      stopVoiceActivityMonitor();
       setIsListening(false);
       setMicEnabled(false);
-      setSpeechError('Could not start voice recognition. Click Speak Answer again.');
+      setSpeechError('Could not start voice recognition. Please allow microphone access and click Speak Answer again.');
+      return;
+    } finally {
+      recognitionStartingRef.current = false;
     }
   };
 
