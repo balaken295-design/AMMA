@@ -102,6 +102,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const vadNoiseFloorRef = useRef(0.008);
   const speechActiveRef = useRef(false);
   const lastSpeechAtRef = useRef(0);
+  const vadCalibrationFramesRef = useRef(0);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -170,10 +171,13 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       // The browser ASR service can hallucinate short words from fan/AC/room
       // noise. A local RMS voice-activity gate decides whether recognition
       // results are allowed into the answer box.
+      const vadWarm = vadCalibrationFramesRef.current >= 10;
       const speechRecentlyDetected =
-        speechActiveRef.current || performance.now() - lastSpeechAtRef.current < 1200;
+        speechActiveRef.current || performance.now() - lastSpeechAtRef.current < 1400;
 
-      if (!speechRecentlyDetected) {
+      // During the first few recognition events, don't hard-block ASR while the
+      // local monitor is warming up.
+      if (vadWarm && !speechRecentlyDetected) {
         interimSpeechRef.current = '';
         queueSpeechUi(speechBaseRef.current);
         return;
@@ -256,6 +260,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     vadStreamRef.current?.getTracks().forEach(track => track.stop());
     vadStreamRef.current = null;
     speechActiveRef.current = false;
+    vadCalibrationFramesRef.current = 0;
   };
 
   const startVoiceActivityMonitor = async () => {
@@ -303,19 +308,22 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         }
         const rms = Math.sqrt(sum / data.length);
 
-        // Learn the room's noise floor during the first ~300ms.
-        if (calibrationFrames < 18) {
+        // Learn the room's noise floor only from the first ~450ms. Keep this
+        // gate deliberately permissive: microphone RMS varies a lot between
+        // laptops/headsets, and an aggressive threshold can block real speech.
+        if (calibrationFrames < 28) {
           calibrationTotal += rms;
           calibrationFrames++;
-          if (calibrationFrames === 18) {
-            vadNoiseFloorRef.current = Math.max(0.004, calibrationTotal / calibrationFrames);
+          vadCalibrationFramesRef.current = calibrationFrames;
+          if (calibrationFrames === 28) {
+            vadNoiseFloorRef.current = Math.max(0.003, calibrationTotal / calibrationFrames);
           }
         }
 
         const floor = vadNoiseFloorRef.current;
-        // Require a clear increase over the measured room noise. The lower
-        // absolute threshold prevents very quiet microphones from being stuck.
-        const threshold = Math.max(0.018, floor * 2.2);
+        // Speech usually rises clearly above the local floor. Use a low absolute
+        // floor and modest multiplier so quiet speakers are still accepted.
+        const threshold = Math.max(0.009, floor * 1.35);
         const speakingNow = rms > threshold;
 
         if (speakingNow) {
