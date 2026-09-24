@@ -86,6 +86,17 @@ export const GDEvaluationSummaryView: React.FC<GDEvaluationSummaryViewProps> = (
         </div>
       )}
 
+      <section className="bg-white border border-ink-200 rounded-2xl p-5 shadow-sm">
+        <h2 className="font-black text-ink-900">How the readiness score is calculated</h2>
+        <p className="text-sm text-ink-600 mt-1">The score is calculated from the four observed GD metrics; it is not a separate AI guess.</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs font-semibold">
+          <div className="bg-ink-50 rounded-xl p-3">Relevance <strong className="block text-accent-600 mt-1">30%</strong></div>
+          <div className="bg-ink-50 rounded-xl p-3">Clarity <strong className="block text-accent-600 mt-1">25%</strong></div>
+          <div className="bg-ink-50 rounded-xl p-3">Listening <strong className="block text-accent-600 mt-1">25%</strong></div>
+          <div className="bg-ink-50 rounded-xl p-3">Leadership <strong className="block text-accent-600 mt-1">20%</strong></div>
+        </div>
+      </section>
+
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {metricConfig.map(({ key, label, icon: Icon }) => {
           const metric = evaluation.metrics[key];
@@ -123,6 +134,12 @@ export const GDEvaluationSummaryView: React.FC<GDEvaluationSummaryViewProps> = (
             <div key={item.id || i} className="border border-ink-200 rounded-2xl p-4">
               <div className="flex items-center gap-2 text-xs font-bold text-accent-700 mb-2"><span className="px-2 py-1 bg-accent-50 rounded-lg">Contribution {i + 1}</span><span>{item.speaker}</span></div>
               <p className="text-sm text-ink-700 leading-relaxed">{item.text}</p>
+              {item.aiInsight && (
+                <div className="mt-3 bg-accent-50 border border-accent-200 rounded-xl p-3">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-accent-700">Contribution Feedback</p>
+                  <p className="text-xs text-accent-950 mt-1 leading-relaxed">{item.aiInsight}</p>
+                </div>
+              )}
             </div>
           )) : <p className="text-sm text-ink-500">No candidate speech was captured.</p>}
         </div>
