@@ -7,8 +7,9 @@ import { AptitudeView } from './components/AptitudeView';
 import { GroupDiscussionView } from './components/GroupDiscussionView';
 import { AIInterviewView } from './components/AIInterviewView';
 import { EvaluationSummaryView } from './components/EvaluationSummaryView';
+import { GDEvaluationSummaryView } from './components/GDEvaluationSummaryView';
 import { GoogleLoginModal } from './components/GoogleLoginModal';
-import { InterviewEvaluation, UserProfile, INITIAL_USER_PROFILE, MBADomain } from './types';
+import { InterviewEvaluation, GDEvaluation, UserProfile, INITIAL_USER_PROFILE, MBADomain } from './types';
 
 type Tab = 'landing' | 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation';
 type Category = 'verbal' | 'logical' | 'quants';
@@ -33,6 +34,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('landing');
   const [selectedCategory, setSelectedCategory] = useState<Category>('verbal');
   const [lastEvaluation, setLastEvaluation] = useState<InterviewEvaluation | undefined>(undefined);
+  const [lastGDEvaluation, setLastGDEvaluation] = useState<GDEvaluation | undefined>(undefined);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   // The app previously never touched browser history, so every screen
@@ -150,6 +152,7 @@ export default function App() {
 
   const handleCompleteInterview = (evaluation: InterviewEvaluation) => {
     setLastEvaluation(evaluation);
+    setLastGDEvaluation(undefined);
     setUserProfile((prev) => {
       const newXp = prev.xp + 300;
       const { level, title } = calculateLevel(newXp);
@@ -168,12 +171,14 @@ export default function App() {
     navigate('evaluation');
   };
 
-  const handleCompleteGD = (evaluation: any) => {
+  const handleCompleteGD = (evaluation: GDEvaluation) => {
+    setLastGDEvaluation(evaluation);
+    setLastEvaluation(undefined);
     setUserProfile((prev) => {
       const newXp = prev.xp + 200;
       const { level, title } = calculateLevel(newXp);
       const newGDs = prev.completedGDs + 1;
-      const readiness = Math.min(100, Math.max(10, Math.round((newXp / 3000) * 70 + (evaluation.readinessScore || 0) * 0.3)));
+      const readiness = Math.min(100, Math.max(10, Math.round((newXp / 3000) * 70 + evaluation.readinessScore * 0.3)));
       return {
         ...prev,
         xp: newXp,
@@ -184,6 +189,7 @@ export default function App() {
         streakDays: prev.streakDays === 0 ? 1 : prev.streakDays,
       };
     });
+    navigate('evaluation');
   };
 
   const handleStartAppFromLanding = (targetTab: 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation' = 'dashboard', category?: Category) => {
@@ -257,10 +263,17 @@ export default function App() {
         )}
 
         {activeTab === 'evaluation' && (
-          <EvaluationSummaryView
-            evaluation={lastEvaluation}
-            onStartNextPath={() => navigate('aptitude')}
-          />
+          lastGDEvaluation ? (
+            <GDEvaluationSummaryView
+              evaluation={lastGDEvaluation}
+              onStartNextPath={() => navigate('gd')}
+            />
+          ) : (
+            <EvaluationSummaryView
+              evaluation={lastEvaluation}
+              onStartNextPath={() => navigate('aptitude')}
+            />
+          )
         )}
       </main>
 

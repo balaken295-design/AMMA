@@ -11,6 +11,52 @@ const DEFAULT_RTC_CONFIG: RTCConfiguration = {
   ],
 };
 
+
+// Pick a browser voice that is easier to understand for an MBA practice session.
+// Prefer a natural English India/UK/US voice, especially Microsoft/Google online
+// voices when the browser exposes them. Voice availability differs by device.
+const getClearEnglishVoice = (): SpeechSynthesisVoice | null => {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  const english = voices.filter(v => /^en(-|_)/i.test(v.lang));
+  const ranked = [...english].sort((a, b) => {
+    const score = (v: SpeechSynthesisVoice) => {
+      const name = v.name.toLowerCase();
+      let n = 0;
+      if (/en[-_]in/i.test(v.lang)) n += 60;
+      else if (/en[-_]gb/i.test(v.lang)) n += 45;
+      else if (/en[-_]us/i.test(v.lang)) n += 40;
+      if (name.includes('microsoft') && /online|natural/i.test(name)) n += 35;
+      else if (name.includes('microsoft')) n += 20;
+      if (name.includes('google')) n += 18;
+      if (v.localService === false) n += 8;
+      return n;
+    };
+    return score(b) - score(a);
+  });
+  return ranked[0] || null;
+};
+
+const speakAiCandidateClearly = (text: string) => {
+  if (!('speechSynthesis' in window) || !text.trim()) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text.trim());
+  const voice = getClearEnglishVoice();
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang;
+  } else {
+    utterance.lang = 'en-IN';
+  }
+  // Slightly slower speech and full volume improve intelligibility without
+  // making the AI sound unnaturally slow.
+  utterance.rate = 0.88;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+  window.speechSynthesis.speak(utterance);
+};
+
 // Remote peer video tile. Starts muted so it ALWAYS autoplays (every mobile
 // browser allows muted autoplay, but many silently block unmuted autoplay
 // even after an explicit .play() call) — a small tap-to-unmute overlay then
@@ -522,13 +568,9 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
 
     socket.on('gd:message', (message: GDMessage) => {
       setActiveRoom(prev => prev ? { ...prev, messages: [...prev.messages, message] } : prev);
-      if (message.text && 'speechSynthesis' in window && message.senderId !== 'system') {
+      if (message.text && message.senderId !== 'system') {
         const isAiVoice = ['p_alex', 'p_sophia', 'p_david'].includes(message.senderId);
-        if (isAiVoice) {
-          const utterance = new SpeechSynthesisUtterance(message.text);
-          utterance.rate = 1.0;
-          window.speechSynthesis.speak(utterance);
-        }
+        if (isAiVoice) speakAiCandidateClearly(message.text);
       }
     });
 
@@ -669,7 +711,11 @@ const handleLeaveRoom = async () => {
       const res = await fetch('/api/gemini/gd-evaluation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: activeRoom.messages })
+        body: JSON.stringify({
+          topic: activeRoom.topic,
+          transcript: activeRoom.messages,
+          candidateId: activeRoom.participants.find(p => p.socketId === selfSocketId)?.id || '',
+        })
       });
       const data = await res.json();
       if (data.success) {
@@ -687,6 +733,7 @@ const handleLeaveRoom = async () => {
   ignoreSpeechResultsRef.current = true;
   try { recognitionRef.current?.abort(); } catch { /* noop */ }
   setIsListening(false);
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   teardownSocket();
   setActiveRoom(null);
   setSelfSocketId(null);
