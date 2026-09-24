@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { InterviewEvaluation } from '../types';
-import { Download, Share2, Star, Mic, Code, UserCheck, Brain, Bot, User, Sparkles, GraduationCap, Calendar, CheckSquare, ArrowRight } from 'lucide-react';
+import { Download, Share2, Star, Mic, Code, UserCheck, Brain, Bot, User, Sparkles, ArrowRight } from 'lucide-react';
 
 interface EvaluationSummaryViewProps {
   evaluation?: InterviewEvaluation;
@@ -11,8 +11,7 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
   evaluation,
   onStartNextPath
 }) => {
- const [filter, setFilter] = useState<'critical' | 'all'>('critical');
- 
+
   if (!evaluation) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
@@ -25,6 +24,33 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
     );
   }
   const evalData = evaluation;
+  const readinessLabel =
+    evalData.readinessScore >= 80 ? 'Strong readiness' :
+    evalData.readinessScore >= 65 ? 'Developing readiness' :
+    'Needs improvement';
+
+  const readinessDescription =
+    evalData.readinessScore >= 80 ? 'Your interview responses show strong overall readiness based on this session.' :
+    evalData.readinessScore >= 65 ? 'Your interview shows a developing foundation with clear areas to strengthen.' :
+    'Use the feedback below to target the areas that need more practice.';
+
+  const handleCopySummary = async () => {
+    const summary = [
+      `MBA BJD — Evaluation Summary`,
+      `Role: ${evalData.role}`,
+      `Readiness Score: ${evalData.readinessScore}/100`,
+      `Communication: ${evalData.metrics.communication.score}/100`,
+      `Technical Accuracy: ${evalData.metrics.technicalAccuracy.score}/100`,
+      `Body Language: ${evalData.metrics.bodyLanguage.available === false ? 'Not evaluated' : evalData.metrics.bodyLanguage.score + '/100'}`,
+      `Confidence: ${evalData.metrics.confidence.score}/100`,
+    ].join('\\n');
+    try {
+      await navigator.clipboard.writeText(summary);
+      alert('Evaluation summary copied to clipboard.');
+    } catch {
+      alert('Could not copy the evaluation summary.');
+    }
+  };
 
   const handleDownloadReport = () => {
     const lines = [
@@ -33,7 +59,7 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
       `Date: ${evalData.date}`,
       ``,
       `Readiness Score: ${evalData.readinessScore} / 100`,
-      `Percentile: Top ${evalData.percentile}%`,
+      `Readiness Level: ${readinessLabel}`,
       ``,
       `Performance Metrics`,
       `-------------------`,
@@ -98,11 +124,11 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
               </button>
               <button
                 id="btn-share-insights"
-                onClick={() => alert("Share link copied to clipboard!")}
+                onClick={handleCopySummary}
                 className="bg-accent-600 text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-accent-500 active:scale-95 transition-all shadow-md shadow-accent-200"
               >
                 <Share2 className="w-4 h-4" />
-                Share Insights
+                Copy Summary
               </button>
             </div>
           </div>
@@ -143,12 +169,12 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
               </div>
             </div>
 
-            <div className="mt-8 bg-success-50 text-success-700 border border-success-200/80 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 shadow-2xs">
-              <Star className="w-4 h-4 fill-current text-success-600" />
-              Market Ready
+            <div className="mt-8 bg-accent-50 text-accent-700 border border-accent-200/80 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 shadow-2xs">
+              <Star className="w-4 h-4 fill-current" />
+              {readinessLabel}
             </div>
             <p className="mt-4 text-ink-600 text-xs max-w-[240px] leading-relaxed">
-              You are in the top {evalData.percentile}% of candidates for this specific role profile.
+              {readinessDescription}
             </p>
           </div>
 
@@ -198,10 +224,14 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
                     <UserCheck className="w-4 h-4 text-accent-600" />
                     Body Language
                   </span>
-                  <span className="font-mono text-xs font-semibold text-ink-500">{evalData.metrics.bodyLanguage.score}%</span>
+                  <span className="font-mono text-xs font-semibold text-ink-500">
+                    {evalData.metrics.bodyLanguage.available === false ? 'N/A' : `${evalData.metrics.bodyLanguage.score}%`}
+                  </span>
                 </div>
                 <div className="h-2.5 w-full bg-ink-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-accent-600 rounded-full transition-all duration-1000" style={{ width: `${evalData.metrics.bodyLanguage.score}%` }}></div>
+                  {evalData.metrics.bodyLanguage.available !== false && (
+                    <div className="h-full bg-accent-600 rounded-full transition-all duration-1000" style={{ width: `${evalData.metrics.bodyLanguage.score}%` }}></div>
+                  )}
                 </div>
                 <p className="text-xs text-ink-600 leading-relaxed">{evalData.metrics.bodyLanguage.note}</p>
               </div>
@@ -230,17 +260,7 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
                 <h3 className=" text-xl font-bold text-ink-900">
                   Interview Transcript
                 </h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-500">Filter:</span>
-                  <select
-                    value={filter}
-                    onChange={e => setFilter(e.target.value as any)}
-                    className="bg-transparent border-none text-xs font-semibold focus:ring-0 cursor-pointer text-accent-600"
-                  >
-                    <option value="critical">Critical Moments</option>
-                    <option value="all">All Answers</option>
-                  </select>
-                </div>
+                <span className="text-xs text-ink-500">All answers & feedback</span>
               </div>
 
               <div className="p-6 space-y-8">
@@ -300,35 +320,17 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
                 Next Steps
               </h3>
               <div className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-accent-500/20 flex items-center justify-center shrink-0">
-                    <GraduationCap className="w-5 h-5 text-accent-300" />
+                {evalData.nextSteps.map((step, idx) => (
+                  <div key={idx} className="flex gap-4">
+                    <div className="w-10 h-10 rounded-2xl bg-accent-500/20 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5 text-accent-300" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{step.title}</p>
+                      <p className="text-xs text-ink-300 mt-0.5 leading-relaxed">{step.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Refine System Design</p>
-                    <p className="text-xs text-ink-300 mt-0.5 leading-relaxed">Based on your tech accuracy, we recommend the 'Advanced System Design' module.</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-accent-500/20 flex items-center justify-center shrink-0">
-                    <Calendar className="w-5 h-5 text-accent-300" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Book Expert Mock</p>
-                    <p className="text-xs text-ink-300 mt-0.5 leading-relaxed">You're ready for a live human peer review. Schedule for next Tuesday.</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-accent-500/20 flex items-center justify-center shrink-0">
-                    <CheckSquare className="w-5 h-5 text-accent-300" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Review Weak Keywords</p>
-                    <p className="text-xs text-ink-300 mt-0.5 leading-relaxed">Study the feedback on 'CAP Theorem' and 'Database Normalization'.</p>
-                  </div>
-                </div>
+                ))}
               </div>
 
               <button
@@ -350,7 +352,9 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
                   <a
                     key={idx}
                     href={res.url}
-                    onClick={e => e.preventDefault()}
+                    onClick={e => {
+                      if (!res.url || res.url === '#') e.preventDefault();
+                    }}
                     className="group flex items-center justify-between p-3.5 bg-ink-50 rounded-2xl hover:bg-accent-50 border border-ink-100 hover:border-accent-200 transition-all shadow-2xs"
                   >
                     <span className="text-xs font-semibold text-ink-900 group-hover:text-accent-600 transition-colors">{res.title}</span>
