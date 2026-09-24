@@ -253,6 +253,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
   const [speechSupported, setSpeechSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);
+  const ignoreSpeechResultsRef = useRef(false);
   const messageBaseRef = useRef('');
 
   useEffect(() => {
@@ -268,6 +269,8 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
    recognition.lang = 'en-IN';
 
     recognition.onresult = (event: any) => {
+      if (ignoreSpeechResultsRef.current) return;
+
       let interim = '';
       let finalChunk = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -309,10 +312,11 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
     recognitionRef.current = recognition;
     return () => {
       shouldListenRef.current = false;
+      ignoreSpeechResultsRef.current = true;
       recognition.onresult = null;
       recognition.onerror = null;
       recognition.onend = null;
-      try { recognition.stop(); } catch { /* noop */ }
+      try { recognition.abort(); } catch { /* noop */ }
       recognitionRef.current = null;
     };
   }, []);
@@ -376,12 +380,15 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
       });
     }
     if (next) {
+      // Start from exactly what is visible in the editable box.
       messageBaseRef.current = messageText;
+      ignoreSpeechResultsRef.current = false;
       shouldListenRef.current = true;
       try { recognitionRef.current?.start(); setIsListening(true); } catch { /* already starting */ }
     } else {
       shouldListenRef.current = false;
-      try { recognitionRef.current?.stop(); } catch { /* noop */ }
+      ignoreSpeechResultsRef.current = true;
+      try { recognitionRef.current?.abort(); } catch { /* noop */ }
       setIsListening(false);
     }
   };
@@ -677,7 +684,8 @@ const handleLeaveRoom = async () => {
     socketRef.current.emit('gd:leave', { code: activeRoom.code });
   }
   shouldListenRef.current = false;
-  try { recognitionRef.current?.stop(); } catch { /* noop */ }
+  ignoreSpeechResultsRef.current = true;
+  try { recognitionRef.current?.abort(); } catch { /* noop */ }
   setIsListening(false);
   teardownSocket();
   setActiveRoom(null);
@@ -689,6 +697,11 @@ const handleLeaveRoom = async () => {
     socketRef.current.emit('gd:message', { code: activeRoom.code, text: messageText });
     setMessageText('');
     messageBaseRef.current = ''; // next turn's transcript starts fresh
+    ignoreSpeechResultsRef.current = true;
+    shouldListenRef.current = false;
+    try { recognitionRef.current?.abort(); } catch { /* noop */ }
+    setIsListening(false);
+    setMicEnabled(false);
   };
 
   const copyRoomCode = () => {
@@ -1152,7 +1165,13 @@ const handleLeaveRoom = async () => {
                   type="text"
                   placeholder="Speak or type your GD argument..."
                   value={messageText}
-                  onChange={e => setMessageText(e.target.value)}
+                  onChange={e => {
+                    const value = e.target.value;
+                    setMessageText(value);
+                    // Manual typing, Backspace and Delete are authoritative
+                    // even while speech recognition is active.
+                    messageBaseRef.current = value;
+                  }}
                   onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                   className="flex-1 p-3 bg-ink-50 border border-ink-200/80 rounded-2xl text-xs focus:outline-none focus:border-accent-600 shadow-xs"
                 />

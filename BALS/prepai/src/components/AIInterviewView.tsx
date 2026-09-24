@@ -83,6 +83,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const answerBoxRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);
+  const ignoreSpeechResultsRef = useRef(false);
   const speechBaseRef = useRef('');
   const interimSpeechRef = useRef('');
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -132,6 +133,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     };
 
     recognition.onresult = (event: any) => {
+      if (ignoreSpeechResultsRef.current) return;
+
       let finalChunk = '';
       let interim = '';
 
@@ -185,10 +188,11 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
     return () => {
       shouldListenRef.current = false;
+      ignoreSpeechResultsRef.current = true;
       recognition.onresult = null;
       recognition.onerror = null;
       recognition.onend = null;
-      try { recognition.stop(); } catch {}
+      try { recognitionRef.current?.abort(); } catch {}
       recognitionRef.current = null;
     };
   }, []);
@@ -198,8 +202,11 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
     if (shouldListenRef.current) {
       shouldListenRef.current = false;
-      try { recognitionRef.current.stop(); } catch {}
+      ignoreSpeechResultsRef.current = true;
+      try { recognitionRef.current?.abort(); } catch {}
+      speechBaseRef.current = userAnswerInput.trim();
       interimSpeechRef.current = '';
+      setUserAnswerInput(speechBaseRef.current);
       setIsListening(false);
       setMicEnabled(false);
       setSpeechError(null);
@@ -210,6 +217,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     // appends new speech to this value, so deleting old words is never undone.
     speechBaseRef.current = userAnswerInput.trim();
     interimSpeechRef.current = '';
+    ignoreSpeechResultsRef.current = false;
     shouldListenRef.current = true;
     setSpeechError('Listening…');
 
@@ -229,10 +237,11 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   // Keep the speech base synchronized with manual edits while not actively
   // showing an interim recognition hypothesis. This preserves Backspace/editing.
   const handleAnswerChange = (value: string) => {
+    // Manual typing, Backspace and Delete are authoritative even while
+    // speech recognition is active.
     setUserAnswerInput(value);
-    if (!isListening) {
-      speechBaseRef.current = value;
-    }
+    speechBaseRef.current = value;
+    interimSpeechRef.current = '';
   };
 
   useEffect(() => {
@@ -285,7 +294,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     // as part of the candidate's answer.
     if (shouldListenRef.current) {
       shouldListenRef.current = false;
-      try { recognitionRef.current?.stop(); } catch {}
+      ignoreSpeechResultsRef.current = true;
+      try { recognitionRef.current?.abort(); } catch {}
       setIsListening(false);
       setMicEnabled(false);
     }
@@ -330,6 +340,9 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     setCurrentStep(1);
     setQuestionsHistory([]);
     setUserAnswerInput('');
+    speechBaseRef.current = '';
+    interimSpeechRef.current = '';
+    ignoreSpeechResultsRef.current = false;
     setCurrentFeedback(null);
     const firstQuestion = STARTER_QUESTIONS[0];
     setCurrentQuestionText(firstQuestion);
@@ -342,10 +355,15 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     if (!userAnswerInput.trim() || isGenerating) return;
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     shouldListenRef.current = false;
-    try { recognitionRef.current?.stop(); } catch {}
+    ignoreSpeechResultsRef.current = true;
+    speechBaseRef.current = '';
+    interimSpeechRef.current = '';
+    try { recognitionRef.current?.abort(); } catch {}
     setIsListening(false); setIsGenerating(true);
     const newHistoryItem: InterviewQuestion = { id: currentStep, question: currentQuestionText, category: 'technical', userAnswer: userAnswerInput.trim(), aiFeedback: currentFeedback || undefined };
     const updatedHistory = [...questionsHistory, newHistoryItem]; setQuestionsHistory(updatedHistory); setUserAnswerInput('');
+    speechBaseRef.current = '';
+    interimSpeechRef.current = '';
     if (currentStep >= TOTAL_STEPS) {
       try { const res = await fetch('/api/gemini/interview-evaluation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: selectedRole, qaPairs: updatedHistory }) }); const data = await res.json(); const evaluation = data.success && data.evaluation ? data.evaluation : getFallbackEvaluation(updatedHistory); fetch('/api/db/save-interview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidateName: startedWithResume && resumeSummary?.candidateName ? resumeSummary.candidateName : 'MBA Candidate', role: selectedRole, evaluation }) }).catch(e => console.warn('Save interview score error:', e)); onCompleteInterview(evaluation); } catch { onCompleteInterview(getFallbackEvaluation(updatedHistory)); } finally { setIsGenerating(false); }
       return;
@@ -370,7 +388,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
   const cancelSession = () => {
     shouldListenRef.current = false;
-    try { recognitionRef.current?.stop(); } catch {}
+    try { recognitionRef.current?.abort(); } catch {}
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     setIsListening(false);
     setMicEnabled(false);
