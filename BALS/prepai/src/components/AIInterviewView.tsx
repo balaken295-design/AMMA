@@ -294,6 +294,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     // as part of the candidate's answer.
     if (shouldListenRef.current) {
       shouldListenRef.current = false;
+      ignoreSpeechResultsRef.current = true;
       try { recognitionRef.current?.abort(); } catch {}
       setIsListening(false);
       setMicEnabled(false);
@@ -363,7 +364,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     const updatedHistory = [...questionsHistory, newHistoryItem]; setQuestionsHistory(updatedHistory); setUserAnswerInput('');
     speechBaseRef.current = '';
     interimSpeechRef.current = '';
-    ignoreSpeechResultsRef.current = false;
     if (currentStep >= TOTAL_STEPS) {
       try { const res = await fetch('/api/gemini/interview-evaluation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: selectedRole, qaPairs: updatedHistory }) }); const data = await res.json(); const evaluation = data.success && data.evaluation ? data.evaluation : getFallbackEvaluation(updatedHistory); fetch('/api/db/save-interview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidateName: startedWithResume && resumeSummary?.candidateName ? resumeSummary.candidateName : 'MBA Candidate', role: selectedRole, evaluation }) }).catch(e => console.warn('Save interview score error:', e)); onCompleteInterview(evaluation); } catch { onCompleteInterview(getFallbackEvaluation(updatedHistory)); } finally { setIsGenerating(false); }
       return;
