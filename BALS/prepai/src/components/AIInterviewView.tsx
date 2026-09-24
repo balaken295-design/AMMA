@@ -94,9 +94,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const speechUiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSpeechTextRef = useRef<string | null>(null);
-  const speechNoiseStreamRef = useRef<MediaStream | null>(null);
-  const speechAudioContextRef = useRef<AudioContext | null>(null);
-  const speechNoiseMonitorRef = useRef<number | null>(null);
+  const lastFinalChunkRef = useRef({ text: '', at: 0 });
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -135,41 +133,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     recognition.lang = 'en-IN';
     recognition.maxAlternatives = 1;
 
-    const updateRecognitionPhrases = () => {
-      try {
-        const PhraseCtor = (window as any).SpeechRecognitionPhrase;
-        if (!PhraseCtor || !('phrases' in recognition)) return;
-        const terms = [
-          selectedDomain,
-          selectedFocus?.label || '',
-          ...(resumeSummary?.skills || []),
-          ...(resumeSummary?.certifications || []),
-          ...(resumeSummary?.projects || []).map((p: any) => p?.name).filter(Boolean),
-          ...(resumeSummary?.experience || []).map((e: any) => e?.company).filter(Boolean),
-        ].map(String).filter(Boolean);
-        recognition.phrases = [...new Set(terms)].slice(0, 100).map((phrase: string) => new PhraseCtor(phrase, 5));
-      } catch {
-        // Optional browser feature; recognition continues normally when unsupported.
-      }
-    };
-    updateRecognitionPhrases();
-
-    const flushSpeechUi = () => {
-      speechUiTimerRef.current = null;
-      const next = pendingSpeechTextRef.current;
-      if (next !== null) {
-        pendingSpeechTextRef.current = null;
-        setUserAnswerInput(next);
-      }
-    };
-
-    const queueSpeechUi = (next: string) => {
-      pendingSpeechTextRef.current = next;
-      if (speechUiTimerRef.current === null) {
-        speechUiTimerRef.current = window.setTimeout(flushSpeechUi, 80);
-      }
-    };
-
     recognition.onstart = () => {
       setIsListening(true);
       setMicEnabled(true);
@@ -197,8 +160,19 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         else interim += transcript;
       }
 
-      if (finalChunk.trim()) {
-        speechBaseRef.current = (speechBaseRef.current + ' ' + finalChunk).trim();
+      const normalizedFinal = finalChunk.trim().replace(/\s+/g, ' ');
+      const now = performance.now();
+      const repeatedFinal =
+        normalizedFinal &&
+        normalizedFinal.toLowerCase() === lastFinalChunkRef.current.text.toLowerCase() &&
+        now - lastFinalChunkRef.current.at < 1800;
+
+      // Chrome can occasionally emit the same final result again when a
+      // continuous recognition session is restarted. Never append that
+      // duplicate, otherwise one ambient word can flood the answer box.
+      if (normalizedFinal && !repeatedFinal) {
+        speechBaseRef.current = (speechBaseRef.current + ' ' + normalizedFinal).trim();
+        lastFinalChunkRef.current = { text: normalizedFinal, at: now };
       }
 
       interimSpeechRef.current = interim;
@@ -249,33 +223,24 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try { recognition.abort(); } catch {}
       if (speechUiTimerRef.current !== null) clearTimeout(speechUiTimerRef.current);
       speechUiTimerRef.current = null;
-      speechNoiseStreamRef.current?.getTracks().forEach(track => track.stop());
-      speechNoiseStreamRef.current = null;
-      if (speechNoiseMonitorRef.current !== null) cancelAnimationFrame(speechNoiseMonitorRef.current);
-      speechNoiseMonitorRef.current = null;
-      try { speechAudioContextRef.current?.close(); } catch {}
-      speechAudioContextRef.current = null;
       recognitionRef.current = null;
     };
   }, [selectedDomain, selectedFocus?.label, resumeSummary]);
 
   const prepareMicrophone = async () => {
-    if (speechNoiseStreamRef.current) return true;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 48000,
-        },
+      const permissionStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
         video: false,
       });
-      speechNoiseStreamRef.current = stream;
+      // Request permission, then immediately release the temporary stream.
+      // SpeechRecognition owns the actual microphone pipeline; keeping a second
+      // stream open here can cause device contention and does not feed processed
+      // audio into SpeechRecognition.
+      permissionStream.getTracks().forEach(track => track.stop());
       return true;
     } catch (error) {
-      console.warn('Microphone preprocessing stream unavailable:', error);
+      console.warn('Microphone permission check failed:', error);
       setSpeechError('Microphone access is required for voice input. Allow microphone access and try again.');
       return false;
     }
@@ -290,6 +255,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try { recognitionRef.current?.abort(); } catch {}
       speechBaseRef.current = userAnswerInput.trim();
       interimSpeechRef.current = '';
+      lastFinalChunkRef.current = { text: '', at: 0 };
       setUserAnswerInput(speechBaseRef.current);
       setIsListening(false);
       setMicEnabled(false);
@@ -304,6 +270,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     // appends new speech to this value, so deleting old words is never undone.
     speechBaseRef.current = userAnswerInput.trim();
     interimSpeechRef.current = '';
+    lastFinalChunkRef.current = { text: '', at: 0 };
     ignoreSpeechResultsRef.current = false;
     shouldListenRef.current = true;
     setSpeechError('Listening…');
@@ -580,8 +547,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const cancelSession = () => {
     shouldListenRef.current = false;
     try { recognitionRef.current?.abort(); } catch {}
-    speechNoiseStreamRef.current?.getTracks().forEach(track => track.stop());
-    speechNoiseStreamRef.current = null;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     setIsListening(false);
     setMicEnabled(false);
