@@ -92,6 +92,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const lastDetectTimeRef = useRef(0);
   const lastHudRef = useRef({ eye: -1, posture: '' });
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speechUiFrameRef = useRef<number | null>(null);
+  const pendingSpeechTextRef = useRef<string | null>(null);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -107,9 +109,10 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     el.style.overflowY = el.scrollHeight > 360 ? 'auto' : 'hidden';
   }, [userAnswerInput]);
 
-  // Live speech-to-text, matching the Group Discussion experience.
-  // Browser SpeechRecognition streams interim and final text directly into
-  // the answer box, so there is no record/stop/upload/transcription step.
+  // Low-latency browser speech recognition.
+  // UI updates are frame-batched so frequent interim results do not cause a
+  // React render for every partial word. Final fragments with very low browser
+  // confidence are ignored to reduce obvious background-noise false positives.
   useEffect(() => {
     const SpeechRecognitionCtor: any =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -126,10 +129,26 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     recognition.lang = 'en-IN';
     recognition.maxAlternatives = 1;
 
+    const flushSpeechUi = () => {
+      speechUiFrameRef.current = null;
+      const next = pendingSpeechTextRef.current;
+      if (next !== null) {
+        pendingSpeechTextRef.current = null;
+        setUserAnswerInput(next);
+      }
+    };
+
+    const queueSpeechUi = (next: string) => {
+      pendingSpeechTextRef.current = next;
+      if (speechUiFrameRef.current === null) {
+        speechUiFrameRef.current = requestAnimationFrame(flushSpeechUi);
+      }
+    };
+
     recognition.onstart = () => {
       setIsListening(true);
       setMicEnabled(true);
-      setSpeechError('Listening… speak your answer.');
+      setSpeechError('Listening…');
     };
 
     recognition.onresult = (event: any) => {
@@ -139,8 +158,17 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       let interim = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = String(event.results[i][0]?.transcript || '');
-        if (event.results[i].isFinal) finalChunk += transcript + ' ';
+        const result = event.results[i];
+        const transcript = String(result[0]?.transcript || '').trim();
+        if (!transcript) continue;
+
+        // Ignore very low-confidence final fragments when the browser exposes
+        // confidence. This reduces accidental words caused by background noise
+        // without blocking browsers that report confidence as 0.
+        const confidence = Number(result[0]?.confidence || 0);
+        if (result.isFinal && confidence > 0 && confidence < 0.35) continue;
+
+        if (result.isFinal) finalChunk += transcript + ' ';
         else interim += transcript;
       }
 
@@ -149,7 +177,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       }
 
       interimSpeechRef.current = interim;
-      setUserAnswerInput(speechBaseRef.current + (interim ? ' ' + interim : ''));
+      queueSpeechUi(speechBaseRef.current + (interim ? ' ' + interim : ''));
     };
 
     recognition.onerror = (event: any) => {
@@ -173,11 +201,12 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
     recognition.onend = () => {
       if (shouldListenRef.current) {
-        try {
-          recognition.start();
-        } catch {
-          // Browser may still be transitioning between recognition sessions.
-        }
+        // Give the browser a short transition window before restarting. This
+        // avoids start/stop race conditions that can add noticeable gaps.
+        window.setTimeout(() => {
+          if (!shouldListenRef.current) return;
+          try { recognition.start(); } catch {}
+        }, 25);
       } else {
         setIsListening(false);
         setMicEnabled(false);
@@ -192,7 +221,9 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       recognition.onresult = null;
       recognition.onerror = null;
       recognition.onend = null;
-      try { recognitionRef.current?.abort(); } catch {}
+      try { recognition.abort(); } catch {}
+      if (speechUiFrameRef.current !== null) cancelAnimationFrame(speechUiFrameRef.current);
+      speechUiFrameRef.current = null;
       recognitionRef.current = null;
     };
   }, []);
