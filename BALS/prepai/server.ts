@@ -1352,6 +1352,7 @@ function buildGdHeuristicEvaluation(topic: string, transcript: any[], candidateI
       id: String(m.id || i + 1),
       speaker: String(m.senderName || 'Candidate'),
       text: String(m.text || ''),
+      aiInsight: 'Transcript-based fallback: check whether this contribution was relevant, clearly structured, and connected to another speaker or moved the discussion forward.',
     })),
     nextSteps: weakest.slice(0, 3).map(item => ({
       title: `Improve ${item[0]}`,
