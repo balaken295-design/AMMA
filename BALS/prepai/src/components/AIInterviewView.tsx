@@ -111,9 +111,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
   // Low-latency browser speech recognition.
   // UI updates are frame-batched so frequent interim results do not cause a
-  // React render for every partial word. The mic VAD/noise gate also uses the
-  // browser's built-in noise suppression, echo cancellation and auto gain
-  // control to avoid treating obvious background-only audio as candidate speech.
+  // React render for every partial word. Final fragments with very low browser
+  // confidence are ignored to reduce obvious background-noise false positives.
   useEffect(() => {
     const SpeechRecognitionCtor: any =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -202,7 +201,12 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
     recognition.onend = () => {
       if (shouldListenRef.current) {
-        try { recognition.start(); } catch {}
+        // Give the browser a short transition window before restarting. This
+        // avoids start/stop race conditions that can add noticeable gaps.
+        window.setTimeout(() => {
+          if (!shouldListenRef.current) return;
+          try { recognition.start(); } catch {}
+        }, 25);
       } else {
         setIsListening(false);
         setMicEnabled(false);
