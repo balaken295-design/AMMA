@@ -186,9 +186,9 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
                 <p className="text-xs text-ink-600 mt-1">The score is derived from the evaluated metrics below. It is not a separate AI-generated number.</p>
               </div>
               <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
-                <span className="px-3 py-2 bg-ink-50 rounded-xl">Technical 35%</span>
-                <span className="px-3 py-2 bg-ink-50 rounded-xl">Communication 30%</span>
-                <span className="px-3 py-2 bg-ink-50 rounded-xl">Confidence 20%</span>
+                <span className="px-3 py-2 bg-ink-50 rounded-xl">Technical {evalData.metrics.bodyLanguage.available !== false ? '35' : '40'}%</span>
+                <span className="px-3 py-2 bg-ink-50 rounded-xl">Communication {evalData.metrics.bodyLanguage.available !== false ? '30' : '35'}%</span>
+                <span className="px-3 py-2 bg-ink-50 rounded-xl">Confidence {evalData.metrics.bodyLanguage.available !== false ? '20' : '25'}%</span>
                 {evalData.metrics.bodyLanguage.available !== false && <span className="px-3 py-2 bg-ink-50 rounded-xl">Body Language 15%</span>}
               </div>
             </div>
