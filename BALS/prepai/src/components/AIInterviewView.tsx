@@ -333,8 +333,9 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     } finally { setIsParsingResume(false); }
   };
 
-  const startInterview = (withResume: boolean) => {
+  const startInterview = async (withResume: boolean) => {
     if (withResume && !resumeSummary) return;
+
     setStartedWithResume(withResume);
     setSessionStarted(true);
     setCurrentStep(1);
@@ -344,9 +345,53 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     interimSpeechRef.current = '';
     ignoreSpeechResultsRef.current = false;
     setCurrentFeedback(null);
-    const firstQuestion = STARTER_QUESTIONS[0];
-    setCurrentQuestionText(firstQuestion);
-    speakText(firstQuestion);
+
+    // Without a resume we keep the three standard opening questions.
+    // With a resume, even the first question is generated from the candidate's
+    // actual resume + selected MBA domain so the session does not begin with
+    // generic Finance/HR/Marketing theory.
+    if (!withResume) {
+      const firstQuestion = STARTER_QUESTIONS[0];
+      setCurrentQuestionText(firstQuestion);
+      speakText(firstQuestion);
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const endpoint = targetCompany.trim() ? '/api/gemini/interview-step' : '/api/gemini/interview-step';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: selectedDomain,
+          resumeSummary,
+          focusLabel: selectedFocus?.label,
+          focusInstruction: selectedFocus?.instruction,
+          targetCompany: targetCompany.trim(),
+          stepNumber: 1,
+          previousQuestions: [],
+          userAnswer: '',
+        }),
+      });
+      const data = await res.json();
+      if (!data.success || !data.nextQuestion) throw new Error('resume question generation failed');
+      setCurrentQuestionText(data.nextQuestion);
+      setCurrentFeedback(null);
+      speakText(data.nextQuestion);
+    } catch {
+      const resumeProject = resumeSummary?.projects?.[0]?.name;
+      const resumeExperience = resumeSummary?.experience?.[0];
+      const fallbackQuestion = resumeProject
+        ? `I can see ${resumeProject} on your resume. Walk me through what you personally worked on, the main challenge you faced, and the result.`
+        : resumeExperience
+          ? `You worked as ${resumeExperience.roleTitle} at ${resumeExperience.company}. What was your most important responsibility there, and how did you measure the outcome?`
+          : `Looking at your resume, which experience or skill best demonstrates your ability in ${selectedDomain}, and what evidence can you give me?`;
+      setCurrentQuestionText(fallbackQuestion);
+      speakText(fallbackQuestion);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEvaluation => ({ role: selectedRole, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), readinessScore: 0, metrics: { communication: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' }, technicalAccuracy: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' }, bodyLanguage: { score: 0, available: false, note: 'Not evaluated — AI service did not respond.' }, confidence: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' } }, transcript: history.map((q, i) => ({ id: String(i + 1), question: q.question, answer: q.userAnswer || '', aiInsight: 'N/A' })), nextSteps: [], recommendedResources: [] });
@@ -367,6 +412,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     if (currentStep >= TOTAL_STEPS) {
       try { const res = await fetch('/api/gemini/interview-evaluation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
           role: selectedRole,
+          domain: selectedDomain,
+          resumeSummary: startedWithResume ? resumeSummary : null,
           qaPairs: updatedHistory,
           behaviorMetrics: {
             trackingAvailable: !trackingError && eyeContactPct !== null,
@@ -376,18 +423,67 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         }) }); const data = await res.json(); const evaluation = data.success && data.evaluation ? data.evaluation : getFallbackEvaluation(updatedHistory); fetch('/api/db/save-interview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidateName: startedWithResume && resumeSummary?.candidateName ? resumeSummary.candidateName : 'MBA Candidate', role: selectedRole, evaluation }) }).catch(e => console.warn('Save interview score error:', e)); onCompleteInterview(evaluation); } catch { onCompleteInterview(getFallbackEvaluation(updatedHistory)); } finally { setIsGenerating(false); }
       return;
     }
-    const nextStepNum = currentStep + 1; setCurrentStep(nextStepNum);
-    if (nextStepNum <= STARTER_COUNT) { const fixedQ = STARTER_QUESTIONS[nextStepNum - 1]; setCurrentQuestionText(fixedQ); setCurrentFeedback(null); speakText(fixedQ); setIsGenerating(false); return; }
-    const endpoint = targetCompany.trim() ? '/api/gemini/company-interview-step' : '/api/gemini/interview-step';
-    const companyStepNumber = nextStepNum - STARTER_COUNT;
+    const nextStepNum = currentStep + 1;
+    setCurrentStep(nextStepNum);
+
+    // Resume sessions use the AI-generated interview path from step 1 onward.
+    // Non-resume sessions retain the standard opening questions.
+    if (!startedWithResume && nextStepNum <= STARTER_COUNT) {
+      const fixedQ = STARTER_QUESTIONS[nextStepNum - 1];
+      setCurrentQuestionText(fixedQ);
+      setCurrentFeedback(null);
+      speakText(fixedQ);
+      setIsGenerating(false);
+      return;
+    }
+
+    // If a target company was supplied, use company-specific questions only
+    // after the first three resume/domain questions.
+    const useCompanyRound = Boolean(targetCompany.trim()) && (!startedWithResume || nextStepNum > STARTER_COUNT);
+    const endpoint = useCompanyRound ? '/api/gemini/company-interview-step' : '/api/gemini/interview-step';
+    const stepForEndpoint = useCompanyRound && startedWithResume
+      ? nextStepNum - STARTER_COUNT
+      : nextStepNum;
+
     try {
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain: selectedDomain, resumeSummary: startedWithResume ? resumeSummary : null, focusLabel: startedWithResume ? selectedFocus?.label : undefined, focusInstruction: startedWithResume ? selectedFocus?.instruction : undefined, targetCompany: targetCompany.trim(), stepNumber: targetCompany.trim() ? companyStepNumber : nextStepNum, previousQuestions: updatedHistory, userAnswer: newHistoryItem.userAnswer }) });
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: selectedDomain,
+          resumeSummary: startedWithResume ? resumeSummary : null,
+          focusLabel: startedWithResume ? selectedFocus?.label : undefined,
+          focusInstruction: startedWithResume ? selectedFocus?.instruction : undefined,
+          targetCompany: targetCompany.trim(),
+          stepNumber: stepForEndpoint,
+          previousQuestions: updatedHistory,
+          userAnswer: newHistoryItem.userAnswer,
+        }),
+      });
       const data = await res.json();
-      if (data.success && data.nextQuestion) { setCurrentQuestionText(data.nextQuestion); setCurrentFeedback(data.feedback || null); speakText(data.nextQuestion); } else throw new Error('question generation failed');
+      if (data.success && data.nextQuestion) {
+        setCurrentQuestionText(data.nextQuestion);
+        setCurrentFeedback(data.feedback || null);
+        speakText(data.nextQuestion);
+      } else throw new Error('question generation failed');
     } catch {
-      const fallbackQ = targetCompany.trim() ? `What do you know about ${targetCompany.trim()}'s recent strategy or products, and why does it appeal to you?` : 'How would you handle a conflict within your team regarding an important business decision?';
-      setCurrentQuestionText(fallbackQ); setCurrentFeedback(null); speakText(fallbackQ);
-    } finally { setIsGenerating(false); }
+      const resumeProject = resumeSummary?.projects?.[0]?.name;
+      const resumeExperience = resumeSummary?.experience?.[0];
+      const fallbackQ = startedWithResume
+        ? resumeProject
+          ? `Going deeper on ${resumeProject}: what technical or business decision did you personally make, and what was the result?`
+          : resumeExperience
+            ? `In your work at ${resumeExperience.company}, what was the hardest problem you handled and how did you solve it?`
+            : `Which part of your resume best demonstrates your ${selectedDomain} skills, and what evidence supports that?`
+        : targetCompany.trim()
+          ? `What do you know about ${targetCompany.trim()}'s recent strategy or products, and why does it appeal to you?`
+          : 'How would you handle a conflict within your team regarding an important business decision?';
+      setCurrentQuestionText(fallbackQ);
+      setCurrentFeedback(null);
+      speakText(fallbackQ);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // Voice recognition stays active until the user taps the mic button again.

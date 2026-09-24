@@ -157,7 +157,9 @@ export default function App() {
       const newXp = prev.xp + 300;
       const { level, title } = calculateLevel(newXp);
       const newInterviews = prev.completedInterviews + 1;
-      const readiness = Math.min(100, Math.max(20, Math.round((newXp / 3000) * 70 + evaluation.readinessScore * 0.3)));
+      // The dashboard readiness for an interview is the same evaluated
+      // readiness score shown in the report. XP is progression, not interview quality.
+      const readiness = Math.max(0, Math.min(100, Math.round(evaluation.readinessScore)));
       return {
         ...prev,
         xp: newXp,
@@ -178,7 +180,8 @@ export default function App() {
       const newXp = prev.xp + 200;
       const { level, title } = calculateLevel(newXp);
       const newGDs = prev.completedGDs + 1;
-      const readiness = Math.min(100, Math.max(10, Math.round((newXp / 3000) * 70 + evaluation.readinessScore * 0.3)));
+      // Keep the dashboard and GD report on the exact same readiness score.
+      const readiness = Math.max(0, Math.min(100, Math.round(evaluation.readinessScore)));
       return {
         ...prev,
         xp: newXp,

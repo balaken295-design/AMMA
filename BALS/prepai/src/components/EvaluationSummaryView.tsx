@@ -178,6 +178,25 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
             </p>
           </div>
 
+          {/* Score Methodology */}
+          <div className="col-span-12 bg-white border border-ink-200/90 rounded-3xl p-5 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-black text-ink-900">How your readiness score is calculated</h3>
+                <p className="text-xs text-ink-600 mt-1">The score is derived from the evaluated metrics below. It is not a separate AI-generated number.</p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
+                <span className="px-3 py-2 bg-ink-50 rounded-xl">Technical {evalData.metrics.bodyLanguage.available !== false ? '35' : '40'}%</span>
+                <span className="px-3 py-2 bg-ink-50 rounded-xl">Communication {evalData.metrics.bodyLanguage.available !== false ? '30' : '35'}%</span>
+                <span className="px-3 py-2 bg-ink-50 rounded-xl">Confidence {evalData.metrics.bodyLanguage.available !== false ? '20' : '25'}%</span>
+                {evalData.metrics.bodyLanguage.available !== false && <span className="px-3 py-2 bg-ink-50 rounded-xl">Body Language 15%</span>}
+              </div>
+            </div>
+            {evalData.metrics.bodyLanguage.available === false && (
+              <p className="text-[11px] text-ink-500 mt-3">Camera tracking was unavailable, so the readiness calculation redistributes the weighting across technical accuracy, communication and confidence.</p>
+            )}
+          </div>
+
           {/* Detailed Performance Metrics Card */}
           <div
             id="performance-metrics-card"
@@ -252,6 +271,12 @@ export const EvaluationSummaryView: React.FC<EvaluationSummaryViewProps> = ({
               </div>
             </div>
           </div>
+
+          {evalData.degraded && (
+            <div className="col-span-12 bg-highlight-50 border border-highlight-200 rounded-2xl px-4 py-3 text-sm text-highlight-800">
+              The AI evaluator was unavailable for this session. Scores are transcript-based estimates and technical correctness could not be verified automatically.
+            </div>
+          )}
 
           {/* Transcript Section */}
           <div className="col-span-12 lg:col-span-8 space-y-6">
