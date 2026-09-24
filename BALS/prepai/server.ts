@@ -1474,12 +1474,14 @@ Return JSON only:
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         readinessScore: calculateGdReadiness(metrics),
         metrics,
-        transcript: Array.isArray(evaluation.transcript) ? evaluation.transcript.map((item: any, i: number) => ({
-          id: String(item?.id || i + 1),
-          speaker: String(item?.speaker || 'Candidate'),
-          text: String(item?.text || ''),
-          aiInsight: String(item?.aiInsight || 'Review whether this contribution added a relevant point, built on another speaker, and moved the discussion forward.'),
-        })) : [],
+        transcript: candidateTurns.map((message: any, i: number) => ({
+          id: String(message?.id || i + 1),
+          speaker: String(message?.senderName || 'Candidate'),
+          text: String(message?.text || ''),
+          aiInsight: String(
+            Array.isArray(evaluation.transcript) ? evaluation.transcript[i]?.aiInsight : ''
+          ) || 'Review whether this contribution added a relevant point, built on another speaker, and moved the discussion forward.',
+        })),
         nextSteps: Array.isArray(evaluation.nextSteps) ? evaluation.nextSteps.slice(0, 3) : [],
         overallNote: String(evaluation.overallNote || "Evaluation is based on the captured discussion transcript."),
         degraded: false,
