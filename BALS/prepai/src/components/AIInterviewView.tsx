@@ -95,14 +95,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const speechUiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSpeechTextRef = useRef<string | null>(null);
   const lastFinalChunkRef = useRef({ text: '', at: 0 });
-  const vadStreamRef = useRef<MediaStream | null>(null);
-  const vadContextRef = useRef<AudioContext | null>(null);
-  const vadAnalyserRef = useRef<AnalyserNode | null>(null);
-  const vadFrameRef = useRef<number | null>(null);
-  const vadNoiseFloorRef = useRef(0.008);
-  const speechActiveRef = useRef(false);
-  const lastSpeechAtRef = useRef(0);
-  const vadCalibrationFramesRef = useRef(0);
   const recognitionStartingRef = useRef(false);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
@@ -170,21 +162,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         else interim += transcript;
       }
 
-      // The browser ASR service can hallucinate short words from fan/AC/room
-      // noise. A local RMS voice-activity gate decides whether recognition
-      // results are allowed into the answer box.
-      const vadWarm = vadCalibrationFramesRef.current >= 10;
-      const speechRecentlyDetected =
-        speechActiveRef.current || performance.now() - lastSpeechAtRef.current < 1400;
-
-      // During the first few recognition events, don't hard-block ASR while the
-      // local monitor is warming up.
-      if (vadWarm && !speechRecentlyDetected) {
-        interimSpeechRef.current = '';
-        queueSpeechUi(speechBaseRef.current);
-        return;
-      }
-
       const normalizedFinal = finalChunk.trim().replace(/\s+/g, ' ');
       const now = performance.now();
       const repeatedFinal =
@@ -209,16 +186,14 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         shouldListenRef.current = false;
-        stopVoiceActivityMonitor();
-        setIsListening(false);
+          setIsListening(false);
         setMicEnabled(false);
         setSpeechError('Microphone access was blocked. Allow microphone access for this site, then try again.');
       } else if (event.error === 'no-speech') {
         setSpeechError('Listening…');
       } else if (event.error === 'audio-capture') {
         shouldListenRef.current = false;
-        stopVoiceActivityMonitor();
-        setIsListening(false);
+            setIsListening(false);
         setMicEnabled(false);
         setSpeechError('No microphone was found. Check your microphone and try again.');
       } else if (event.error === 'network') {
@@ -235,12 +210,19 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         window.setTimeout(() => {
           if (!shouldListenRef.current || recognitionStartingRef.current) return;
           recognitionStartingRef.current = true;
-          try { recognition.start(); } catch (error) {
+          try {
+            recognition.start();
+          } catch (error: any) {
             console.warn('Speech recognition restart failed:', error);
+            // Chrome may still be transitioning from the previous session.
+            window.setTimeout(() => {
+              if (!shouldListenRef.current) return;
+              try { recognition.start(); } catch {}
+            }, 180);
           } finally {
             recognitionStartingRef.current = false;
           }
-        }, 40);
+        }, 80);
       } else {
         setIsListening(false);
         setMicEnabled(false);
@@ -262,99 +244,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       recognitionRef.current = null;
     };
   }, [selectedDomain, selectedFocus?.label, resumeSummary]);
-
-  const stopVoiceActivityMonitor = () => {
-    if (vadFrameRef.current !== null) cancelAnimationFrame(vadFrameRef.current);
-    vadFrameRef.current = null;
-    try { vadContextRef.current?.close(); } catch {}
-    vadContextRef.current = null;
-    vadAnalyserRef.current = null;
-    vadStreamRef.current?.getTracks().forEach(track => track.stop());
-    vadStreamRef.current = null;
-    speechActiveRef.current = false;
-    vadCalibrationFramesRef.current = 0;
-  };
-
-  const startVoiceActivityMonitor = async () => {
-    stopVoiceActivityMonitor();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-        },
-        video: false,
-      });
-
-      const AudioContextCtor = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextCtor) {
-        stream.getTracks().forEach(track => track.stop());
-        return false;
-      }
-
-      const context: AudioContext = new AudioContextCtor();
-      const source = context.createMediaStreamSource(stream);
-      const analyser = context.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.smoothingTimeConstant = 0.65;
-      source.connect(analyser);
-
-      vadStreamRef.current = stream;
-      vadContextRef.current = context;
-      vadAnalyserRef.current = analyser;
-
-      const data = new Uint8Array(analyser.fftSize);
-      let calibrationFrames = 0;
-      let calibrationTotal = 0;
-
-      const loop = () => {
-        if (!shouldListenRef.current || !vadAnalyserRef.current) return;
-
-        analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-          const sample = (data[i] - 128) / 128;
-          sum += sample * sample;
-        }
-        const rms = Math.sqrt(sum / data.length);
-
-        // Learn the room's noise floor only from the first ~450ms. Keep this
-        // gate deliberately permissive: microphone RMS varies a lot between
-        // laptops/headsets, and an aggressive threshold can block real speech.
-        if (calibrationFrames < 28) {
-          calibrationTotal += rms;
-          calibrationFrames++;
-          vadCalibrationFramesRef.current = calibrationFrames;
-          if (calibrationFrames === 28) {
-            vadNoiseFloorRef.current = Math.max(0.003, calibrationTotal / calibrationFrames);
-          }
-        }
-
-        const floor = vadNoiseFloorRef.current;
-        // Speech usually rises clearly above the local floor. Use a low absolute
-        // floor and modest multiplier so quiet speakers are still accepted.
-        const threshold = Math.max(0.009, floor * 1.35);
-        const speakingNow = rms > threshold;
-
-        if (speakingNow) {
-          speechActiveRef.current = true;
-          lastSpeechAtRef.current = performance.now();
-        } else if (performance.now() - lastSpeechAtRef.current > 1200) {
-          speechActiveRef.current = false;
-        }
-
-        vadFrameRef.current = requestAnimationFrame(loop);
-      };
-
-      vadFrameRef.current = requestAnimationFrame(loop);
-      return true;
-    } catch (error) {
-      console.warn('Voice activity monitor unavailable:', error);
-      return false;
-    }
-  };
 
   const toggleMic = async () => {
     const recognition = recognitionRef.current;
@@ -383,9 +272,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     speechBaseRef.current = userAnswerInput.trim();
     interimSpeechRef.current = '';
     lastFinalChunkRef.current = { text: '', at: 0 };
-    vadCalibrationFramesRef.current = 0;
-    speechActiveRef.current = false;
-    lastSpeechAtRef.current = 0;
     ignoreSpeechResultsRef.current = false;
     shouldListenRef.current = true;
     setSpeechError('Listening…');
@@ -409,15 +295,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         }
       }
 
-      // Start VAD after ASR has successfully been requested. Failure of the
-      // optional monitor must not disable speech recognition.
-      if (shouldListenRef.current) {
-        void startVoiceActivityMonitor().then(vadReady => {
-          if (!vadReady && shouldListenRef.current) {
-            console.warn('Voice activity monitor unavailable; continuing with browser speech recognition.');
-          }
-        });
-      }
     } catch (error) {
       console.warn('Speech recognition start failed:', error);
       shouldListenRef.current = false;
