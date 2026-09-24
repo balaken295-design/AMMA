@@ -1288,33 +1288,156 @@ app.post("/api/gemini/gd-turn", async (req, res) => {
 });
 
 // API Endpoint 2.5: Final Group Discussion Evaluation
+function buildGdHeuristicEvaluation(topic: string, transcript: any[], candidateId: string): any {
+  const candidateTurns = Array.isArray(transcript)
+    ? transcript.filter((m: any) => m && m.senderId === candidateId && String(m.text || '').trim())
+    : [];
+  const texts = candidateTurns.map((m: any) => String(m.text).trim());
+  const words = texts.map(t => t.split(/\s+/).filter(Boolean).length);
+  const avgWords = words.length ? words.reduce((a, b) => a + b, 0) / words.length : 0;
+  const substantial = words.filter(n => n >= 12 && n <= 110).length;
+  const relevance = texts.length ? Math.round(Math.min(100, 45 + (substantial / texts.length) * 40 + Math.min(avgWords, 80) / 80 * 15)) : 0;
+  const clarity = texts.length ? Math.round(Math.min(100, 45 + Math.min(avgWords, 80) / 80 * 30 + (texts.filter(t => /[.!?]/.test(t)).length / texts.length) * 25)) : 0;
+  const listeningSignals = texts.filter(t => /\b(i agree|i disagree|building on|adding to|as .* said|as .* mentioned|another point|however|on that point)\b/i.test(t)).length;
+  const listening = texts.length ? Math.round(Math.min(100, 45 + (listeningSignals / texts.length) * 55)) : 0;
+  const leadershipSignals = texts.filter(t => /\b(i would like to|let me add|my point is|we should|i suggest|to conclude|in conclusion|let's|another important point)\b/i.test(t)).length;
+  const leadership = texts.length ? Math.round(Math.min(100, 40 + (leadershipSignals / texts.length) * 60 + Math.min(texts.length, 4) * 4)) : 0;
+  const metrics = { relevance, clarity, listening, leadership };
+  const readinessScore = Math.round((relevance + clarity + listening + leadership) / 4);
+  const weakest = [
+    ['Content Relevance', relevance, 'Keep each contribution directly connected to the GD topic and support your point with a clear reason or example.'],
+    ['Communication Clarity', clarity, 'Use shorter, structured contributions with one main point before adding supporting details.'],
+    ['Listening & Building', listening, 'Explicitly acknowledge a peer\'s point before extending, challenging, or connecting it to your own argument.'],
+    ['Leadership & Initiative', leadership, 'Take initiative by introducing a useful point, connecting different views, or helping the discussion move forward.'],
+  ].sort((a, b) => Number(a[1]) - Number(b[1]));
+
+  return {
+    topic: topic || 'Group Discussion',
+    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    readinessScore,
+    metrics: {
+      relevance: { score: relevance, note: texts.length ? 'Transcript-based estimate from the relevance and completeness of your captured contributions.' : 'No candidate contribution was captured.' },
+      clarity: { score: clarity, note: texts.length ? 'Transcript-based estimate from contribution length and sentence structure.' : 'No candidate contribution was captured.' },
+      listening: { score: listening, note: texts.length ? 'Estimate based on explicit language that connects your contribution to other speakers.' : 'No candidate contribution was captured.' },
+      leadership: { score: leadership, note: texts.length ? 'Estimate based on initiative language and contribution frequency; leadership cannot be fully measured from text alone.' : 'No candidate contribution was captured.' },
+    },
+    transcript: candidateTurns.map((m: any, i: number) => ({
+      id: String(m.id || i + 1),
+      speaker: String(m.senderName || 'Candidate'),
+      text: String(m.text || ''),
+    })),
+    nextSteps: weakest.slice(0, 3).map(item => ({
+      title: `Improve ${item[0]}`,
+      description: String(item[2]),
+    })),
+    overallNote: texts.length
+      ? 'This is a transcript-based estimate generated from the candidate contributions captured in the GD session.'
+      : 'No candidate contributions were captured, so a meaningful GD assessment could not be produced.',
+    degraded: true,
+  };
+}
+
 app.post("/api/gemini/gd-evaluation", async (req, res) => {
-  const { transcript, userId } = req.body; // transcript = array of {senderName, text}
+  const { transcript, candidateId, topic } = req.body;
   const ai = getGeminiClient();
 
-  if (!ai || !transcript || transcript.length === 0) {
-    return res.json({ success: true, evaluation: { readinessScore: 0, metrics: {
-      relevance: { score: 0, note: "No transcript captured." },
-      clarity: { score: 0, note: "No transcript captured." },
-      listening: { score: 0, note: "No transcript captured." },
-      leadership: { score: 0, note: "No transcript captured." }
-    }}});
+  if (!Array.isArray(transcript) || transcript.length === 0) {
+    return res.json({
+      success: true,
+      evaluation: buildGdHeuristicEvaluation(topic, [], candidateId || ''),
+    });
+  }
+
+  const candidateTurns = transcript.filter((m: any) =>
+    m && m.senderId === candidateId && String(m.text || '').trim()
+  );
+
+  if (!candidateTurns.length) {
+    return res.json({
+      success: true,
+      evaluation: buildGdHeuristicEvaluation(topic, transcript, candidateId || ''),
+    });
+  }
+
+  if (!ai) {
+    return res.json({
+      success: true,
+      evaluation: buildGdHeuristicEvaluation(topic, transcript, candidateId || ''),
+    });
   }
 
   try {
-    const convo = transcript.map((t: any) => `${t.senderName}: ${t.text}`).join("\n");
-    const prompt = `You are an MBA Group Discussion evaluator. Score ONLY the candidate's turns (the user, not AI peers) on Content Relevance, Communication Clarity, Listening/Building on Others, Leadership/Initiative (each 0-100). Transcript:\n${convo}\nReturn JSON only: {"readinessScore": n, "metrics": {"relevance": {"score": n, "note": "..."}, "clarity": {"score": n, "note": "..."}, "listening": {"score": n, "note": "..."}, "leadership": {"score": n, "note": "..."}}}`;
+    const candidateContributions = candidateTurns
+      .map((m: any, i: number) => `Contribution ${i + 1}: ${String(m.text).trim()}`)
+      .join("\n");
+
+    const fullContext = transcript
+      .map((m: any) => `${m.senderName || 'Participant'}: ${m.text || ''}`)
+      .join("\n");
+
+    const prompt = `You are an MBA Group Discussion evaluator.
+Topic: "${topic || 'Unknown GD topic'}"
+
+Evaluate ONLY the candidate identified by candidateId. Do not score AI peers or other participants.
+Candidate contributions:
+${candidateContributions}
+
+Full discussion context, used only to judge whether the candidate built on others:
+${fullContext}
+
+Score these four dimensions from 0-100:
+1. Content Relevance — relevance, reasoning, examples and staying on topic.
+2. Communication Clarity — understandable, structured and concise expression.
+3. Listening & Building — whether the candidate responds to, connects with, or constructively challenges other speakers.
+4. Leadership & Initiative — useful initiative, introducing/connecting ideas, helping the discussion progress without dominating.
+
+Rules:
+- Use only evidence present in the transcript.
+- Do not invent achievements, experience, body language, eye contact, confidence, or personality traits.
+- Do not compare the candidate with an unspecified population and do not provide a percentile.
+- If evidence for a dimension is limited, say so in its note rather than inventing evidence.
+- Return exactly one transcript item for each candidate contribution.
+- Generate exactly 3 next steps based on the weakest observed areas.
+- Keep the overall note factual and evidence-based.
+
+Return JSON only:
+{
+  "readinessScore": number,
+  "metrics": {
+    "relevance": {"score": number, "note": "string"},
+    "clarity": {"score": number, "note": "string"},
+    "listening": {"score": number, "note": "string"},
+    "leadership": {"score": number, "note": "string"}
+  },
+  "transcript": [{"id": "string", "speaker": "string", "text": "string"}],
+  "nextSteps": [{"title": "string", "description": "string"}],
+  "overallNote": "string"
+}`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: prompt,
-      config: { responseMimeType: "application/json" }
+      config: {
+        responseMimeType: "application/json",
+      }
     });
+
     const evaluation = JSON.parse(response.text || "{}");
-    return res.json({ success: true, evaluation });
+    return res.json({
+      success: true,
+      evaluation: {
+        topic: topic || 'Group Discussion',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        ...evaluation,
+        degraded: false,
+      }
+    });
   } catch (error) {
     console.error("GD evaluation error:", error);
-    return res.json({ success: false });
+    return res.json({
+      success: true,
+      evaluation: buildGdHeuristicEvaluation(topic, transcript, candidateId || ''),
+    });
   }
 });
 
