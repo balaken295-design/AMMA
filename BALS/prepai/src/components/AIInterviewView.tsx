@@ -349,7 +349,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     speakText(firstQuestion);
   };
 
-  const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEvaluation => ({ role: selectedRole, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), readinessScore: 0, percentile: 0, metrics: { communication: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' }, technicalAccuracy: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' }, bodyLanguage: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' }, confidence: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' } }, transcript: history.map((q, i) => ({ id: String(i + 1), question: q.question, answer: q.userAnswer || '', aiInsight: 'N/A' })), nextSteps: [], recommendedResources: [] });
+  const getFallbackEvaluation = (history: InterviewQuestion[] = []): InterviewEvaluation => ({ role: selectedRole, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), readinessScore: 0, metrics: { communication: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' }, technicalAccuracy: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' }, bodyLanguage: { score: 0, available: false, note: 'Not evaluated — AI service did not respond.' }, confidence: { score: 0, note: 'Evaluation unavailable — AI service did not respond.' } }, transcript: history.map((q, i) => ({ id: String(i + 1), question: q.question, answer: q.userAnswer || '', aiInsight: 'N/A' })), nextSteps: [], recommendedResources: [] });
 
   const handleNextStep = async () => {
     if (!userAnswerInput.trim() || isGenerating) return;
@@ -365,7 +365,15 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     speechBaseRef.current = '';
     interimSpeechRef.current = '';
     if (currentStep >= TOTAL_STEPS) {
-      try { const res = await fetch('/api/gemini/interview-evaluation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: selectedRole, qaPairs: updatedHistory }) }); const data = await res.json(); const evaluation = data.success && data.evaluation ? data.evaluation : getFallbackEvaluation(updatedHistory); fetch('/api/db/save-interview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidateName: startedWithResume && resumeSummary?.candidateName ? resumeSummary.candidateName : 'MBA Candidate', role: selectedRole, evaluation }) }).catch(e => console.warn('Save interview score error:', e)); onCompleteInterview(evaluation); } catch { onCompleteInterview(getFallbackEvaluation(updatedHistory)); } finally { setIsGenerating(false); }
+      try { const res = await fetch('/api/gemini/interview-evaluation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+          role: selectedRole,
+          qaPairs: updatedHistory,
+          behaviorMetrics: {
+            trackingAvailable: !trackingError && eyeContactPct !== null,
+            eyeContactPct,
+            postureLabel,
+          },
+        }) }); const data = await res.json(); const evaluation = data.success && data.evaluation ? data.evaluation : getFallbackEvaluation(updatedHistory); fetch('/api/db/save-interview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidateName: startedWithResume && resumeSummary?.candidateName ? resumeSummary.candidateName : 'MBA Candidate', role: selectedRole, evaluation }) }).catch(e => console.warn('Save interview score error:', e)); onCompleteInterview(evaluation); } catch { onCompleteInterview(getFallbackEvaluation(updatedHistory)); } finally { setIsGenerating(false); }
       return;
     }
     const nextStepNum = currentStep + 1; setCurrentStep(nextStepNum);

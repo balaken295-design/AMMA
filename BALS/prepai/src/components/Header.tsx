@@ -100,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
             }`}
           >
             <Award className="w-4 h-4" />
-            Valuation Report
+            Evaluation Report
           </button>
         </nav>
 

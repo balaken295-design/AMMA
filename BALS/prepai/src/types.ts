@@ -151,11 +151,11 @@ export interface InterviewEvaluation {
   role: string;
   date: string;
   readinessScore: number;
-  percentile: number;
+  percentile?: number;
   metrics: {
     communication: { score: number; note: string };
     technicalAccuracy: { score: number; note: string };
-    bodyLanguage: { score: number; note: string };
+    bodyLanguage: { score: number; available?: boolean; note: string };
     confidence: { score: number; note: string };
   };
   transcript: {

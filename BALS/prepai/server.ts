@@ -451,47 +451,52 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 800): 
 // is unavailable, so the candidate never sees a blanket "0/100 — AI service
 // did not respond" screen. Scores are heuristic (based on answer length and
 // completeness) and clearly labeled as an estimate in each note.
-function buildHeuristicEvaluation(role: string, qaPairs: any[]): any {
-  const answers = (qaPairs || []).map((q) => (q?.userAnswer || "").trim());
-  const answered = answers.filter((a) => a.length > 0);
-  const avgLen = answered.length
-    ? answered.reduce((sum, a) => sum + a.split(/\s+/).length, 0) / answered.length
-    : 0;
-
-  // Simple, transparent heuristic: reward longer, more complete answers.
-  // Clamped so it never reads as a polished AI score, just a fair estimate.
-  const completeness = qaPairs?.length ? answered.length / qaPairs.length : 0;
-  const depthScore = Math.min(100, Math.round(avgLen * 2.5));
-  const baseScore = Math.round(completeness * 50 + Math.min(depthScore, 50));
-  const clampedScore = Math.max(35, Math.min(baseScore, 80));
-
-  const note = "Estimated score — our AI evaluator was temporarily unavailable, so this reflects a basic completeness/length check of your answer rather than a full review.";
-
+function buildHeuristicEvaluation(role: string, qaPairs: any[], behaviorMetrics?: any): any {
+  const pairs = Array.isArray(qaPairs) ? qaPairs : [];
+  const answers = pairs.map((q) => String(q?.userAnswer || "").trim());
+  const answered = answers.filter(Boolean);
+  const wordCounts = answered.map((a) => a.split(/\s+/).filter(Boolean).length);
+  const avgLen = wordCounts.length ? wordCounts.reduce((sum, n) => sum + n, 0) / wordCounts.length : 0;
+  const completeness = pairs.length ? answered.length / pairs.length : 0;
+  const communication = Math.max(0, Math.min(100, Math.round(completeness * 55 + Math.min(avgLen, 120) / 120 * 45)));
+  const technicalAccuracy = Math.max(0, Math.min(100, Math.round(completeness * 50 + Math.min(avgLen, 150) / 150 * 50)));
+  const confidence = Math.max(0, Math.min(100, Math.round(completeness * 45 + Math.min(avgLen, 110) / 110 * 55)));
+  const trackingAvailable = Boolean(behaviorMetrics?.trackingAvailable) && typeof behaviorMetrics?.eyeContactPct === "number";
+  const eye = trackingAvailable ? Math.max(0, Math.min(100, Math.round(behaviorMetrics.eyeContactPct))) : null;
+  const posture = String(behaviorMetrics?.postureLabel || "Not evaluated");
+  const postureScore = posture === "Optimal" ? 100 : ["Tilted", "Slouching", "Leaning back"].includes(posture) ? 60 : 50;
+  const bodyLanguage = trackingAvailable && eye !== null ? Math.round((eye * 0.7) + (postureScore * 0.3)) : 0;
+  const readinessInputs = trackingAvailable ? [communication, technicalAccuracy, bodyLanguage, confidence] : [communication, technicalAccuracy, confidence];
+  const readinessScore = Math.round(readinessInputs.reduce((a, b) => a + b, 0) / readinessInputs.length);
+  const lowest: Array<[string, number]> = [
+    ["Communication", communication], ["Technical Accuracy", technicalAccuracy], ["Confidence", confidence],
+    ...(trackingAvailable ? [["Body Language", bodyLanguage] as [string, number]] : []),
+  ].sort((a, b) => a[1] - b[1]);
+  const nextSteps = lowest.slice(0, 3).map(([name, score]) => ({
+    title: `Improve ${name}`,
+    description: `Your current estimated ${name.toLowerCase()} score is ${score}/100. Review your answer feedback and practise another interview focused on this area.`,
+    icon: name === "Technical Accuracy" ? "school" : name === "Communication" ? "mic" : name === "Body Language" ? "user-check" : "brain"
+  }));
   return {
-    role: role || "Candidate Interview",
+    role: role || "MBA Interview",
     date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-    readinessScore: clampedScore,
-    percentile: Math.max(5, 100 - clampedScore),
+    readinessScore,
     metrics: {
-      communication: { score: clampedScore, note },
-      technicalAccuracy: { score: clampedScore, note },
-      bodyLanguage: { score: clampedScore, note: "Not evaluated — AI evaluator was unavailable for this session." },
-      confidence: { score: clampedScore, note },
+      communication: { score: communication, note: answered.length ? "Estimated from answer completeness and length because the AI evaluator was unavailable." : "No usable answer was available for evaluation." },
+      technicalAccuracy: { score: technicalAccuracy, note: answered.length ? "Estimated from answer completeness and depth; this is not a subject-matter correctness check." : "No usable answer was available for evaluation." },
+      bodyLanguage: { score: bodyLanguage, available: trackingAvailable, note: trackingAvailable ? `Based on camera tracking: eye contact ${eye}% and posture "${posture}".` : "Not evaluated because camera tracking data was unavailable." },
+      confidence: { score: confidence, note: answered.length ? "Estimated from answer completeness and structure; confidence cannot be directly measured from transcript text." : "No usable answer was available for evaluation." },
     },
-    transcript: (qaPairs || []).map((pair: any, i: number) => ({
-      id: String(pair.id ?? i + 1),
-      question: pair.question,
-      answer: pair.userAnswer || "",
-      aiInsight: "AI insight unavailable for this answer — the evaluator service could not be reached.",
-    })),
-    nextSteps: [
-      { title: "Retry Evaluation", description: "Our AI evaluator hit a temporary issue. Try running the interview again for a full, detailed report.", icon: "refresh" },
+    transcript: pairs.map((pair: any, i: number) => ({ id: String(pair.id ?? i + 1), question: String(pair.question || ""), answer: String(pair.userAnswer || ""), aiInsight: "AI evaluator unavailable. Review this answer against relevance, structure, clarity, and accuracy before treating this as a final assessment." })),
+    nextSteps,
+    recommendedResources: [
+      { title: "Review the weakest metric above and practise a targeted mock interview.", url: "#" },
+      { title: "Use the answer-by-answer feedback to rewrite your weakest response.", url: "#" },
+      { title: "Repeat the interview after targeted practice to compare your scores.", url: "#" },
     ],
-    recommendedResources: [],
     degraded: true,
   };
 }
-
 // AI Interview speech-to-text endpoint.
 // The browser records a short answer and sends the audio bytes here.
 // Gemini 3.5 Transcribe is purpose-built for speech-to-text and supports
@@ -1604,68 +1609,35 @@ Candidate's last answer: "${userAnswer || ""}"
 
 // API Endpoint 4: Comprehensive Final Interview Evaluation Report
 app.post("/api/gemini/interview-evaluation", async (req, res) => {
-  const { role, qaPairs } = req.body;
+  const { role, qaPairs, behaviorMetrics } = req.body;
   const ai = getInterviewGeminiClient();
 
   if (!ai) {
-    return res.json({
-      success: true,
-      evaluation: {
-        role: role || "Senior Software Engineer Role Simulation",
-        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-        readinessScore: 85,
-        percentile: 15,
-        metrics: {
-          communication: { score: 92, note: "Exceptional articulation and clarity in explaining complex logic." },
-          technicalAccuracy: { score: 78, note: "Solid fundamentals; minor inefficiency noted in system design task." },
-          bodyLanguage: { score: 88, note: "Great eye contact and posture throughout the 45-minute session." },
-          confidence: { score: 82, note: "Maintained composure even when faced with high-stress questions." }
-        },
-        transcript: qaPairs && qaPairs.length > 0 ? qaPairs.map((pair: any) => ({
-          id: String(pair.id || Math.random()),
-          question: pair.question,
-          answer: pair.userAnswer || "I believe in data-driven decisions. I would ask both parties to present their POCs and evaluate them against scaling requirements.",
-          aiInsight: "Great structure, but consider mentioning the human element. Adding a note about facilitating a healthy discussion would boost your Leadership score."
-        })) : [
-          {
-            id: 't1',
-            question: "How would you handle a conflict within your development team regarding architectural choices?",
-            answer: "I believe in data-driven decisions. I would ask both parties to present their POCs, evaluate them against our scaling requirements, and then decide based on long-term maintainability.",
-            aiInsight: "Great structure, but consider mentioning the human element. Adding a note about 'facilitating a healthy discussion to ensure everyone feels heard' would boost your 'Leadership' score by approximately 12%."
-          },
-          {
-            id: 't2',
-            question: "Describe your experience with Microservices architecture.",
-            answer: "In my last role, we migrated from a monolith to microservices using Kubernetes. It helped us deploy faster and isolate faults across services.",
-            aiInsight: "You hit the 'fault isolation' keyword. To make this answer stronger, quantify the results (e.g., 'Reduced deployment time by 40%')."
-          }
-        ],
-        nextSteps: [
-          { title: "Refine System Design", description: "Based on your tech accuracy, we recommend the 'Advanced System Design' module.", icon: "school" },
-          { title: "Book Expert Mock", description: "You're ready for a live human peer review. Schedule for next Tuesday.", icon: "event_available" },
-          { title: "Review Weak Keywords", description: "Study the feedback on 'CAP Theorem' and 'Database Normalization'.", icon: "assignment_turned_in" }
-        ],
-        recommendedResources: [
-          { title: "Distributed Systems 101", url: "#" },
-          { title: "STAR Method Cheat Sheet", url: "#" },
-          { title: "Top 50 Backend Questions", url: "#" }
-        ]
-      }
-    });
+    return res.json({ success: true, evaluation: buildHeuristicEvaluation(role, qaPairs, behaviorMetrics) });
   }
 
   try {
-    const prompt = `Conduct a complete post-interview evaluation report for a candidate who interviewed for "${role}".
-Transcript QA Pairs:
-${JSON.stringify(qaPairs)}
+    const prompt = `Conduct a complete post-interview evaluation for a candidate interviewing for "${role}".
 
-Generate a detailed evaluation report object with:
-1. readinessScore (number 0-100, e.g. 85)
-2. percentile (top percentile, e.g. 15)
-3. metrics for communication, technicalAccuracy, bodyLanguage, confidence (scores 0-100 and brief diagnostic note)
-4. transcript array with question, answer, and actionable "aiInsight" for each
-5. 3 nextSteps recommendations
-6. 3 recommendedResources titles`;
+Candidate transcript:
+${JSON.stringify(qaPairs || [])}
+
+Observed camera metrics:
+${JSON.stringify(behaviorMetrics || { trackingAvailable: false })}
+
+Rules:
+- Evaluate only evidence in the transcript and supplied camera metrics.
+- Communication = clarity, structure, relevance and conciseness.
+- Technical Accuracy = correctness and depth relative to the actual questions.
+- Confidence = answer-delivery signals in the transcript only; do not claim to know mental state.
+- Body Language = ONLY the supplied camera metrics. If trackingAvailable is false, mark it unavailable and do not invent observations.
+- Never invent experience, technologies, achievements, results, eye contact, posture, or other facts.
+- Do not produce a percentile or compare the candidate with an unspecified candidate population.
+- Each transcript insight must refer to the actual question and answer.
+- Next steps must come from actual weaknesses.
+- Recommended resources must be relevant to the actual weaknesses; do not invent appointments, dates, completed courses, or fake external links.
+
+Return JSON with readinessScore, four metrics, one transcript item per supplied question, exactly 3 nextSteps, and exactly 3 recommendedResources.`;
 
     const response = await withRetry(() => ai.models.generateContent({
       model: "gemini-3.6-flash",
@@ -1676,7 +1648,6 @@ Generate a detailed evaluation report object with:
           type: Type.OBJECT,
           properties: {
             readinessScore: { type: Type.INTEGER },
-            percentile: { type: Type.INTEGER },
             metrics: {
               type: Type.OBJECT,
               properties: {
@@ -1692,8 +1663,12 @@ Generate a detailed evaluation report object with:
                 },
                 bodyLanguage: {
                   type: Type.OBJECT,
-                  properties: { score: { type: Type.INTEGER }, note: { type: Type.STRING } },
-                  required: ["score", "note"],
+                  properties: {
+                    score: { type: Type.INTEGER },
+                    available: { type: Type.BOOLEAN },
+                    note: { type: Type.STRING },
+                  },
+                  required: ["score", "available", "note"],
                 },
                 confidence: {
                   type: Type.OBJECT,
@@ -1740,34 +1715,25 @@ Generate a detailed evaluation report object with:
               },
             },
           },
-          required: ["readinessScore", "percentile", "metrics", "transcript", "nextSteps", "recommendedResources"],
+          required: ["readinessScore", "metrics", "transcript", "nextSteps", "recommendedResources"],
         },
       },
     }));
 
     const evalData = JSON.parse(response.text || "{}");
-    if (!evalData || typeof evalData.readinessScore !== "number") {
-      throw new Error("Gemini returned an incomplete evaluation payload");
-    }
+    if (!evalData || typeof evalData.readinessScore !== "number") throw new Error("Gemini returned an incomplete evaluation payload");
 
     return res.json({
       success: true,
       evaluation: {
-        role: role || "Senior Software Engineer Role Simulation",
+        role: role || "MBA Interview",
         date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         ...evalData,
       },
     });
   } catch (error) {
-    // Previously this returned a bare 500, which the frontend's catch block
-    // silently swaps for a hardcoded 0/100 "AI service did not respond"
-    // report. We now log the real cause here (check server logs for this)
-    // and hand back a real, non-zero estimate instead.
-    console.error("Error generating evaluation report (falling back to heuristic score):", error);
-    return res.json({
-      success: true,
-      evaluation: buildHeuristicEvaluation(role, qaPairs),
-    });
+    console.error("Error generating evaluation report (falling back to transcript-based evaluation):", error);
+    return res.json({ success: true, evaluation: buildHeuristicEvaluation(role, qaPairs, behaviorMetrics) });
   }
 });
 
