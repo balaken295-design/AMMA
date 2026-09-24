@@ -1424,7 +1424,14 @@ Rules:
 - Do not compare the candidate with an unspecified population and do not provide a percentile.
 - If evidence for a dimension is limited, say so in its note rather than inventing evidence.
 - Return exactly one transcript item for each candidate contribution.
+- For each contribution, provide an aiInsight containing: one observed strength, one specific gap, and one actionable improvement. Do not use generic praise.
 - Generate exactly 3 next steps based on the weakest observed areas.
+- Use this scoring rubric consistently:
+  90-100 = consistently strong evidence and effective participation.
+  75-89 = good participation with minor gaps.
+  60-74 = mixed participation with noticeable gaps.
+  40-59 = weak evidence with major gaps.
+  0-39 = very limited evidence.
 - Keep the overall note factual and evidence-based.
 
 Return JSON only:
@@ -1436,7 +1443,7 @@ Return JSON only:
     "listening": {"score": number, "note": "string"},
     "leadership": {"score": number, "note": "string"}
   },
-  "transcript": [{"id": "string", "speaker": "string", "text": "string"}],
+  "transcript": [{"id": "string", "speaker": "string", "text": "string", "aiInsight": "string"}],
   "nextSteps": [{"title": "string", "description": "string"}],
   "overallNote": "string"
 }`;
@@ -1466,7 +1473,12 @@ Return JSON only:
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         readinessScore: calculateGdReadiness(metrics),
         metrics,
-        transcript: Array.isArray(evaluation.transcript) ? evaluation.transcript : [],
+        transcript: Array.isArray(evaluation.transcript) ? evaluation.transcript.map((item: any, i: number) => ({
+          id: String(item?.id || i + 1),
+          speaker: String(item?.speaker || 'Candidate'),
+          text: String(item?.text || ''),
+          aiInsight: String(item?.aiInsight || 'Review whether this contribution added a relevant point, built on another speaker, and moved the discussion forward.'),
+        })) : [],
         nextSteps: Array.isArray(evaluation.nextSteps) ? evaluation.nextSteps.slice(0, 3) : [],
         overallNote: String(evaluation.overallNote || "Evaluation is based on the captured discussion transcript."),
         degraded: false,
