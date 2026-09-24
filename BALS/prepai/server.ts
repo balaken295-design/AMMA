@@ -1734,7 +1734,7 @@ Projects: ${(resumeSummary.projects || []).map((p: any) => `${p.name} — ${p.de
 Experience: ${(resumeSummary.experience || []).map((e: any) => `${e.roleTitle} at ${e.company} — ${e.description}`).join(" | ") || "N/A"}`
       : "No resume on file — ask general company-fit questions.";
 
-    const prompt = `You are a real interviewer at "${company}", conducting a ${domainLabel} interview. The candidate has already answered three standard opening questions (tell me about yourself, strengths/weaknesses, why should we hire you). Now ask questions specific to THIS company: its business model, recent strategy/products/news, industry position, or culture — plus how the candidate's background (below) fits it.
+    const prompt = `You are a real interviewer at "${company}", conducting a ${domainLabel} interview. The candidate has already completed earlier interview questions shown in the transcript. Now ask questions specific to THIS company: its business model, products/services, industry position, role expectations or culture — plus how the candidate's actual resume background (below) fits it. Do not repeat generic opening questions.
 
 Candidate's resume:
 ${resumeContext}
@@ -1746,7 +1746,7 @@ ${previousQuestions ? previousQuestions.map((q: any) => `Q: ${q.question}\nA: ${
 Candidate's last answer: "${userAnswer || ""}"
 
 1. Provide constructive 1-2 sentence feedback on the candidate's last answer.
-2. Generate the next question — it must be specific to "${company}" (not generic), sound like something a real interviewer at that company would ask, and reference the candidate's resume where relevant.
+2. Generate the next question — it must be specific to "${company}" AND connect to the candidate's actual resume and "${domainLabel}" domain whenever relevant. Do not ask a generic textbook question.
 3. Indicate if this round is finished (isFinished = true if step > 3).`;
 
     const response = await withRetry(() => ai.models.generateContent({
