@@ -1909,13 +1909,37 @@ Return exactly one transcript item per supplied question and exactly 3 nextSteps
       metrics.bodyLanguage.note = "Not evaluated because camera tracking data was unavailable.";
     }
 
+    const aiTranscript = Array.isArray(evalData.transcript) ? evalData.transcript : [];
+    // Preserve the real session transcript. The AI is allowed to generate the
+    // insight, but it must never rewrite the candidate's actual question/answer.
+    const transcript = (Array.isArray(qaPairs) ? qaPairs : []).map((pair: any, i: number) => ({
+      id: String(pair?.id ?? i + 1),
+      question: String(pair?.question || ""),
+      answer: String(pair?.userAnswer || ""),
+      aiInsight: String(
+        aiTranscript[i]?.aiInsight ||
+        "Review whether the answer directly addressed the question, used accurate evidence, and explained the candidate's own contribution."
+      ),
+    }));
+
+    const generatedNextSteps = [
+      ["Technical Accuracy", metrics.technicalAccuracy.score, "Strengthen the weakest technical gaps by revisiting the concepts tested and practising with questions tied to your actual domain and resume."],
+      ["Communication", metrics.communication.score, "Practise concise answers with a clear point, supporting evidence and a direct conclusion."],
+      ["Confidence", metrics.confidence.score, "Practise delivering answers aloud with a clear structure and specific examples rather than relying on broad statements."],
+      ...(metrics.bodyLanguage.available ? [["Body Language", metrics.bodyLanguage.score, "Review your camera feedback and practise steady eye contact and a neutral, comfortable posture."] as [string, number, string]] : []),
+    ].sort((a, b) => Number(a[1]) - Number(b[1])).slice(0, 3).map(([name, , description]) => ({
+      title: `Improve ${name}`,
+      description: String(description),
+      icon: name === "Technical Accuracy" ? "school" : name === "Communication" ? "mic" : name === "Body Language" ? "user-check" : "brain",
+    }));
+
     const evaluation = {
       role: role || "MBA Interview",
       date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       readinessScore: calculateInterviewReadiness(metrics),
       metrics,
-      transcript: Array.isArray(evalData.transcript) ? evalData.transcript : [],
-      nextSteps: Array.isArray(evalData.nextSteps) ? evalData.nextSteps.slice(0, 3) : [],
+      transcript,
+      nextSteps: generatedNextSteps,
       recommendedResources: Array.isArray(evalData.recommendedResources) ? evalData.recommendedResources.slice(0, 3) : [],
       degraded: false,
     };
