@@ -2,6 +2,30 @@ export type AptitudeCategory = 'verbal' | 'logical' | 'quants';
 
 export type MBADomain = 'Finance' | 'HR' | 'Marketing' | 'Business Analytics' | 'Operations' | 'Strategy';
 
+
+export interface GDEvaluation {
+  topic: string;
+  date: string;
+  readinessScore: number;
+  metrics: {
+    relevance: { score: number; note: string };
+    clarity: { score: number; note: string };
+    listening: { score: number; note: string };
+    leadership: { score: number; note: string };
+  };
+  transcript: {
+    id: string;
+    speaker: string;
+    text: string;
+  }[];
+  nextSteps: {
+    title: string;
+    description: string;
+  }[];
+  overallNote: string;
+  degraded?: boolean;
+}
+
 export interface UserProfile {
   email: string;
   name: string;
