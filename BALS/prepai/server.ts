@@ -451,49 +451,68 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 800): 
 // is unavailable, so the candidate never sees a blanket "0/100 — AI service
 // did not respond" screen. Scores are heuristic (based on answer length and
 // completeness) and clearly labeled as an estimate in each note.
+function clampScore(value: any): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : 0;
+}
+
+function calculateInterviewReadiness(metrics: any): number {
+  const communication = clampScore(metrics?.communication?.score);
+  const technical = clampScore(metrics?.technicalAccuracy?.score);
+  const confidence = clampScore(metrics?.confidence?.score);
+  const bodyAvailable = metrics?.bodyLanguage?.available === true;
+  const body = clampScore(metrics?.bodyLanguage?.score);
+
+  if (bodyAvailable) {
+    return Math.round(technical * 0.35 + communication * 0.30 + confidence * 0.20 + body * 0.15);
+  }
+  return Math.round(technical * 0.40 + communication * 0.35 + confidence * 0.25);
+}
+
 function buildHeuristicEvaluation(role: string, qaPairs: any[], behaviorMetrics?: any): any {
   const pairs = Array.isArray(qaPairs) ? qaPairs : [];
-  const answers = pairs.map((q) => String(q?.userAnswer || "").trim());
-  const answered = answers.filter(Boolean);
-  const wordCounts = answered.map((a) => a.split(/\s+/).filter(Boolean).length);
-  const avgLen = wordCounts.length ? wordCounts.reduce((sum, n) => sum + n, 0) / wordCounts.length : 0;
-  const completeness = pairs.length ? answered.length / pairs.length : 0;
-  const communication = Math.max(0, Math.min(100, Math.round(completeness * 55 + Math.min(avgLen, 120) / 120 * 45)));
-  const technicalAccuracy = Math.max(0, Math.min(100, Math.round(completeness * 50 + Math.min(avgLen, 150) / 150 * 50)));
-  const confidence = Math.max(0, Math.min(100, Math.round(completeness * 45 + Math.min(avgLen, 110) / 110 * 55)));
+  const answered = pairs.filter((q: any) => String(q?.userAnswer || "").trim());
+  const answerLengths = answered.map((q: any) => String(q.userAnswer).trim().split(/\s+/).filter(Boolean).length);
+  const avgWords = answerLengths.length ? answerLengths.reduce((a: number, b: number) => a + b, 0) / answerLengths.length : 0;
+  const completion = pairs.length ? answered.length / pairs.length : 0;
+  const structured = answered.filter((q: any) => /\b(first|second|third|because|therefore|for example|for instance|however|finally|result|impact)\b/i.test(String(q.userAnswer))).length;
+  const communication = clampScore(completion * 55 + Math.min(avgWords / 90, 1) * 25 + (answered.length ? structured / answered.length : 0) * 20);
+  const confidence = clampScore(completion * 60 + Math.min(avgWords / 100, 1) * 25 + (answered.length ? structured / answered.length : 0) * 15);
   const trackingAvailable = Boolean(behaviorMetrics?.trackingAvailable) && typeof behaviorMetrics?.eyeContactPct === "number";
-  const eye = trackingAvailable ? Math.max(0, Math.min(100, Math.round(behaviorMetrics.eyeContactPct))) : null;
-  const posture = String(behaviorMetrics?.postureLabel || "Not evaluated");
+  const eye = trackingAvailable ? clampScore(behaviorMetrics.eyeContactPct) : null;
+  const posture = String(behaviorMetrics?.postureLabel || "");
   const postureScore = posture === "Optimal" ? 100 : ["Tilted", "Slouching", "Leaning back"].includes(posture) ? 60 : 50;
-  const bodyLanguage = trackingAvailable && eye !== null ? Math.round((eye * 0.7) + (postureScore * 0.3)) : 0;
-  const readinessInputs = trackingAvailable ? [communication, technicalAccuracy, bodyLanguage, confidence] : [communication, technicalAccuracy, confidence];
-  const readinessScore = Math.round(readinessInputs.reduce((a, b) => a + b, 0) / readinessInputs.length);
-  const lowest: Array<[string, number]> = [
-    ["Communication", communication], ["Technical Accuracy", technicalAccuracy], ["Confidence", confidence],
-    ...(trackingAvailable ? [["Body Language", bodyLanguage] as [string, number]] : []),
+  const bodyScore = trackingAvailable && eye !== null ? Math.round(eye * 0.7 + postureScore * 0.3) : 0;
+  const technical = clampScore(completion * 50 + Math.min(avgWords / 120, 1) * 20 + (answered.length ? structured / answered.length : 0) * 10);
+  const metrics = {
+    communication: { score: communication, note: answered.length ? "Estimate based on captured answer completeness, structure and clarity signals. It is not a substitute for subject-matter grading." : "No usable answer was captured." },
+    technicalAccuracy: { score: technical, note: answered.length ? "AI subject-matter grading was unavailable; this fallback cannot verify whether technical claims are correct." : "No usable answer was captured." },
+    bodyLanguage: { score: bodyScore, available: trackingAvailable, note: trackingAvailable ? `Based on camera tracking: eye contact ${eye}% and posture "${posture}".` : "Not evaluated because camera tracking data was unavailable." },
+    confidence: { score: confidence, note: answered.length ? "Estimate based on answer completeness and structure signals. Confidence is not directly measurable from transcript text." : "No usable answer was captured." },
+  };
+  const readinessScore = calculateInterviewReadiness(metrics);
+  const weakest = [
+    ["Communication", communication], ["Technical Accuracy", technical], ["Confidence", confidence],
+    ...(trackingAvailable ? [["Body Language", bodyScore] as [string, number]] : []),
   ].sort((a, b) => a[1] - b[1]);
-  const nextSteps = lowest.slice(0, 3).map(([name, score]) => ({
-    title: `Improve ${name}`,
-    description: `Your current estimated ${name.toLowerCase()} score is ${score}/100. Review your answer feedback and practise another interview focused on this area.`,
-    icon: name === "Technical Accuracy" ? "school" : name === "Communication" ? "mic" : name === "Body Language" ? "user-check" : "brain"
-  }));
+
   return {
     role: role || "MBA Interview",
     date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
     readinessScore,
-    metrics: {
-      communication: { score: communication, note: answered.length ? "Estimated from answer completeness and length because the AI evaluator was unavailable." : "No usable answer was available for evaluation." },
-      technicalAccuracy: { score: technicalAccuracy, note: answered.length ? "Estimated from answer completeness and depth; this is not a subject-matter correctness check." : "No usable answer was available for evaluation." },
-      bodyLanguage: { score: bodyLanguage, available: trackingAvailable, note: trackingAvailable ? `Based on camera tracking: eye contact ${eye}% and posture "${posture}".` : "Not evaluated because camera tracking data was unavailable." },
-      confidence: { score: confidence, note: answered.length ? "Estimated from answer completeness and structure; confidence cannot be directly measured from transcript text." : "No usable answer was available for evaluation." },
-    },
-    transcript: pairs.map((pair: any, i: number) => ({ id: String(pair.id ?? i + 1), question: String(pair.question || ""), answer: String(pair.userAnswer || ""), aiInsight: "AI evaluator unavailable. Review this answer against relevance, structure, clarity, and accuracy before treating this as a final assessment." })),
-    nextSteps,
-    recommendedResources: [
-      { title: "Review the weakest metric above and practise a targeted mock interview.", url: "#" },
-      { title: "Use the answer-by-answer feedback to rewrite your weakest response.", url: "#" },
-      { title: "Repeat the interview after targeted practice to compare your scores.", url: "#" },
-    ],
+    metrics,
+    transcript: pairs.map((pair: any, i: number) => ({
+      id: String(pair.id ?? i + 1),
+      question: String(pair.question || ""),
+      answer: String(pair.userAnswer || ""),
+      aiInsight: "AI evaluation was unavailable. Review whether the answer directly addressed the question, used accurate evidence, and explained the candidate's own contribution.",
+    })),
+    nextSteps: weakest.slice(0, 3).map(([name, score]) => ({
+      title: `Improve ${name}`,
+      description: `Your estimated ${name.toLowerCase()} score is ${score}/100. Rework the weakest answers with a clearer structure and evidence before repeating the interview.`,
+      icon: name === "Technical Accuracy" ? "school" : name === "Communication" ? "mic" : name === "Body Language" ? "user-check" : "brain",
+    })),
+    recommendedResources: [],
     degraded: true,
   };
 }
@@ -1469,7 +1488,7 @@ app.post("/api/gemini/resume-parse", async (req, res) => {
         education: [],
         focusOptions: [
           { id: "mixed", label: "Mixed — let the AI pick", instruction: "Ask a balanced mix of questions grounded in the resume text provided." },
-          { id: "general", label: `General ${domain || ""} round based on my resume`.trim(), instruction: "Ask general questions appropriate for the chosen domain, referencing the resume where possible." },
+          { id: "domain", label: `${domain || "Domain"} questions from my resume`, instruction: `Ask ${domain || "domain"} interview questions using only the candidate's actual resume details. Probe how their projects, skills, education or experience apply to this domain; do not fall back to generic textbook questions when resume evidence exists.` },
         ],
       },
     });
@@ -1606,8 +1625,9 @@ ${previousQuestions ? previousQuestions.map((q: any) => `Q: ${q.question}\nA: ${
 Candidate's last answer: "${userAnswer || ""}"
 
 1. Provide constructive 1-2 sentence real-time feedback on the candidate's last answer.
-2. Generate the next question — it must sound like something a real interviewer would say out loud, and should reference a specific resume detail (project, company, skill) whenever one is available, rather than a generic prompt.
-3. Indicate if the interview is finished (isFinished = true if step > 4).`;
+2. Generate the next question — it MUST be grounded in the candidate's actual resume and the chosen domain. Prefer a specific project, internship/job, skill, course, achievement, tool, or education item. Ask the candidate to explain their own work, decisions, calculations, tools, outcomes, or lessons. Do NOT ask generic textbook questions when the resume provides something specific to probe. If the chosen domain is Finance, connect questions to actual finance-related resume evidence such as accounting work, financial analysis, investments, Excel/Tally/Power BI, projects or internships.
+3. Make the question progressively deeper by using the previous transcript to challenge, clarify, or follow up on what the candidate just said.
+4. Indicate if the interview is finished (isFinished = true if step > 5).`;
 
     const response = await withRetry(() => ai.models.generateContent({
       model: "gemini-3.5-flash-lite",
@@ -1732,7 +1752,7 @@ Candidate's last answer: "${userAnswer || ""}"
 
 // API Endpoint 4: Comprehensive Final Interview Evaluation Report
 app.post("/api/gemini/interview-evaluation", async (req, res) => {
-  const { role, qaPairs, behaviorMetrics } = req.body;
+  const { role, qaPairs, behaviorMetrics, resumeSummary, domain } = req.body;
   const ai = getInterviewGeminiClient();
 
   if (!ai) {
@@ -1740,7 +1760,20 @@ app.post("/api/gemini/interview-evaluation", async (req, res) => {
   }
 
   try {
-    const prompt = `Conduct a complete post-interview evaluation for a candidate interviewing for "${role}".
+    const resumeContext = resumeSummary
+      ? `Candidate: ${resumeSummary.candidateName || "Candidate"}
+Headline: ${resumeSummary.headline || "N/A"}
+Skills: ${(resumeSummary.skills || []).join(", ") || "N/A"}
+Projects: ${(resumeSummary.projects || []).map((p: any) => `${p.name} — ${p.description}`).join(" | ") || "N/A"}
+Experience: ${(resumeSummary.experience || []).map((e: any) => `${e.roleTitle} at ${e.company} — ${e.description}`).join(" | ") || "N/A"}
+Education: ${(resumeSummary.education || []).join(", ") || "N/A"}`
+      : "No resume was uploaded.";
+
+    const prompt = `You are a strict but constructive MBA interview evaluator.
+
+Interview domain: "${domain || role || "General Management"}"
+Candidate resume:
+${resumeContext}
 
 Candidate transcript:
 ${JSON.stringify(qaPairs || [])}
@@ -1748,19 +1781,32 @@ ${JSON.stringify(qaPairs || [])}
 Observed camera metrics:
 ${JSON.stringify(behaviorMetrics || { trackingAvailable: false })}
 
-Rules:
-- Evaluate only evidence in the transcript and supplied camera metrics.
-- Communication = clarity, structure, relevance and conciseness.
-- Technical Accuracy = correctness and depth relative to the actual questions.
-- Confidence = answer-delivery signals in the transcript only; do not claim to know mental state.
-- Body Language = ONLY the supplied camera metrics. If trackingAvailable is false, mark it unavailable and do not invent observations.
-- Never invent experience, technologies, achievements, results, eye contact, posture, or other facts.
-- Do not produce a percentile or compare the candidate with an unspecified candidate population.
-- Each transcript insight must refer to the actual question and answer.
-- Next steps must come from actual weaknesses.
-- Recommended resources must be relevant to the actual weaknesses; do not invent appointments, dates, completed courses, or fake external links.
+Evaluate every answer against the ACTUAL QUESTION that was asked and the chosen domain. For each answer:
+- State one concrete strength in the response.
+- State the most important missing element or error.
+- Give one actionable improvement.
+- For technical accuracy, judge only claims that can reasonably be assessed from the question and answer. Do not invent facts.
+- When a question is resume-specific, check whether the candidate demonstrated ownership, understanding of the tools/work, reasoning, and outcomes they claimed.
+- If an answer is vague, say exactly what evidence was missing: number, method, decision, result, example, calculation, or other relevant evidence.
+- Do not give credit merely because an answer is long.
+- Do not penalize a concise answer when it directly and correctly answers the question.
+- Communication = structure, relevance, clarity and conciseness.
+- Confidence = answer/delivery signals supported by the transcript only; never infer mental state.
+- Body Language = ONLY the supplied camera metrics. If trackingAvailable is false, mark it unavailable.
+- Never invent experience, technologies, achievements, results, eye contact, posture or personality traits.
+- No percentile and no comparison to an unspecified candidate population.
+- Next steps must directly address the weakest observed areas.
+- Recommended resources must match actual weaknesses; do not invent fake links, appointments or completed activities.
 
-Return JSON with readinessScore, four metrics, one transcript item per supplied question, exactly 3 nextSteps, and exactly 3 recommendedResources.`;
+Score each metric from 0-100:
+90-100 = consistently strong evidence with specific, correct and well-structured answers.
+75-89 = good performance with minor gaps.
+60-74 = mixed performance with noticeable gaps.
+40-59 = weak evidence with major gaps or vague/incomplete answers.
+0-39 = very limited or incorrect evidence.
+
+Return JSON only. The readinessScore will be calculated by the server from the metric scores.
+Return exactly one transcript item per supplied question and exactly 3 nextSteps.`;
 
     const response = await withRetry(() => ai.models.generateContent({
       model: "gemini-3.6-flash",
@@ -1770,34 +1816,13 @@ Return JSON with readinessScore, four metrics, one transcript item per supplied 
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            readinessScore: { type: Type.INTEGER },
             metrics: {
               type: Type.OBJECT,
               properties: {
-                communication: {
-                  type: Type.OBJECT,
-                  properties: { score: { type: Type.INTEGER }, note: { type: Type.STRING } },
-                  required: ["score", "note"],
-                },
-                technicalAccuracy: {
-                  type: Type.OBJECT,
-                  properties: { score: { type: Type.INTEGER }, note: { type: Type.STRING } },
-                  required: ["score", "note"],
-                },
-                bodyLanguage: {
-                  type: Type.OBJECT,
-                  properties: {
-                    score: { type: Type.INTEGER },
-                    available: { type: Type.BOOLEAN },
-                    note: { type: Type.STRING },
-                  },
-                  required: ["score", "available", "note"],
-                },
-                confidence: {
-                  type: Type.OBJECT,
-                  properties: { score: { type: Type.INTEGER }, note: { type: Type.STRING } },
-                  required: ["score", "note"],
-                },
+                communication: { type: Type.OBJECT, properties: { score: { type: Type.INTEGER }, note: { type: Type.STRING } }, required: ["score", "note"] },
+                technicalAccuracy: { type: Type.OBJECT, properties: { score: { type: Type.INTEGER }, note: { type: Type.STRING } }, required: ["score", "note"] },
+                bodyLanguage: { type: Type.OBJECT, properties: { score: { type: Type.INTEGER }, available: { type: Type.BOOLEAN }, note: { type: Type.STRING } }, required: ["score", "available", "note"] },
+                confidence: { type: Type.OBJECT, properties: { score: { type: Type.INTEGER }, note: { type: Type.STRING } }, required: ["score", "note"] },
               },
               required: ["communication", "technicalAccuracy", "bodyLanguage", "confidence"],
             },
@@ -1805,12 +1830,7 @@ Return JSON with readinessScore, four metrics, one transcript item per supplied 
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  question: { type: Type.STRING },
-                  answer: { type: Type.STRING },
-                  aiInsight: { type: Type.STRING },
-                },
+                properties: { id: { type: Type.STRING }, question: { type: Type.STRING }, answer: { type: Type.STRING }, aiInsight: { type: Type.STRING } },
                 required: ["id", "question", "answer", "aiInsight"],
               },
             },
@@ -1818,11 +1838,7 @@ Return JSON with readinessScore, four metrics, one transcript item per supplied 
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  icon: { type: Type.STRING },
-                },
+                properties: { title: { type: Type.STRING }, description: { type: Type.STRING }, icon: { type: Type.STRING } },
                 required: ["title", "description", "icon"],
               },
             },
@@ -1830,30 +1846,47 @@ Return JSON with readinessScore, four metrics, one transcript item per supplied 
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  url: { type: Type.STRING },
-                },
+                properties: { title: { type: Type.STRING }, url: { type: Type.STRING } },
                 required: ["title", "url"],
               },
             },
           },
-          required: ["readinessScore", "metrics", "transcript", "nextSteps", "recommendedResources"],
+          required: ["metrics", "transcript", "nextSteps", "recommendedResources"],
         },
       },
-    }));
+    }), 2, 600);
 
     const evalData = JSON.parse(response.text || "{}");
-    if (!evalData || typeof evalData.readinessScore !== "number") throw new Error("Gemini returned an incomplete evaluation payload");
+    if (!evalData?.metrics) throw new Error("Gemini returned an incomplete evaluation payload");
 
-    return res.json({
-      success: true,
-      evaluation: {
-        role: role || "MBA Interview",
-        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-        ...evalData,
+    const metrics = {
+      communication: { score: clampScore(evalData.metrics.communication?.score), note: String(evalData.metrics.communication?.note || "No communication note returned.") },
+      technicalAccuracy: { score: clampScore(evalData.metrics.technicalAccuracy?.score), note: String(evalData.metrics.technicalAccuracy?.note || "No technical accuracy note returned.") },
+      bodyLanguage: {
+        score: clampScore(evalData.metrics.bodyLanguage?.score),
+        available: Boolean(behaviorMetrics?.trackingAvailable) && typeof behaviorMetrics?.eyeContactPct === "number",
+        note: String(evalData.metrics.bodyLanguage?.note || ""),
       },
-    });
+      confidence: { score: clampScore(evalData.metrics.confidence?.score), note: String(evalData.metrics.confidence?.note || "No confidence note returned.") },
+    };
+
+    if (!metrics.bodyLanguage.available) {
+      metrics.bodyLanguage.score = 0;
+      metrics.bodyLanguage.note = "Not evaluated because camera tracking data was unavailable.";
+    }
+
+    const evaluation = {
+      role: role || "MBA Interview",
+      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      readinessScore: calculateInterviewReadiness(metrics),
+      metrics,
+      transcript: Array.isArray(evalData.transcript) ? evalData.transcript : [],
+      nextSteps: Array.isArray(evalData.nextSteps) ? evalData.nextSteps.slice(0, 3) : [],
+      recommendedResources: Array.isArray(evalData.recommendedResources) ? evalData.recommendedResources.slice(0, 3) : [],
+      degraded: false,
+    };
+
+    return res.json({ success: true, evaluation });
   } catch (error) {
     console.error("Error generating evaluation report (falling back to transcript-based evaluation):", error);
     return res.json({ success: true, evaluation: buildHeuristicEvaluation(role, qaPairs, behaviorMetrics) });
