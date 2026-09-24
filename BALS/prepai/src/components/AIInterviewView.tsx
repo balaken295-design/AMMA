@@ -77,11 +77,13 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const [eyeContactPct, setEyeContactPct] = useState<number | null>(null);
   const [postureLabel, setPostureLabel] = useState('Calibrating…');
   const [trackingError, setTrackingError] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const answerBoxRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);
+  const recognitionStartingRef = useRef(false);
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const eyeSamplesRef = useRef<boolean[]>([]);
@@ -106,32 +108,159 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   useEffect(() => {
     const SpeechRecognitionCtor: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionCtor) { setSpeechSupported(false); return; }
+
     const recognition = new SpeechRecognitionCtor();
     recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.lang = 'en-IN';
+
+    recognition.onstart = () => {
+      recognitionStartingRef.current = false;
+      setSpeechError(null);
+      setIsListening(true);
+    };
+
     recognition.onresult = (event: any) => {
       let finalText = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
-      if (!finalText.trim()) return;
-      setUserAnswerInput(prev => `${prev.trimEnd()}${prev.trim() ? ' ' : ''}${finalText.trim()}`);
+      let interimText = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i]?.[0]?.transcript || '';
+        if (event.results[i].isFinal) finalText += transcript;
+        else interimText += transcript;
+      }
+
+      // Only final results are committed to the answer box. Interim results are
+      // intentionally not appended repeatedly because browsers may replace them.
+      if (finalText.trim()) {
+        setUserAnswerInput(prev => {
+          const existing = prev.trimEnd();
+          const spoken = finalText.trim();
+          return existing ? `${existing} ${spoken}` : spoken;
+        });
+      }
+
+      if (interimText.trim()) {
+        setSpeechError('Listening…');
+      }
     };
+
     recognition.onerror = (event: any) => {
-      console.warn('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') { shouldListenRef.current = false; setIsListening(false); setMicEnabled(false); }
+      const error = event?.error || 'unknown';
+      console.warn('Speech recognition error:', error);
+
+      if (error === 'not-allowed' || error === 'service-not-allowed') {
+        shouldListenRef.current = false;
+        setIsListening(false);
+        setMicEnabled(false);
+        setSpeechError('Microphone permission was denied. Allow microphone access for this site and try again.');
+        return;
+      }
+
+      if (error === 'audio-capture') {
+        shouldListenRef.current = false;
+        setIsListening(false);
+        setMicEnabled(false);
+        setSpeechError('No microphone was detected. Check your microphone and browser input device.');
+        return;
+      }
+
+      if (error === 'language-not-supported') {
+        shouldListenRef.current = false;
+        setIsListening(false);
+        setMicEnabled(false);
+        setSpeechError('Speech recognition is not available for this language in this browser.');
+        return;
+      }
+
+      if (error === 'network') {
+        setSpeechError('Speech service connection failed. Retrying…');
+      } else if (error !== 'no-speech' && error !== 'aborted') {
+        setSpeechError(`Speech recognition error: ${error}`);
+      }
     };
+
     recognition.onend = () => {
-      if (shouldListenRef.current) { try { recognition.start(); } catch {} } else setIsListening(false);
+      recognitionStartingRef.current = false;
+      if (!shouldListenRef.current) {
+        setIsListening(false);
+        return;
+      }
+
+      // Chrome can end a continuous recognition session after silence.
+      // Restart it automatically while the user still wants to speak.
+      window.setTimeout(() => {
+        if (!shouldListenRef.current || recognitionStartingRef.current) return;
+        try {
+          recognitionStartingRef.current = true;
+          recognition.start();
+        } catch {
+          recognitionStartingRef.current = false;
+        }
+      }, 150);
     };
+
     recognitionRef.current = recognition;
-    return () => { shouldListenRef.current = false; recognition.onresult = null; recognition.onerror = null; recognition.onend = null; try { recognition.stop(); } catch {} recognitionRef.current = null; };
+
+    return () => {
+      shouldListenRef.current = false;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try { recognition.stop(); } catch {}
+      recognitionRef.current = null;
+    };
   }, []);
 
-  const toggleMic = () => {
+  const toggleMic = async () => {
     const next = !micEnabled;
-    setMicEnabled(next);
-    if (next) { shouldListenRef.current = true; try { recognitionRef.current?.start(); } catch {} setIsListening(true); }
-    else { shouldListenRef.current = false; try { recognitionRef.current?.stop(); } catch {} setIsListening(false); }
+
+    if (!next) {
+      shouldListenRef.current = false;
+      setMicEnabled(false);
+      setIsListening(false);
+      setSpeechError(null);
+      try { recognitionRef.current?.stop(); } catch {}
+      return;
+    }
+
+    setSpeechError(null);
+
+    // Explicitly request microphone access from the button click. This gives
+    // the browser a real user gesture for the permission prompt before
+    // SpeechRecognition starts listening.
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('MIC_API_UNAVAILABLE');
+      }
+      const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      permissionStream.getTracks().forEach(track => track.stop());
+    } catch (err: any) {
+      console.warn('Microphone permission failed:', err);
+      setSpeechError(
+        err?.name === 'NotAllowedError'
+          ? 'Microphone permission was denied. Allow microphone access for this site and try again.'
+          : 'Microphone could not be accessed. Check your browser microphone settings and input device.'
+      );
+      setMicEnabled(false);
+      setIsListening(false);
+      return;
+    }
+
+    setMicEnabled(true);
+    shouldListenRef.current = true;
+
+    try {
+      recognitionStartingRef.current = true;
+      recognitionRef.current?.start();
+    } catch (err) {
+      recognitionStartingRef.current = false;
+      console.warn('Speech recognition start failed:', err);
+      setSpeechError('Could not start speech recognition. Please try the Speak Answer button again.');
+      setMicEnabled(false);
+      shouldListenRef.current = false;
+      setIsListening(false);
+    }
   };
 
   useEffect(() => {
@@ -275,7 +404,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-ink-950 rounded-3xl border border-ink-800 p-8 flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden min-h-[380px] shadow-xl"><div className="absolute top-4 left-4 flex items-center gap-2 px-3.5 py-1 rounded-full bg-accent-500/20 text-accent-300 border border-accent-500/30 text-xs font-mono font-bold"><span className="w-2 h-2 rounded-full bg-accent-400 animate-pulse" />AI Interviewer Face</div><div className="relative pt-4"><div className={`w-36 h-36 rounded-full bg-gradient-to-tr from-accent-950 to-ink-900 border-4 ${isAiSpeaking ? 'border-accent-400 scale-105 shadow-accent-500/30 shadow-2xl' : 'border-ink-800'} transition-all flex items-center justify-center shadow-2xl`}><Bot className={`w-16 h-16 ${isAiSpeaking ? 'text-accent-400 animate-pulse' : 'text-ink-400'}`} /></div>{isAiSpeaking && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-accent-600 text-white px-3.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1 shadow-md"><Volume2 className="w-3 h-3 animate-bounce" /> Speaking</div>}</div><div className="space-y-2 max-w-md"><span className="text-[10px] font-mono font-bold text-ink-400 uppercase tracking-widest">Current Question</span><p className="text-base font-semibold text-white leading-relaxed">"{currentQuestionText}"</p></div></div>
             <div className="space-y-4 flex flex-col justify-between"><div className="relative aspect-video bg-ink-900 rounded-3xl overflow-hidden border border-ink-800 shadow-sm">{videoEnabled ? <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-ink-400"><VideoOff className="w-10 h-10" /></div>}<div className="absolute top-3 right-3 bg-ink-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-mono text-accent-300 space-y-0.5 border border-white/10">{trackingError ? <div className="text-ink-400">Tracking unavailable</div> : <><div>Eye Contact: <strong>{eyeContactPct === null ? '—' : `${eyeContactPct}%`}</strong></div><div>Posture: <strong>{postureLabel}</strong></div></>}</div><div className="absolute bottom-3 left-3 bg-ink-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white">You (Candidate Camera)</div><button type="button" onClick={() => setVideoEnabled(v => !v)} className="absolute bottom-3 right-3 bg-ink-900/80 text-white p-2 rounded-xl">{videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}</button></div>
-              <div className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm space-y-3"><div className="flex items-center justify-between gap-3"><label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Your Spoken / Written Answer</label>{speechSupported && <button type="button" onClick={toggleMic} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${isListening ? 'bg-danger-50 text-danger-600 border border-danger-200 animate-pulse' : 'bg-accent-50 text-accent-700 border border-accent-200 hover:border-accent-400'}`}>{isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}{isListening ? 'Stop Speaking' : 'Speak Answer'}</button>}</div><textarea ref={answerBoxRef} rows={3} placeholder="Speak or type your response here. You can edit or use Backspace anytime…" value={userAnswerInput} onChange={e => setUserAnswerInput(e.target.value)} className="w-full min-h-[96px] max-h-[360px] resize-none p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-xs text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs leading-relaxed" /><div className="flex items-center justify-between text-[10px] text-ink-400"><span>{userAnswerInput.trim() ? `${userAnswerInput.trim().split(/\s+/).length} words` : 'Start speaking or typing'}</span>{isListening && <span className="text-accent-600 font-semibold">Listening… pause for {SILENCE_AUTO_ADVANCE_MS / 1000}s to submit</span>}</div>{!speechSupported && <p className="text-[10px] text-ink-400">Voice input isn't supported in this browser — try Chrome/Edge, or type your answer.</p>}{currentFeedback && <div className="p-3.5 bg-accent-50 border border-accent-200/80 rounded-2xl text-xs text-accent-950 flex items-start gap-2"><Sparkles className="w-4 h-4 text-accent-600 shrink-0 mt-0.5" /><div><strong className="block text-[10px] font-mono text-accent-700 uppercase">AI Real-time Feedback</strong><span>{currentFeedback}</span></div></div>}<div className="flex justify-between items-center pt-2 gap-3"><span className="text-[10px] font-mono text-ink-400">Step {currentStep} / {TOTAL_STEPS}</span><button onClick={handleNextStep} disabled={!userAnswerInput.trim() || isGenerating} className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all flex items-center gap-2 shadow-md shadow-accent-200">{isGenerating ? 'Processing...' : currentStep >= TOTAL_STEPS ? 'Finish & View Evaluation Report' : 'Submit Answer & Next Question'}</button></div></div>
+              <div className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm space-y-3"><div className="flex items-center justify-between gap-3"><label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Your Spoken / Written Answer</label>{speechSupported && <button type="button" onClick={toggleMic} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${isListening ? 'bg-danger-50 text-danger-600 border border-danger-200 animate-pulse' : 'bg-accent-50 text-accent-700 border border-accent-200 hover:border-accent-400'}`}>{isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}{isListening ? 'Stop Speaking' : 'Speak Answer'}</button>}</div>{speechError && <p className={`text-[10px] font-semibold ${speechError === 'Listening…' ? 'text-accent-600' : 'text-red-600'}`}>{speechError}</p>}<textarea ref={answerBoxRef} rows={3} placeholder="Speak or type your response here. You can edit or use Backspace anytime…" value={userAnswerInput} onChange={e => setUserAnswerInput(e.target.value)} className="w-full min-h-[96px] max-h-[360px] resize-none p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-xs text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs leading-relaxed" /><div className="flex items-center justify-between text-[10px] text-ink-400"><span>{userAnswerInput.trim() ? `${userAnswerInput.trim().split(/\s+/).length} words` : 'Start speaking or typing'}</span>{isListening && <span className="text-accent-600 font-semibold">Listening… pause for {SILENCE_AUTO_ADVANCE_MS / 1000}s to submit</span>}</div>{!speechSupported && <p className="text-[10px] text-ink-400">Voice input isn't supported in this browser — try Chrome/Edge, or type your answer.</p>}{currentFeedback && <div className="p-3.5 bg-accent-50 border border-accent-200/80 rounded-2xl text-xs text-accent-950 flex items-start gap-2"><Sparkles className="w-4 h-4 text-accent-600 shrink-0 mt-0.5" /><div><strong className="block text-[10px] font-mono text-accent-700 uppercase">AI Real-time Feedback</strong><span>{currentFeedback}</span></div></div>}<div className="flex justify-between items-center pt-2 gap-3"><span className="text-[10px] font-mono text-ink-400">Step {currentStep} / {TOTAL_STEPS}</span><button onClick={handleNextStep} disabled={!userAnswerInput.trim() || isGenerating} className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all flex items-center gap-2 shadow-md shadow-accent-200">{isGenerating ? 'Processing...' : currentStep >= TOTAL_STEPS ? 'Finish & View Evaluation Report' : 'Submit Answer & Next Question'}</button></div></div>
             </div>
           </div>
         </div>
