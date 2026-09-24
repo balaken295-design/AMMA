@@ -497,45 +497,84 @@ function buildHeuristicEvaluation(role: string, qaPairs: any[]): any {
 // Gemini 3.5 Transcribe is purpose-built for speech-to-text and supports
 // WebM audio, so the interview's dedicated Gemini key is used here too.
 app.post("/api/gemini/interview-transcribe", speechAudioParser, async (req, res) => {
-  const ai = getInterviewGeminiClient();
+  const apiKey = process.env.AI_INTERVIEW_GEMINI_API_KEY;
   const audio = req.body as Buffer;
 
   if (!audio || !Buffer.isBuffer(audio) || audio.length === 0) {
     return res.status(400).json({ success: false, error: "No audio was received." });
   }
 
-  if (!ai) {
+  if (!apiKey) {
     return res.status(500).json({ success: false, error: "AI Interview transcription is not configured." });
   }
 
   const contentType = String(req.headers["content-type"] || "audio/webm").split(";")[0].trim();
 
   try {
-    const response = await withRetry(() => ai.models.generateContent({
-      model: "gemini-3.5-transcribe",
-      contents: [{
-        inlineData: {
-          mimeType: contentType,
-          data: audio.toString("base64"),
-        },
-      }],
-      config: {
-        audioTranscriptionConfig: {
-          languageCodes: ["en-IN"],
-          mode: "SMART",
-        },
-      },
-    }), 2, 800);
+    // Gemini 3.5 Transcribe is invoked through the Interactions API.
+    // This avoids the older generateContent/audioTranscriptionConfig path.
+    const response = await withRetry(async () => {
+      const apiResponse = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/interactions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            model: "gemini-3.5-transcribe",
+            input: [
+              {
+                type: "audio",
+                data: audio.toString("base64"),
+                mime_type: contentType,
+              },
+            ],
+            generation_config: {
+              transcription_config: {
+                language_codes: ["en-IN"],
+                mode: "smart",
+              },
+            },
+          }),
+        }
+      );
 
-    const transcript = (response.text || "").trim();
-    console.log("AI Interview transcription:", transcript ? "received" : "empty");
+      const bodyText = await apiResponse.text();
+      let body: any = {};
+      try {
+        body = bodyText ? JSON.parse(bodyText) : {};
+      } catch {
+        body = { raw: bodyText };
+      }
+
+      if (!apiResponse.ok) {
+        console.error("Gemini transcription HTTP error:", apiResponse.status, body);
+        throw new Error("Gemini transcription HTTP " + apiResponse.status);
+      }
+
+      return body;
+    }, 2, 800);
+
+    const transcript = String(
+      response?.output_text ||
+      response?.outputs?.find((item: any) => item?.type === "text")?.text ||
+      ""
+    ).trim();
+
+    console.log(
+      "AI Interview transcription:",
+      transcript ? "received" : "empty",
+      "(" + audio.length + " bytes, " + contentType + ")"
+    );
 
     return res.json({ success: true, transcript });
   } catch (error) {
     console.error("AI Interview transcription error:", error);
     return res.status(500).json({
       success: false,
-      error: "Speech transcription failed. Please try speaking again.",
+      error: "Speech transcription failed. Check the Render logs for the Gemini response and try again.",
     });
   }
 });
