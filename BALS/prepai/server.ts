@@ -22,6 +22,15 @@ const PORT = Number(process.env.PORT) || 3000;
 // group gets a slightly higher cap.
 app.use(express.json({ limit: "2mb" }));
 
+// Raw audio uploads are used by the AI Interview voice input. The browser
+// records microphone audio as WebM/Opus and sends it here for transcription.
+// This avoids relying on the browser's SpeechRecognition service, which is
+// not consistently available/reliable across browsers and environments.
+const speechAudioParser = express.raw({
+  type: ["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "audio/opus"],
+  limit: "8mb",
+});
+
 // In-memory fallback database for candidate results when DATABASE_URL is absent.
 // NOTE: this only survives until the process restarts (Render free/starter
 // tiers restart and sleep routinely) — it exists so a save at least persists
@@ -482,6 +491,54 @@ function buildHeuristicEvaluation(role: string, qaPairs: any[]): any {
     degraded: true,
   };
 }
+
+// AI Interview speech-to-text endpoint.
+// The browser records a short answer and sends the audio bytes here.
+// Gemini 3.5 Transcribe is purpose-built for speech-to-text and supports
+// WebM audio, so the interview's dedicated Gemini key is used here too.
+app.post("/api/gemini/interview-transcribe", speechAudioParser, async (req, res) => {
+  const ai = getInterviewGeminiClient();
+  const audio = req.body as Buffer;
+
+  if (!audio || !Buffer.isBuffer(audio) || audio.length === 0) {
+    return res.status(400).json({ success: false, error: "No audio was received." });
+  }
+
+  if (!ai) {
+    return res.status(500).json({ success: false, error: "AI Interview transcription is not configured." });
+  }
+
+  const contentType = String(req.headers["content-type"] || "audio/webm").split(";")[0].trim();
+
+  try {
+    const response = await withRetry(() => ai.models.generateContent({
+      model: "gemini-3.5-transcribe",
+      contents: [{
+        inlineData: {
+          mimeType: contentType,
+          data: audio.toString("base64"),
+        },
+      }],
+      config: {
+        audioTranscriptionConfig: {
+          languageCodes: ["en-IN"],
+          mode: "SMART",
+        },
+      },
+    }), 2, 800);
+
+    const transcript = (response.text || "").trim();
+    console.log("AI Interview transcription:", transcript ? "received" : "empty");
+
+    return res.json({ success: true, transcript });
+  } catch (error) {
+    console.error("AI Interview transcription error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Speech transcription failed. Please try speaking again.",
+    });
+  }
+});
 
 // API Endpoint 1: Generate dynamic quiz questions for topics or module tests (supports 20 to 30 gaming questions per topic)
 app.post("/api/gemini/generate-questions", async (req, res) => {

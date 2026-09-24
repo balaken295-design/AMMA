@@ -78,12 +78,13 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const [postureLabel, setPostureLabel] = useState('Calibrating…');
   const [trackingError, setTrackingError] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
+  const [isTranscribingVoice, setIsTranscribingVoice] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const answerBoxRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const shouldListenRef = useRef(false);
-  const recognitionStartingRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceStreamRef = useRef<MediaStream | null>(null);
+  const voiceChunksRef = useRef<Blob[]>([]);
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const eyeSamplesRef = useRef<boolean[]>([]);
@@ -106,160 +107,165 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   }, [userAnswerInput]);
 
   useEffect(() => {
-    const SpeechRecognitionCtor: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognitionCtor) { setSpeechSupported(false); return; }
-
-    const recognition = new SpeechRecognitionCtor();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    recognition.lang = 'en-IN';
-
-    recognition.onstart = () => {
-      recognitionStartingRef.current = false;
-      setSpeechError(null);
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event: any) => {
-      let finalText = '';
-      let interimText = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i]?.[0]?.transcript || '';
-        if (event.results[i].isFinal) finalText += transcript;
-        else interimText += transcript;
-      }
-
-      // Only final results are committed to the answer box. Interim results are
-      // intentionally not appended repeatedly because browsers may replace them.
-      if (finalText.trim()) {
-        setUserAnswerInput(prev => {
-          const existing = prev.trimEnd();
-          const spoken = finalText.trim();
-          return existing ? `${existing} ${spoken}` : spoken;
-        });
-      }
-
-      if (interimText.trim()) {
-        setSpeechError('Listening…');
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      const error = event?.error || 'unknown';
-      console.warn('Speech recognition error:', error);
-
-      if (error === 'not-allowed' || error === 'service-not-allowed') {
-        shouldListenRef.current = false;
-        setIsListening(false);
-        setMicEnabled(false);
-        setSpeechError('Microphone permission was denied. Allow microphone access for this site and try again.');
-        return;
-      }
-
-      if (error === 'audio-capture') {
-        shouldListenRef.current = false;
-        setIsListening(false);
-        setMicEnabled(false);
-        setSpeechError('No microphone was detected. Check your microphone and browser input device.');
-        return;
-      }
-
-      if (error === 'language-not-supported') {
-        shouldListenRef.current = false;
-        setIsListening(false);
-        setMicEnabled(false);
-        setSpeechError('Speech recognition is not available for this language in this browser.');
-        return;
-      }
-
-      if (error === 'network') {
-        setSpeechError('Speech service connection failed. Retrying…');
-      } else if (error !== 'no-speech' && error !== 'aborted') {
-        setSpeechError(`Speech recognition error: ${error}`);
-      }
-    };
-
-    recognition.onend = () => {
-      recognitionStartingRef.current = false;
-      if (!shouldListenRef.current) {
-        setIsListening(false);
-        return;
-      }
-
-      // Chrome can end a continuous recognition session after silence.
-      // Restart it automatically while the user still wants to speak.
-      window.setTimeout(() => {
-        if (!shouldListenRef.current || recognitionStartingRef.current) return;
-        try {
-          recognitionStartingRef.current = true;
-          recognition.start();
-        } catch {
-          recognitionStartingRef.current = false;
-        }
-      }, 150);
-    };
-
-    recognitionRef.current = recognition;
+    const supported = Boolean(
+      navigator.mediaDevices?.getUserMedia &&
+      typeof MediaRecorder !== 'undefined'
+    );
+    setSpeechSupported(supported);
+    if (!supported) {
+      setSpeechError('Voice recording is not supported in this browser. Please use Chrome or Edge.');
+    }
 
     return () => {
-      shouldListenRef.current = false;
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.onend = null;
-      try { recognition.stop(); } catch {}
-      recognitionRef.current = null;
+      try { mediaRecorderRef.current?.stop(); } catch {}
+      mediaRecorderRef.current = null;
+      voiceStreamRef.current?.getTracks().forEach(track => track.stop());
+      voiceStreamRef.current = null;
     };
   }, []);
 
-  const toggleMic = async () => {
-    const next = !micEnabled;
+  const appendTranscript = (transcript: string) => {
+    const spoken = transcript.trim();
+    if (!spoken) return;
+    setUserAnswerInput(prev => {
+      const existing = prev.trimEnd();
+      return existing ? `${existing} ${spoken}` : spoken;
+    });
+  };
 
-    if (!next) {
-      shouldListenRef.current = false;
+  const transcribeRecordedAudio = async (blob: Blob) => {
+    if (!blob.size) {
+      setSpeechError('No voice was captured. Please speak closer to your microphone and try again.');
+      return;
+    }
+
+    setIsTranscribingVoice(true);
+    setSpeechError('Transcribing your answer…');
+
+    try {
+      const response = await fetch('/api/gemini/interview-transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': blob.type || 'audio/webm' },
+        body: blob,
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `HTTP_${response.status}`);
+      }
+
+      const transcript = String(data.transcript || '').trim();
+      if (!transcript) {
+        setSpeechError('No speech was detected. Please try again and speak clearly.');
+        return;
+      }
+
+      appendTranscript(transcript);
+      setSpeechError('Voice converted to text ✓');
+    } catch (error) {
+      console.error('AI Interview voice transcription failed:', error);
+      setSpeechError('Voice transcription failed. Please try again.');
+    } finally {
+      setIsTranscribingVoice(false);
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) {
       setMicEnabled(false);
       setIsListening(false);
-      setSpeechError(null);
-      try { recognitionRef.current?.stop(); } catch {}
+      return;
+    }
+
+    setMicEnabled(false);
+    setIsListening(false);
+    setSpeechError('Finishing recording…');
+
+    if (recorder.state !== 'inactive') {
+      recorder.stop();
+    } else {
+      voiceStreamRef.current?.getTracks().forEach(track => track.stop());
+      voiceStreamRef.current = null;
+    }
+  };
+
+  const toggleMic = async () => {
+    if (micEnabled || isListening) {
+      stopVoiceRecording();
       return;
     }
 
     setSpeechError(null);
 
-    // Explicitly request microphone access from the button click. This gives
-    // the browser a real user gesture for the permission prompt before
-    // SpeechRecognition starts listening.
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('MIC_API_UNAVAILABLE');
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        throw new Error('UNSUPPORTED');
       }
-      const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      permissionStream.getTracks().forEach(track => track.stop());
-    } catch (err: any) {
-      console.warn('Microphone permission failed:', err);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+      ];
+      const mimeType = preferredTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      voiceStreamRef.current = stream;
+      voiceChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data && event.data.size > 0) {
+          voiceChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = (event: any) => {
+        console.error('Voice recorder error:', event);
+        setSpeechError('Microphone recording failed. Please try again.');
+        setMicEnabled(false);
+        setIsListening(false);
+      };
+
+      recorder.onstop = async () => {
+        const chunks = voiceChunksRef.current;
+        voiceChunksRef.current = [];
+        const recordedType = recorder.mimeType || mimeType || 'audio/webm';
+        const blob = new Blob(chunks, { type: recordedType });
+
+        voiceStreamRef.current?.getTracks().forEach(track => track.stop());
+        voiceStreamRef.current = null;
+        mediaRecorderRef.current = null;
+
+        await transcribeRecordedAudio(blob);
+      };
+
+      recorder.start();
+      setMicEnabled(true);
+      setIsListening(true);
+      setSpeechError('Recording… speak your answer, then press Stop Speaking.');
+    } catch (error: any) {
+      console.error('Microphone start failed:', error);
+      setMicEnabled(false);
+      setIsListening(false);
       setSpeechError(
-        err?.name === 'NotAllowedError'
+        error?.name === 'NotAllowedError'
           ? 'Microphone permission was denied. Allow microphone access for this site and try again.'
-          : 'Microphone could not be accessed. Check your browser microphone settings and input device.'
+          : error?.message === 'UNSUPPORTED'
+            ? 'Voice recording is not supported in this browser. Please use Chrome or Edge.'
+            : 'Microphone could not be accessed. Check your microphone and browser input device.'
       );
-      setMicEnabled(false);
-      setIsListening(false);
-      return;
-    }
-
-    setMicEnabled(true);
-    shouldListenRef.current = true;
-
-    try {
-      recognitionStartingRef.current = true;
-      recognitionRef.current?.start();
-    } catch (err) {
-      recognitionStartingRef.current = false;
-      console.warn('Speech recognition start failed:', err);
-      setSpeechError('Could not start speech recognition. Please try the Speak Answer button again.');
-      setMicEnabled(false);
-      shouldListenRef.current = false;
-      setIsListening(false);
     }
   };
 
@@ -307,11 +313,18 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const speakText = (text: string) => {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
+
+    // Never let the candidate recorder remain active while the AI interviewer
+    // is speaking. This prevents the interviewer's voice from being transcribed
+    // as part of the candidate's answer.
+    if (mediaRecorderRef.current?.state === 'recording') {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    }
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1;
-    const wasListening = shouldListenRef.current;
-    utterance.onstart = () => { setIsAiSpeaking(true); if (wasListening) { shouldListenRef.current = false; try { recognitionRef.current?.stop(); } catch {} setIsListening(false); } };
-    utterance.onend = () => { setIsAiSpeaking(false); if (wasListening && micEnabled) { shouldListenRef.current = true; try { recognitionRef.current?.start(); setIsListening(true); } catch {} } };
+    utterance.onstart = () => setIsAiSpeaking(true);
+    utterance.onend = () => setIsAiSpeaking(false);
     window.speechSynthesis.speak(utterance);
   };
 
@@ -359,7 +372,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const handleNextStep = async () => {
     if (!userAnswerInput.trim() || isGenerating) return;
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-    shouldListenRef.current = false; try { recognitionRef.current?.stop(); } catch {} setIsListening(false); setIsGenerating(true);
+    if (mediaRecorderRef.current?.state === 'recording') { try { mediaRecorderRef.current.stop(); } catch {} }
+    setIsListening(false); setIsGenerating(true);
     const newHistoryItem: InterviewQuestion = { id: currentStep, question: currentQuestionText, category: 'technical', userAnswer: userAnswerInput.trim(), aiFeedback: currentFeedback || undefined };
     const updatedHistory = [...questionsHistory, newHistoryItem]; setQuestionsHistory(updatedHistory); setUserAnswerInput('');
     if (currentStep >= TOTAL_STEPS) {
@@ -383,7 +397,18 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const SILENCE_AUTO_ADVANCE_MS = 5000;
   useEffect(() => { if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current); if (!isListening || !sessionStarted || isGenerating || !userAnswerInput.trim()) return; silenceTimerRef.current = setTimeout(() => { if (userAnswerInput.trim() && !isGenerating) handleNextStep(); }, SILENCE_AUTO_ADVANCE_MS); return () => { if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current); }; }, [userAnswerInput, isListening, sessionStarted, isGenerating]);
 
-  const cancelSession = () => { shouldListenRef.current = false; try { recognitionRef.current?.stop(); } catch {} if ('speechSynthesis' in window) window.speechSynthesis.cancel(); setIsListening(false); setMicEnabled(false); setSessionStarted(false); setUserAnswerInput(''); };
+  const cancelSession = () => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    }
+    voiceStreamRef.current?.getTracks().forEach(track => track.stop());
+    voiceStreamRef.current = null;
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setIsListening(false);
+    setMicEnabled(false);
+    setSessionStarted(false);
+    setUserAnswerInput('');
+  };
 
   return (
     <div id="ai-interview-container" className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 space-y-6">
@@ -404,7 +429,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-ink-950 rounded-3xl border border-ink-800 p-8 flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden min-h-[380px] shadow-xl"><div className="absolute top-4 left-4 flex items-center gap-2 px-3.5 py-1 rounded-full bg-accent-500/20 text-accent-300 border border-accent-500/30 text-xs font-mono font-bold"><span className="w-2 h-2 rounded-full bg-accent-400 animate-pulse" />AI Interviewer Face</div><div className="relative pt-4"><div className={`w-36 h-36 rounded-full bg-gradient-to-tr from-accent-950 to-ink-900 border-4 ${isAiSpeaking ? 'border-accent-400 scale-105 shadow-accent-500/30 shadow-2xl' : 'border-ink-800'} transition-all flex items-center justify-center shadow-2xl`}><Bot className={`w-16 h-16 ${isAiSpeaking ? 'text-accent-400 animate-pulse' : 'text-ink-400'}`} /></div>{isAiSpeaking && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-accent-600 text-white px-3.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1 shadow-md"><Volume2 className="w-3 h-3 animate-bounce" /> Speaking</div>}</div><div className="space-y-2 max-w-md"><span className="text-[10px] font-mono font-bold text-ink-400 uppercase tracking-widest">Current Question</span><p className="text-base font-semibold text-white leading-relaxed">"{currentQuestionText}"</p></div></div>
             <div className="space-y-4 flex flex-col justify-between"><div className="relative aspect-video bg-ink-900 rounded-3xl overflow-hidden border border-ink-800 shadow-sm">{videoEnabled ? <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-ink-400"><VideoOff className="w-10 h-10" /></div>}<div className="absolute top-3 right-3 bg-ink-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-mono text-accent-300 space-y-0.5 border border-white/10">{trackingError ? <div className="text-ink-400">Tracking unavailable</div> : <><div>Eye Contact: <strong>{eyeContactPct === null ? '—' : `${eyeContactPct}%`}</strong></div><div>Posture: <strong>{postureLabel}</strong></div></>}</div><div className="absolute bottom-3 left-3 bg-ink-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white">You (Candidate Camera)</div><button type="button" onClick={() => setVideoEnabled(v => !v)} className="absolute bottom-3 right-3 bg-ink-900/80 text-white p-2 rounded-xl">{videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}</button></div>
-              <div className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm space-y-3"><div className="flex items-center justify-between gap-3"><label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Your Spoken / Written Answer</label>{speechSupported && <button type="button" onClick={toggleMic} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${isListening ? 'bg-danger-50 text-danger-600 border border-danger-200 animate-pulse' : 'bg-accent-50 text-accent-700 border border-accent-200 hover:border-accent-400'}`}>{isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}{isListening ? 'Stop Speaking' : 'Speak Answer'}</button>}</div>{speechError && <p className={`text-[10px] font-semibold ${speechError === 'Listening…' ? 'text-accent-600' : 'text-red-600'}`}>{speechError}</p>}<textarea ref={answerBoxRef} rows={3} placeholder="Speak or type your response here. You can edit or use Backspace anytime…" value={userAnswerInput} onChange={e => setUserAnswerInput(e.target.value)} className="w-full min-h-[96px] max-h-[360px] resize-none p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-xs text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs leading-relaxed" /><div className="flex items-center justify-between text-[10px] text-ink-400"><span>{userAnswerInput.trim() ? `${userAnswerInput.trim().split(/\s+/).length} words` : 'Start speaking or typing'}</span>{isListening && <span className="text-accent-600 font-semibold">Listening… pause for {SILENCE_AUTO_ADVANCE_MS / 1000}s to submit</span>}</div>{!speechSupported && <p className="text-[10px] text-ink-400">Voice input isn't supported in this browser — try Chrome/Edge, or type your answer.</p>}{currentFeedback && <div className="p-3.5 bg-accent-50 border border-accent-200/80 rounded-2xl text-xs text-accent-950 flex items-start gap-2"><Sparkles className="w-4 h-4 text-accent-600 shrink-0 mt-0.5" /><div><strong className="block text-[10px] font-mono text-accent-700 uppercase">AI Real-time Feedback</strong><span>{currentFeedback}</span></div></div>}<div className="flex justify-between items-center pt-2 gap-3"><span className="text-[10px] font-mono text-ink-400">Step {currentStep} / {TOTAL_STEPS}</span><button onClick={handleNextStep} disabled={!userAnswerInput.trim() || isGenerating} className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all flex items-center gap-2 shadow-md shadow-accent-200">{isGenerating ? 'Processing...' : currentStep >= TOTAL_STEPS ? 'Finish & View Evaluation Report' : 'Submit Answer & Next Question'}</button></div></div>
+              <div className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm space-y-3"><div className="flex items-center justify-between gap-3"><label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">Your Spoken / Written Answer</label>{speechSupported && <button type="button" onClick={toggleMic} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${isListening ? 'bg-danger-50 text-danger-600 border border-danger-200 animate-pulse' : 'bg-accent-50 text-accent-700 border border-accent-200 hover:border-accent-400'}`}>{isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}{isListening ? 'Stop & Transcribe' : isTranscribingVoice ? 'Transcribing…' : 'Speak Answer'}</button>}</div>{speechError && <p className={`text-[10px] font-semibold ${speechError === 'Listening…' ? 'text-accent-600' : 'text-red-600'}`}>{speechError}</p>}<textarea ref={answerBoxRef} rows={3} placeholder="Speak or type your response here. You can edit or use Backspace anytime…" value={userAnswerInput} onChange={e => setUserAnswerInput(e.target.value)} className="w-full min-h-[96px] max-h-[360px] resize-none p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-xs text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs leading-relaxed" /><div className="flex items-center justify-between text-[10px] text-ink-400"><span>{userAnswerInput.trim() ? `${userAnswerInput.trim().split(/\s+/).length} words` : 'Start speaking or typing'}</span>{isListening && <span className="text-accent-600 font-semibold">Recording… press Stop & Transcribe when you finish</span>}
+{isTranscribingVoice && <span className="text-accent-600 font-semibold">Converting speech to text…</span>}</div>{!speechSupported && <p className="text-[10px] text-ink-400">Voice input isn't supported in this browser — try Chrome/Edge, or type your answer.</p>}{currentFeedback && <div className="p-3.5 bg-accent-50 border border-accent-200/80 rounded-2xl text-xs text-accent-950 flex items-start gap-2"><Sparkles className="w-4 h-4 text-accent-600 shrink-0 mt-0.5" /><div><strong className="block text-[10px] font-mono text-accent-700 uppercase">AI Real-time Feedback</strong><span>{currentFeedback}</span></div></div>}<div className="flex justify-between items-center pt-2 gap-3"><span className="text-[10px] font-mono text-ink-400">Step {currentStep} / {TOTAL_STEPS}</span><button onClick={handleNextStep} disabled={!userAnswerInput.trim() || isGenerating} className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all flex items-center gap-2 shadow-md shadow-accent-200">{isGenerating ? 'Processing...' : currentStep >= TOTAL_STEPS ? 'Finish & View Evaluation Report' : 'Submit Answer & Next Question'}</button></div></div>
             </div>
           </div>
         </div>
