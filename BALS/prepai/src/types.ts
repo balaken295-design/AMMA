@@ -17,6 +17,7 @@ export interface GDEvaluation {
     id: string;
     speaker: string;
     text: string;
+    aiInsight?: string;
   }[];
   nextSteps: {
     title: string;
