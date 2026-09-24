@@ -1307,6 +1307,14 @@ app.post("/api/gemini/gd-turn", async (req, res) => {
 });
 
 // API Endpoint 2.5: Final Group Discussion Evaluation
+function calculateGdReadiness(metrics: any): number {
+  const relevance = clampScore(metrics?.relevance?.score);
+  const clarity = clampScore(metrics?.clarity?.score);
+  const listening = clampScore(metrics?.listening?.score);
+  const leadership = clampScore(metrics?.leadership?.score);
+  return Math.round(relevance * 0.30 + clarity * 0.25 + listening * 0.25 + leadership * 0.20);
+}
+
 function buildGdHeuristicEvaluation(topic: string, transcript: any[], candidateId: string): any {
   const candidateTurns = Array.isArray(transcript)
     ? transcript.filter((m: any) => m && m.senderId === candidateId && String(m.text || '').trim())
@@ -1322,7 +1330,7 @@ function buildGdHeuristicEvaluation(topic: string, transcript: any[], candidateI
   const leadershipSignals = texts.filter(t => /\b(i would like to|let me add|my point is|we should|i suggest|to conclude|in conclusion|let's|another important point)\b/i.test(t)).length;
   const leadership = texts.length ? Math.round(Math.min(100, 40 + (leadershipSignals / texts.length) * 60 + Math.min(texts.length, 4) * 4)) : 0;
   const metrics = { relevance, clarity, listening, leadership };
-  const readinessScore = Math.round((relevance + clarity + listening + leadership) / 4);
+  const readinessScore = calculateGdReadiness({ relevance: { score: relevance }, clarity: { score: clarity }, listening: { score: listening }, leadership: { score: leadership } });
   const weakest = [
     ['Content Relevance', relevance, 'Keep each contribution directly connected to the GD topic and support your point with a clear reason or example.'],
     ['Communication Clarity', clarity, 'Use shorter, structured contributions with one main point before adding supporting details.'],
@@ -1442,12 +1450,25 @@ Return JSON only:
     });
 
     const evaluation = JSON.parse(response.text || "{}");
+    if (!evaluation?.metrics) throw new Error("Gemini returned an incomplete GD evaluation");
+
+    const metrics = {
+      relevance: { score: clampScore(evaluation.metrics.relevance?.score), note: String(evaluation.metrics.relevance?.note || "No relevance note returned.") },
+      clarity: { score: clampScore(evaluation.metrics.clarity?.score), note: String(evaluation.metrics.clarity?.note || "No clarity note returned.") },
+      listening: { score: clampScore(evaluation.metrics.listening?.score), note: String(evaluation.metrics.listening?.note || "No listening note returned.") },
+      leadership: { score: clampScore(evaluation.metrics.leadership?.score), note: String(evaluation.metrics.leadership?.note || "No leadership note returned.") },
+    };
+
     return res.json({
       success: true,
       evaluation: {
         topic: topic || 'Group Discussion',
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        ...evaluation,
+        readinessScore: calculateGdReadiness(metrics),
+        metrics,
+        transcript: Array.isArray(evaluation.transcript) ? evaluation.transcript : [],
+        nextSteps: Array.isArray(evaluation.nextSteps) ? evaluation.nextSteps.slice(0, 3) : [],
+        overallNote: String(evaluation.overallNote || "Evaluation is based on the captured discussion transcript."),
         degraded: false,
       }
     });
