@@ -92,8 +92,11 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const lastDetectTimeRef = useRef(0);
   const lastHudRef = useRef({ eye: -1, posture: '' });
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const speechUiFrameRef = useRef<number | null>(null);
+  const speechUiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSpeechTextRef = useRef<string | null>(null);
+  const speechNoiseStreamRef = useRef<MediaStream | null>(null);
+  const speechAudioContextRef = useRef<AudioContext | null>(null);
+  const speechNoiseMonitorRef = useRef<number | null>(null);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -101,12 +104,15 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     : `${selectedDomain} Interview${targetCompany.trim() ? ` @ ${targetCompany.trim()}` : ''}`;
 
   useEffect(() => {
-    const el = answerBoxRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    const nextHeight = Math.min(Math.max(el.scrollHeight, 96), 360);
-    el.style.height = `${nextHeight}px`;
-    el.style.overflowY = el.scrollHeight > 360 ? 'auto' : 'hidden';
+    const timer = window.setTimeout(() => {
+      const el = answerBoxRef.current;
+      if (!el) return;
+      el.style.height = 'auto';
+      const nextHeight = Math.min(Math.max(el.scrollHeight, 96), 360);
+      el.style.height = `${nextHeight}px`;
+      el.style.overflowY = el.scrollHeight > 360 ? 'auto' : 'hidden';
+    }, 100);
+    return () => window.clearTimeout(timer);
   }, [userAnswerInput]);
 
   // Low-latency browser speech recognition.
@@ -129,8 +135,27 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     recognition.lang = 'en-IN';
     recognition.maxAlternatives = 1;
 
+    const updateRecognitionPhrases = () => {
+      try {
+        const PhraseCtor = (window as any).SpeechRecognitionPhrase;
+        if (!PhraseCtor || !('phrases' in recognition)) return;
+        const terms = [
+          selectedDomain,
+          selectedFocus?.label || '',
+          ...(resumeSummary?.skills || []),
+          ...(resumeSummary?.certifications || []),
+          ...(resumeSummary?.projects || []).map((p: any) => p?.name).filter(Boolean),
+          ...(resumeSummary?.experience || []).map((e: any) => e?.company).filter(Boolean),
+        ].map(String).filter(Boolean);
+        recognition.phrases = [...new Set(terms)].slice(0, 100).map((phrase: string) => new PhraseCtor(phrase, 5));
+      } catch {
+        // Optional browser feature; recognition continues normally when unsupported.
+      }
+    };
+    updateRecognitionPhrases();
+
     const flushSpeechUi = () => {
-      speechUiFrameRef.current = null;
+      speechUiTimerRef.current = null;
       const next = pendingSpeechTextRef.current;
       if (next !== null) {
         pendingSpeechTextRef.current = null;
@@ -140,8 +165,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
     const queueSpeechUi = (next: string) => {
       pendingSpeechTextRef.current = next;
-      if (speechUiFrameRef.current === null) {
-        speechUiFrameRef.current = requestAnimationFrame(flushSpeechUi);
+      if (speechUiTimerRef.current === null) {
+        speechUiTimerRef.current = window.setTimeout(flushSpeechUi, 80);
       }
     };
 
@@ -222,13 +247,41 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       recognition.onerror = null;
       recognition.onend = null;
       try { recognition.abort(); } catch {}
-      if (speechUiFrameRef.current !== null) cancelAnimationFrame(speechUiFrameRef.current);
-      speechUiFrameRef.current = null;
+      if (speechUiTimerRef.current !== null) clearTimeout(speechUiTimerRef.current);
+      speechUiTimerRef.current = null;
+      speechNoiseStreamRef.current?.getTracks().forEach(track => track.stop());
+      speechNoiseStreamRef.current = null;
+      if (speechNoiseMonitorRef.current !== null) cancelAnimationFrame(speechNoiseMonitorRef.current);
+      speechNoiseMonitorRef.current = null;
+      try { speechAudioContextRef.current?.close(); } catch {}
+      speechAudioContextRef.current = null;
       recognitionRef.current = null;
     };
-  }, []);
+  }, [selectedDomain, selectedFocus?.label, resumeSummary]);
 
-  const toggleMic = () => {
+  const prepareMicrophone = async () => {
+    if (speechNoiseStreamRef.current) return true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 48000,
+        },
+        video: false,
+      });
+      speechNoiseStreamRef.current = stream;
+      return true;
+    } catch (error) {
+      console.warn('Microphone preprocessing stream unavailable:', error);
+      setSpeechError('Microphone access is required for voice input. Allow microphone access and try again.');
+      return false;
+    }
+  };
+
+  const toggleMic = async () => {
     if (!recognitionRef.current) return;
 
     if (shouldListenRef.current) {
@@ -243,6 +296,9 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       setSpeechError(null);
       return;
     }
+
+    const micReady = await prepareMicrophone();
+    if (!micReady) return;
 
     // Capture the current editable text as the base. Voice recognition only
     // appends new speech to this value, so deleting old words is never undone.
@@ -524,6 +580,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const cancelSession = () => {
     shouldListenRef.current = false;
     try { recognitionRef.current?.abort(); } catch {}
+    speechNoiseStreamRef.current?.getTracks().forEach(track => track.stop());
+    speechNoiseStreamRef.current = null;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     setIsListening(false);
     setMicEnabled(false);
