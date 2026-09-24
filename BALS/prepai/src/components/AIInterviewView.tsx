@@ -95,6 +95,13 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const speechUiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSpeechTextRef = useRef<string | null>(null);
   const lastFinalChunkRef = useRef({ text: '', at: 0 });
+  const vadStreamRef = useRef<MediaStream | null>(null);
+  const vadContextRef = useRef<AudioContext | null>(null);
+  const vadAnalyserRef = useRef<AnalyserNode | null>(null);
+  const vadFrameRef = useRef<number | null>(null);
+  const vadNoiseFloorRef = useRef(0.008);
+  const speechActiveRef = useRef(false);
+  const lastSpeechAtRef = useRef(0);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -160,6 +167,18 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         else interim += transcript;
       }
 
+      // The browser ASR service can hallucinate short words from fan/AC/room
+      // noise. A local RMS voice-activity gate decides whether recognition
+      // results are allowed into the answer box.
+      const speechRecentlyDetected =
+        speechActiveRef.current || performance.now() - lastSpeechAtRef.current < 1200;
+
+      if (!speechRecentlyDetected) {
+        interimSpeechRef.current = '';
+        queueSpeechUi(speechBaseRef.current);
+        return;
+      }
+
       const normalizedFinal = finalChunk.trim().replace(/\s+/g, ' ');
       const now = performance.now();
       const repeatedFinal =
@@ -223,20 +242,103 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try { recognition.abort(); } catch {}
       if (speechUiTimerRef.current !== null) clearTimeout(speechUiTimerRef.current);
       speechUiTimerRef.current = null;
+      stopVoiceActivityMonitor();
       recognitionRef.current = null;
     };
   }, [selectedDomain, selectedFocus?.label, resumeSummary]);
 
-  const prepareMicrophone = async () => {
+  const stopVoiceActivityMonitor = () => {
+    if (vadFrameRef.current !== null) cancelAnimationFrame(vadFrameRef.current);
+    vadFrameRef.current = null;
+    try { vadContextRef.current?.close(); } catch {}
+    vadContextRef.current = null;
+    vadAnalyserRef.current = null;
+    vadStreamRef.current?.getTracks().forEach(track => track.stop());
+    vadStreamRef.current = null;
+    speechActiveRef.current = false;
+  };
+
+  const startVoiceActivityMonitor = async () => {
+    stopVoiceActivityMonitor();
     try {
-      const permissionStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
         video: false,
       });
-      // Request permission, then immediately release the temporary stream.
-      // SpeechRecognition owns the actual microphone pipeline; keeping a second
-      // stream open here can cause device contention and does not feed processed
-      // audio into SpeechRecognition.
+
+      const AudioContextCtor = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextCtor) {
+        stream.getTracks().forEach(track => track.stop());
+        return false;
+      }
+
+      const context: AudioContext = new AudioContextCtor();
+      const source = context.createMediaStreamSource(stream);
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.65;
+      source.connect(analyser);
+
+      vadStreamRef.current = stream;
+      vadContextRef.current = context;
+      vadAnalyserRef.current = analyser;
+
+      const data = new Uint8Array(analyser.fftSize);
+      let calibrationFrames = 0;
+      let calibrationTotal = 0;
+
+      const loop = () => {
+        if (!shouldListenRef.current || !vadAnalyserRef.current) return;
+
+        analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const sample = (data[i] - 128) / 128;
+          sum += sample * sample;
+        }
+        const rms = Math.sqrt(sum / data.length);
+
+        // Learn the room's noise floor during the first ~300ms.
+        if (calibrationFrames < 18) {
+          calibrationTotal += rms;
+          calibrationFrames++;
+          if (calibrationFrames === 18) {
+            vadNoiseFloorRef.current = Math.max(0.004, calibrationTotal / calibrationFrames);
+          }
+        }
+
+        const floor = vadNoiseFloorRef.current;
+        // Require a clear increase over the measured room noise. The lower
+        // absolute threshold prevents very quiet microphones from being stuck.
+        const threshold = Math.max(0.018, floor * 2.2);
+        const speakingNow = rms > threshold;
+
+        if (speakingNow) {
+          speechActiveRef.current = true;
+          lastSpeechAtRef.current = performance.now();
+        } else if (performance.now() - lastSpeechAtRef.current > 1200) {
+          speechActiveRef.current = false;
+        }
+
+        vadFrameRef.current = requestAnimationFrame(loop);
+      };
+
+      vadFrameRef.current = requestAnimationFrame(loop);
+      return true;
+    } catch (error) {
+      console.warn('Voice activity monitor unavailable:', error);
+      return false;
+    }
+  };
+
+  const prepareMicrophone = async () => {
+    try {
+      const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       permissionStream.getTracks().forEach(track => track.stop());
       return true;
     } catch (error) {
@@ -253,6 +355,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       shouldListenRef.current = false;
       ignoreSpeechResultsRef.current = true;
       try { recognitionRef.current?.abort(); } catch {}
+      stopVoiceActivityMonitor();
       speechBaseRef.current = userAnswerInput.trim();
       interimSpeechRef.current = '';
       lastFinalChunkRef.current = { text: '', at: 0 };
@@ -265,6 +368,12 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
     const micReady = await prepareMicrophone();
     if (!micReady) return;
+
+    const vadReady = await startVoiceActivityMonitor();
+    if (!vadReady) {
+      setSpeechError('Could not access the microphone audio monitor. Please check your microphone and try again.');
+      return;
+    }
 
     // Capture the current editable text as the base. Voice recognition only
     // appends new speech to this value, so deleting old words is never undone.
@@ -350,6 +459,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       shouldListenRef.current = false;
       ignoreSpeechResultsRef.current = true;
       try { recognitionRef.current?.abort(); } catch {}
+      stopVoiceActivityMonitor();
       setIsListening(false);
       setMicEnabled(false);
     }
@@ -458,6 +568,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     speechBaseRef.current = '';
     interimSpeechRef.current = '';
     try { recognitionRef.current?.abort(); } catch {}
+    stopVoiceActivityMonitor();
     setIsListening(false); setIsGenerating(true);
     const newHistoryItem: InterviewQuestion = { id: currentStep, question: currentQuestionText, category: 'technical', userAnswer: userAnswerInput.trim(), aiFeedback: currentFeedback || undefined };
     const updatedHistory = [...questionsHistory, newHistoryItem]; setQuestionsHistory(updatedHistory); setUserAnswerInput('');
@@ -547,6 +658,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const cancelSession = () => {
     shouldListenRef.current = false;
     try { recognitionRef.current?.abort(); } catch {}
+    stopVoiceActivityMonitor();
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     setIsListening(false);
     setMicEnabled(false);
