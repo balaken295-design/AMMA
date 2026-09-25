@@ -22,12 +22,12 @@ type Category = 'verbal' | 'logical' | 'quants';
 // sends Back to Dashboard, which is inconsistent. This map makes it the
 // same either way: every leaf screen's parent is Dashboard, and Dashboard's
 // parent is Landing.
-const PARENT_TAB: Record<Tab, Tab> = {
-  landing: 'landing',
+const PARENT_TAB: Partial<Record<Tab, Tab>> = {
   dashboard: 'landing',
   aptitude: 'dashboard',
   gd: 'dashboard',
   interview: 'dashboard',
+  evaluation: 'dashboard',
 };
 
 export default function App() {
@@ -199,11 +199,18 @@ export default function App() {
     navigate(targetTab, category);
   };
 
-  // The visible "Back" control (top-left arrow) now always goes to the
-  // current screen's fixed logical parent (see PARENT_TAB above), so it
-  // behaves identically no matter how you arrived at the current screen —
-  // via Dashboard, or via a Landing-page shortcut that skipped Dashboard.
-  const handleGoBack = () => navigate(PARENT_TAB[activeTab]);
+  // Back means the actual previous app screen. Each navigate() call creates
+  // a history entry, so this returns Evaluation -> Interview/GD, Interview/GD
+  // -> Dashboard (or Landing if that was the real previous screen), etc.
+  // It no longer forces every Back click through a fixed parent/home route.
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    const fallback = PARENT_TAB[activeTab];
+    if (fallback) navigate(fallback);
+  };
 
   return (
     <div id="app-root" className="min-h-screen bg-paper text-ink-900 flex flex-col">
