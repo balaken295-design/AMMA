@@ -158,7 +158,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             Aptitude Practice
           </h1>
           <p className="text-ink-600 text-sm mt-0.5">
-            20 questions per topic quest and 30 questions per overall module test. Build measurable practice progress across core aptitude areas.
+            20 questions per topic and 30 questions per module assessment. Track accuracy and progress across core aptitude areas.
           </p>
         </div>
 
@@ -205,7 +205,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                 Overall {activeCategory.toUpperCase()} Module Test (30 Questions)
               </h2>
               <p className="text-xs text-ink-300">
-                30 comprehensive, comprehensive questions covering all topics in {activeCategory} aptitude across Intern to Managing Director levels.
+                30 comprehensive questions covering all topics in {activeCategory} aptitude across foundation to advanced levels.
               </p>
             </div>
             <button
@@ -240,7 +240,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                 <div className="space-y-2">
                   <div className="flex justify-between items-start">
                     <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-full bg-accent-50 text-accent-700">
-                      20 Questions • Level Test
+                      20 Questions • Topic Assessment
                     </span>
                     <span className="text-xs font-bold text-accent-600 flex items-center gap-1">
                       <CheckCircle className="w-3.5 h-3.5" /> Placement Practice
@@ -299,7 +299,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                 onClick={() => openPreTest(selectedTopic)}
                 className="bg-accent-600 hover:bg-accent-500 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all flex items-center gap-2 self-start md:self-auto shadow-md"
               >
-                <Play className="w-4 h-4" /> Start 10-Question Deep Test
+                <Play className="w-4 h-4" /> Start Topic Assessment
               </button>
             </div>
 

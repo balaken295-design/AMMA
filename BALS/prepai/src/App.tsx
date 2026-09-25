@@ -93,10 +93,10 @@ export default function App() {
   }, [userProfile]);
 
   const calculateLevel = (xp: number) => {
-    if (xp < 500) return { level: 1, title: 'Intern Quest' };
-    if (xp < 1500) return { level: 2, title: 'Associate Sprint' };
-    if (xp < 3000) return { level: 3, title: 'VP Strategy' };
-    return { level: 4, title: 'MD Boss Battle' };
+    if (xp < 500) return { level: 1, title: 'Foundation' };
+    if (xp < 1500) return { level: 2, title: 'Intermediate' };
+    if (xp < 3000) return { level: 3, title: 'Advanced' };
+    return { level: 4, title: 'Advanced Leadership' };
   };
 
   const handleAddXP = (xpAmount: number, domain?: string, scorePercent?: number) => {
