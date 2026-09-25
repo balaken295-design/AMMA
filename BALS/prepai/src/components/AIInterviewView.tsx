@@ -96,6 +96,14 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const pendingSpeechTextRef = useRef<string | null>(null);
   const lastFinalChunkRef = useRef({ text: '', at: 0 });
   const recognitionStartingRef = useRef(false);
+  const liveSocketRef = useRef<WebSocket | null>(null);
+  const liveStreamRef = useRef<MediaStream | null>(null);
+  const liveAudioContextRef = useRef<AudioContext | null>(null);
+  const liveAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const liveAudioWorkletRef = useRef<AudioWorkletNode | null>(null);
+  const liveTranscriptBaseRef = useRef('');
+  const liveInterimRef = useRef('');
+  const liveCleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -114,217 +122,227 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     return () => window.clearTimeout(timer);
   }, [userAnswerInput]);
 
-  // Low-latency browser speech recognition.
-  // UI updates are frame-batched so frequent interim results do not cause a
-  // React render for every partial word. Final fragments with very low browser
-  // confidence are ignored to reduce obvious background-noise false positives.
+  // Gemini Live Transcription
+  // The previous implementation depended on Chrome's Web Speech service.
+  // That service can emit "network" / "service-not-allowed" errors and is
+  // browser/environment dependent. This path streams 16 kHz mono PCM directly
+  // to Gemini's dedicated live transcription model using a short-lived token.
+  const stopLiveTranscription = (keepTranscript = true) => {
+    try {
+      const ws = liveSocketRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try { ws.send(JSON.stringify({ realtimeInput: { activityEnd: {} } })); } catch {}
+      }
+    } catch {}
+
+    if (liveCleanupTimerRef.current) clearTimeout(liveCleanupTimerRef.current);
+    liveCleanupTimerRef.current = window.setTimeout(() => {
+      try { liveAudioWorkletRef.current?.disconnect(); } catch {}
+      try { liveAudioSourceRef.current?.disconnect(); } catch {}
+      try { liveAudioContextRef.current?.close(); } catch {}
+      liveStreamRef.current?.getTracks().forEach(track => track.stop());
+      try { liveSocketRef.current?.close(); } catch {}
+
+      liveAudioWorkletRef.current = null;
+      liveAudioSourceRef.current = null;
+      liveAudioContextRef.current = null;
+      liveStreamRef.current = null;
+      liveSocketRef.current = null;
+      if (!keepTranscript) {
+        liveTranscriptBaseRef.current = '';
+        liveInterimRef.current = '';
+      }
+    }, 450);
+  };
+
   useEffect(() => {
-    const SpeechRecognitionCtor: any =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognitionCtor) {
-      setSpeechSupported(false);
-      setSpeechError('Live voice recognition is not supported in this browser. Please use Chrome or Edge.');
-      return;
-    }
-
-    const recognition = new SpeechRecognitionCtor();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      recognitionStartingRef.current = false;
-      setIsListening(true);
-      setMicEnabled(true);
-      setSpeechError('Listening…');
-    };
-
-    recognition.onresult = (event: any) => {
-      if (ignoreSpeechResultsRef.current) return;
-
-      let finalChunk = '';
-      let interim = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcript = String(result[0]?.transcript || '').trim();
-        if (!transcript) continue;
-
-        // Ignore very low-confidence final fragments when the browser exposes
-        // confidence. This reduces accidental words caused by background noise
-        // without blocking browsers that report confidence as 0.
-        if (result.isFinal) finalChunk += transcript + ' ';
-        else interim += transcript;
-      }
-
-      const normalizedFinal = finalChunk.trim().replace(/\s+/g, ' ');
-      const now = performance.now();
-      const repeatedFinal =
-        normalizedFinal &&
-        normalizedFinal.toLowerCase() === lastFinalChunkRef.current.text.toLowerCase() &&
-        now - lastFinalChunkRef.current.at < 1800;
-
-      // Chrome can occasionally emit the same final result again when a
-      // continuous recognition session is restarted. Never append that
-      // duplicate, otherwise one ambient word can flood the answer box.
-      if (normalizedFinal && !repeatedFinal) {
-        speechBaseRef.current = (speechBaseRef.current + ' ' + normalizedFinal).trim();
-        lastFinalChunkRef.current = { text: normalizedFinal, at: now };
-      }
-
-      interimSpeechRef.current = interim;
-      queueSpeechUi(speechBaseRef.current + (interim ? ' ' + interim : ''));
-    };
-
-    recognition.onerror = (event: any) => {
-      const error = String(event?.error || 'unknown');
-      console.warn('AI Interview speech recognition error:', error);
-
-      if (error === 'not-allowed' || error === 'service-not-allowed') {
-        shouldListenRef.current = false;
-        setIsListening(false);
-        setMicEnabled(false);
-        setSpeechError('Microphone access was blocked. Allow microphone access for this site, then try again.');
-        return;
-      }
-
-      if (error === 'audio-capture') {
-        shouldListenRef.current = false;
-        setIsListening(false);
-        setMicEnabled(false);
-        setSpeechError('No microphone was found. Check your microphone and try again.');
-        return;
-      }
-
-      // Chrome can briefly report no-speech/network/aborted while its
-      // recognition service is switching between audio chunks. These are
-      // transient when the candidate is still actively listening. Do not show
-      // a red error or make the user press Speak again; onend will restart it.
-      if (error === 'no-speech' || error === 'network' || error === 'aborted') {
-        if (shouldListenRef.current) {
-          setSpeechError('Listening…');
-        }
-        return;
-      }
-
-      if (shouldListenRef.current) {
-        setSpeechError('Voice recognition paused. Restarting…');
-      }
-    };
-
-    recognition.onend = () => {
-      if (shouldListenRef.current) {
-        // Give the browser a short transition window before restarting. This
-        // avoids start/stop race conditions that can add noticeable gaps.
-        window.setTimeout(() => {
-          if (!shouldListenRef.current || recognitionStartingRef.current) return;
-          recognitionStartingRef.current = true;
-          try { recognition.start(); } catch {
-            window.setTimeout(() => {
-              if (!shouldListenRef.current) return;
-              try { recognition.start(); } catch {}
-            }, 120);
-          } finally {
-            recognitionStartingRef.current = false;
-          }
-        }, 50);
-      } else {
-        setIsListening(false);
-        setMicEnabled(false);
-      }
-    };
-
-    recognitionRef.current = recognition;
-
     return () => {
-      shouldListenRef.current = false;
-      ignoreSpeechResultsRef.current = true;
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.onend = null;
-      try { recognition.abort(); } catch {}
-      if (speechUiTimerRef.current !== null) clearTimeout(speechUiTimerRef.current);
-      speechUiTimerRef.current = null;
-
-      recognitionRef.current = null;
+      if (liveCleanupTimerRef.current) clearTimeout(liveCleanupTimerRef.current);
+      try { liveAudioWorkletRef.current?.disconnect(); } catch {}
+      try { liveAudioSourceRef.current?.disconnect(); } catch {}
+      try { liveAudioContextRef.current?.close(); } catch {}
+      liveStreamRef.current?.getTracks().forEach(track => track.stop());
+      try { liveSocketRef.current?.close(); } catch {}
     };
   }, []);
 
   const toggleMic = async () => {
-    const recognition = recognitionRef.current;
-    if (!recognition) {
-      setSpeechError('Voice recognition is not ready yet. Please wait a moment and try again.');
-      return;
-    }
-
-    if (shouldListenRef.current) {
-      shouldListenRef.current = false;
-      ignoreSpeechResultsRef.current = true;
-      try { recognition.abort(); } catch {}
-
-      speechBaseRef.current = userAnswerInput.trim();
-      interimSpeechRef.current = '';
-      lastFinalChunkRef.current = { text: '', at: 0 };
-      setUserAnswerInput(speechBaseRef.current);
+    if (isListening) {
+      stopLiveTranscription(true);
       setIsListening(false);
       setMicEnabled(false);
-      setSpeechError(null);
+      setSpeechError('Finalizing transcript…');
+      window.setTimeout(() => setSpeechError(null), 900);
       return;
     }
 
-    // Start Chrome/Edge SpeechRecognition FIRST. The VAD is only a background
-    // noise monitor; it must never block the Speak Answer button from starting.
-    speechBaseRef.current = userAnswerInput.trim();
-    interimSpeechRef.current = '';
-    lastFinalChunkRef.current = { text: '', at: 0 };
-    ignoreSpeechResultsRef.current = false;
-    shouldListenRef.current = true;
-    setSpeechError('Listening…');
+    if (!navigator.mediaDevices?.getUserMedia || !window.WebSocket || !window.AudioContext) {
+      setSpeechError('Live voice input is not supported in this browser. Please use the latest Chrome or Edge.');
+      setSpeechSupported(false);
+      return;
+    }
+
+    setSpeechError('Connecting voice input…');
     setIsListening(true);
     setMicEnabled(true);
-
-    if (recognitionStartingRef.current) return;
-    recognitionStartingRef.current = true;
+    liveTranscriptBaseRef.current = userAnswerInput.trim();
+    liveInterimRef.current = '';
 
     try {
-      try {
-        recognition.start();
-      } catch (error: any) {
-        // A previous browser recognition session may still be closing.
-        // Retry once instead of making the button appear dead.
-        if (String(error?.name || '').toLowerCase().includes('invalidstate')) {
-          await new Promise(resolve => window.setTimeout(resolve, 150));
-          if (shouldListenRef.current) recognition.start();
-        } else {
-          throw error;
-        }
+      const tokenResponse = await fetch('/api/gemini/interview-live-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const tokenData = await tokenResponse.json().catch(() => ({}));
+      if (!tokenResponse.ok || !tokenData.success || !tokenData.token) {
+        throw new Error(tokenData.error || 'Could not create a secure voice session.');
       }
 
-    } catch (error) {
-      console.warn('Speech recognition start failed:', error);
-      shouldListenRef.current = false;
-      ignoreSpeechResultsRef.current = true;
-      recognitionStartingRef.current = false;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+      liveStreamRef.current = stream;
 
+      const ws = new WebSocket(
+        `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?access_token=${encodeURIComponent(tokenData.token)}`
+      );
+      liveSocketRef.current = ws;
+
+      const workletCode = `
+        class InterviewPcmProcessor extends AudioWorkletProcessor {
+          constructor() {
+            super();
+            this.samples = [];
+            this.ratio = sampleRate / 16000;
+            this.position = 0;
+          }
+          process(inputs) {
+            const input = inputs[0] && inputs[0][0];
+            if (!input) return true;
+            while (this.position < input.length) {
+              const sample = Math.max(-1, Math.min(1, input[Math.floor(this.position)]));
+              this.samples.push(sample < 0 ? sample * 0x8000 : sample * 0x7fff);
+              this.position += this.ratio;
+            }
+            this.position -= input.length;
+            while (this.samples.length >= 1600) {
+              const chunk = new Int16Array(this.samples.splice(0, 1600));
+              this.port.postMessage(chunk.buffer, [chunk.buffer]);
+            }
+            return true;
+          }
+        }
+        registerProcessor('interview-pcm-processor', InterviewPcmProcessor);
+      `;
+      const workletUrl = URL.createObjectURL(new Blob([workletCode], { type: 'application/javascript' }));
+
+      ws.onopen = async () => {
+        ws.send(JSON.stringify({
+          setup: {
+            model: 'models/gemini-3.5-transcribe-live',
+            generationConfig: { responseModalities: ['TEXT'] },
+            realtimeInputConfig: { automaticActivityDetection: { disabled: true } },
+            inputAudioTranscription: { languageCodes: [], mode: 'SMART' },
+          },
+        }));
+
+        setSpeechError('Voice channel connected — speak naturally');
+      };
+
+      ws.onmessage = (event) => {
+        let payload: any;
+        try { payload = JSON.parse(event.data); } catch { return; }
+        const content = payload?.serverContent;
+        if (!content) return;
+
+        const interim = String(content.interimInputTranscription?.text || '').trim();
+        const finalText = String(content.inputTranscription?.text || '').trim();
+
+        if (finalText) {
+          liveTranscriptBaseRef.current = (
+            liveTranscriptBaseRef.current + ' ' + finalText
+          ).trim();
+          liveInterimRef.current = '';
+          setUserAnswerInput(liveTranscriptBaseRef.current);
+        } else if (interim) {
+          liveInterimRef.current = interim;
+          setUserAnswerInput(
+            (liveTranscriptBaseRef.current + ' ' + interim).trim()
+          );
+        }
+      };
+
+      ws.onerror = () => {
+        setSpeechError('Gemini Live voice connection failed. Please try Speak Answer again.');
+      };
+
+      ws.onclose = () => {
+        if (isListening) {
+          setIsListening(false);
+          setMicEnabled(false);
+        }
+      };
+
+      // Do not use a second microphone consumer. Gemini Live owns this stream.
+      // The worklet only transforms the same stream into the PCM format Gemini
+      // expects, so there is no competing SpeechRecognition service.
+      ws.addEventListener('open', () => {
+        try { ws.send(JSON.stringify({ realtimeInput: { activityStart: {} } })); } catch {}
+      });
+
+      // Load the PCM worklet only after the user gesture has opened the microphone.
+      // The worklet URL is revoked after registration to avoid leaking object URLs.
+      const audioContext = new AudioContext();
+      await audioContext.resume();
+      await audioContext.audioWorklet.addModule(workletUrl);
+      URL.revokeObjectURL(workletUrl);
+
+      const source = audioContext.createMediaStreamSource(stream);
+      const worklet = new AudioWorkletNode(audioContext, 'interview-pcm-processor');
+      worklet.port.onmessage = (event) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        const bytes = new Uint8Array(event.data);
+        let binary = '';
+        const sliceSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += sliceSize) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + sliceSize));
+        }
+        ws.send(JSON.stringify({
+          realtimeInput: {
+            audio: { data: btoa(binary), mimeType: 'audio/pcm;rate=16000' },
+          },
+        }));
+      };
+      source.connect(worklet);
+      liveAudioContextRef.current = audioContext;
+      liveAudioSourceRef.current = source;
+      liveAudioWorkletRef.current = worklet;
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+      }
+
+    } catch (error: any) {
+      console.error('Gemini Live voice start failed:', error);
+      stopLiveTranscription(false);
       setIsListening(false);
       setMicEnabled(false);
-      setSpeechError('Could not start voice recognition. Please allow microphone access and click Speak Answer again.');
-      return;
-    } finally {
-      recognitionStartingRef.current = false;
+      setSpeechError(
+        error?.name === 'NotAllowedError'
+          ? 'Microphone access was blocked. Allow microphone access for this site and try again.'
+          : error?.message || 'Could not start live voice recognition.'
+      );
     }
   };
 
-  // Keep the speech base synchronized with manual edits while not actively
-  // showing an interim recognition hypothesis. This preserves Backspace/editing.
   const handleAnswerChange = (value: string) => {
-    // Manual typing, Backspace and Delete are authoritative even while
-    // speech recognition is active.
     setUserAnswerInput(value);
-    speechBaseRef.current = value;
-    interimSpeechRef.current = '';
+    liveTranscriptBaseRef.current = value;
+    liveInterimRef.current = '';
   };
 
   useEffect(() => {
