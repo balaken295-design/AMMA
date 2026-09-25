@@ -581,16 +581,14 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   // prematurely end an interview answer.
 
   const cancelSession = () => {
-    shouldListenRef.current = false;
-    try { recognitionRef.current?.abort(); } catch {}
-
+    stopLiveTranscription(false);
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     setIsListening(false);
     setMicEnabled(false);
     setSessionStarted(false);
     setUserAnswerInput('');
-    speechBaseRef.current = '';
-    interimSpeechRef.current = '';
+    liveTranscriptBaseRef.current = '';
+    liveInterimRef.current = '';
   };
 
   return (
