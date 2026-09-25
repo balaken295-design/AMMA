@@ -269,7 +269,9 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
     'Should brands collaborate with other brands for joint promotions?'
   ];
   const [selectedTopic, setSelectedTopic] = useState(() => GD_TOPICS[Math.floor(Math.random() * GD_TOPICS.length)]);
+  const [gdDurationMinutes, setGdDurationMinutes] = useState(5);
   const [copiedCode, setCopiedCode] = useState(false);
+  const endingRoomRef = useRef(false);
   const [joinError, setJoinError] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -662,7 +664,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
           participants: res.room.participants.map((p: any) => ({ ...p, isSpeaking: false, micEnabled: true, videoEnabled: true })),
           messages: res.room.messages,
           status: 'active',
-          timeRemaining: 900,
+          timeRemaining: gdDurationMinutes * 60,
         });
         wireSocket(res.room.code, mode);
 
@@ -734,7 +736,30 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
     });
   };
 
-const handleLeaveRoom = async () => {
+  // Client-side GD countdown. The selected duration is stored in the room state
+  // and the session ends automatically at zero.
+  useEffect(() => {
+    if (!activeRoom || activeRoom.status !== 'active') return;
+    const timer = window.setInterval(() => {
+      setActiveRoom(prev => {
+        if (!prev) return prev;
+        if (prev.timeRemaining <= 1) {
+          window.clearInterval(timer);
+          return { ...prev, timeRemaining: 0, status: 'ended' };
+        }
+        return { ...prev, timeRemaining: prev.timeRemaining - 1 };
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [activeRoom?.code, activeRoom?.status]);
+
+  useEffect(() => {
+    if (activeRoom?.status === 'ended' && !endingRoomRef.current) {
+      void handleLeaveRoom();
+    }
+  }, [activeRoom?.status]);
+
+  const handleLeaveRoom = async () => {
   if (activeRoom && onCompleteGD) {
     try {
       const res = await fetch('/api/gemini/gd-evaluation', {
@@ -766,6 +791,7 @@ const handleLeaveRoom = async () => {
   teardownSocket();
   setActiveRoom(null);
   setSelfSocketId(null);
+  endingRoomRef.current = false;
 };
 
   const handleSendMessage = async () => {
@@ -825,6 +851,25 @@ const handleLeaveRoom = async () => {
               className="w-full p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-sm font-semibold text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs"
             />
             <p className="text-[11px] text-ink-500">This is what your friends will see when you join or create a room.</p>
+          </div>
+
+          {/* GD Duration */}
+          <div className="space-y-2">
+            <label className="text-xs font-mono font-bold text-ink-700 uppercase tracking-wider">GD Time Limit</label>
+            <select
+              value={gdDurationMinutes}
+              onChange={e => setGdDurationMinutes(Number(e.target.value))}
+              className="w-full p-3.5 bg-ink-50 border border-ink-200/80 rounded-2xl text-sm font-semibold text-ink-900 focus:outline-none focus:border-accent-600 shadow-xs"
+            >
+              <option value={1}>1 minute — Test</option>
+              <option value={5}>5 minutes</option>
+              <option value={10}>10 minutes</option>
+              <option value={15}>15 minutes</option>
+              <option value={20}>20 minutes</option>
+              <option value={25}>25 minutes</option>
+              <option value={30}>30 minutes</option>
+            </select>
+            <p className="text-[11px] text-ink-500">The GD ends automatically when the timer reaches zero. The 1-minute option is included for testing.</p>
           </div>
 
           {/* Topic Selector */}
@@ -1109,6 +1154,12 @@ const handleLeaveRoom = async () => {
               <h2 className="text-lg font-bold mt-1 line-clamp-1">
                 {activeRoom.topic}
               </h2>
+              <div className="mt-2 inline-flex items-center gap-2 text-xs font-mono font-bold text-accent-300">
+                <span>Time left</span>
+                <span className="px-2 py-1 rounded-lg bg-white/10 text-white">
+                  {String(Math.floor(activeRoom.timeRemaining / 60)).padStart(2, '0')}:{String(activeRoom.timeRemaining % 60).padStart(2, '0')}
+                </span>
+              </div>
             </div>
 
             <button
