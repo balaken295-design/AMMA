@@ -17,7 +17,7 @@ const FEATURES = [
 
 export const LandingPageView: React.FC<LandingPageViewProps> = ({onStartApp,userProfile,onOpenLoginModal}) => (
   <div id="landing-page-container" className="min-h-screen">
-    <section className="border-b border-ink-200 bg-[#f5f1e8]">
+    <section className="interactive-card border-b border-ink-200 bg-[#f5f1e8]">
       <div className="max-w-[1180px] mx-auto px-5 md:px-8 py-20 md:py-28 grid lg:grid-cols-[1.35fr_.65fr] gap-14 items-end">
         <div>
           <p className="text-sm uppercase tracking-[.18em] text-accent-600 font-bold mb-5">MBA Placement Preparation</p>
@@ -32,17 +32,17 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({onStartApp,user
             <button onClick={()=>onStartApp('dashboard')} className="bg-accent-600 text-white px-6 py-3.5 text-base font-bold inline-flex items-center gap-2 hover:bg-accent-700">
               Open Dashboard <ArrowRight className="w-4 h-4"/>
             </button>
-            <button onClick={()=>onStartApp('interview')} className="bg-white border border-ink-300 text-ink-900 px-6 py-3.5 text-base font-bold inline-flex items-center gap-2 hover:border-accent-600">
+            <button onClick={()=>onStartApp('interview')} className="interactive-card bg-white border border-ink-300 text-ink-900 px-6 py-3.5 text-base font-bold inline-flex items-center gap-2 hover:border-accent-600">
               Start AI Interview
             </button>
           </div>
         </div>
 
-        <aside className="border-l-4 border-highlight-500 pl-6 py-2">
+        <aside className="interactive-card border-l-4 border-highlight-500 pl-6 py-2">
           <p className="text-xs uppercase tracking-[.16em] text-ink-500 font-bold">Candidate status</p>
           <p className="mt-3 text-4xl font-bold text-ink-950">{userProfile?.readinessScore ?? 0}%</p>
           <p className="text-sm text-ink-600 mt-1">Current readiness</p>
-          <div className="mt-6 pt-5 border-t border-ink-200 grid grid-cols-2 gap-4 text-sm">
+          <div className="interactive-card mt-6 pt-5 border-t border-ink-200 grid grid-cols-2 gap-4 text-sm">
             <div><strong className="block text-xl text-ink-950">{userProfile?.completedTests ?? 0}</strong><span className="text-ink-500">Tests</span></div>
             <div><strong className="block text-xl text-ink-950">{userProfile?.completedInterviews ?? 0}</strong><span className="text-ink-500">Interviews</span></div>
           </div>
@@ -50,7 +50,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({onStartApp,user
       </div>
     </section>
 
-    <section className="bg-white border-b border-ink-200">
+    <section className="interactive-card bg-white border-b border-ink-200">
       <div className="max-w-[1180px] mx-auto px-5 md:px-8 py-14">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-9">
           <div>
@@ -60,9 +60,9 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({onStartApp,user
           <button onClick={()=>onStartApp('dashboard')} className="text-accent-600 font-bold inline-flex items-center gap-2">View dashboard <ArrowRight className="w-4 h-4"/></button>
         </div>
 
-        <div className="grid md:grid-cols-2 border-t border-l border-ink-200">
+        <div className="interactive-card grid md:grid-cols-2 border-t border-l border-ink-200">
           {FEATURES.map(({tab,icon:Icon,title,text})=>(
-            <button key={tab} onClick={()=>onStartApp(tab)} className="text-left p-7 border-r border-b border-ink-200 hover:bg-[#fbfaf7] group">
+            <button key={tab} onClick={()=>onStartApp(tab)} className="interactive-card text-left p-7 border-r border-b border-ink-200 hover:bg-[#fbfaf7] group">
               <div className="flex items-start justify-between gap-6">
                 <span className="ui-3d-stage ui-3d-stage-sm" aria-hidden="true"><span className="ui-3d-tile"><Icon className="w-5 h-5"/></span></span>
                 <ArrowRight className="w-4 h-4 text-ink-400 group-hover:text-accent-600"/>
@@ -84,7 +84,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({onStartApp,user
         </div>
         <div className="grid gap-4">
           {['Choose a preparation module','Complete the assessment','Review your report and next steps'].map((item,i)=>(
-            <div key={item} className="flex items-center gap-4 border-b border-ink-700 pb-4">
+            <div key={item} className="interactive-card flex items-center gap-4 border-b border-ink-700 pb-4">
               <span className="text-highlight-300 font-bold text-lg">0{i+1}</span>
               <span className="text-base">{item}</span>
               <CheckCircle2 className="w-4 h-4 ml-auto text-ink-500"/>
@@ -94,7 +94,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({onStartApp,user
       </div>
     </section>
 
-    <footer className="bg-[#1b1714] text-ink-400 border-t border-ink-700">
+    <footer className="interactive-card bg-[#1b1714] text-ink-400 border-t border-ink-700">
       <div className="max-w-[1180px] mx-auto px-5 md:px-8 py-7 flex flex-col md:flex-row justify-between gap-3 text-sm">
         <span className="text-white font-bold">MBA <span className="text-highlight-300">BJD</span></span>
         <span>Professional placement preparation workspace</span>
