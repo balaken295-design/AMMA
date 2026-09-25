@@ -97,14 +97,14 @@ const NAV_LINKS = [
 ];
 
 /** Small folded-corner accent used consistently on every card — the page's
- *  one recurring signature, standing in for a well-worn study folder. */
+ *  one recurring signature, standing in for a well-structured preparation system. */
 const CornerFold: React.FC<{ className?: string }> = ({ className = '' }) => (
   <span
     aria-hidden
     className={`absolute top-0 right-0 w-5 h-5 ${className}`}
     style={{
       clipPath: 'polygon(100% 0, 0 0, 100% 100%)',
-      background: 'linear-gradient(135deg, #e5d29e, #96741f)',
+      background: 'linear-gradient(135deg, #93c5fd, #2563eb)',
     }}
   />
 );
@@ -164,7 +164,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
   const TrackIcon = track.icon;
 
   // Faint ledger-line texture, reused on the ivory sections to tie the
-  // "study companion" feel together without competing with content.
+  // "professional preparation" feel together without competing with content.
   const ledgerLines: React.CSSProperties = {
     backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, rgba(32,30,27,0.05) 28px)',
   };
@@ -271,7 +271,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onStartApp, us
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 70% 55% at 18% -8%, rgba(150,116,31,0.16), transparent 60%), radial-gradient(ellipse 60% 50% at 100% 15%, rgba(57,90,121,0.10), transparent 60%)',
+              'radial-gradient(ellipse 70% 55% at 18% -8%, rgba(37,99,235,0.10), transparent 60%), radial-gradient(ellipse 60% 50% at 100% 15%, rgba(15,23,42,0.06), transparent 60%)',
           }}
         />
         <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 md:pt-24 md:pb-28">

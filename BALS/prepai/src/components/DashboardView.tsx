@@ -310,7 +310,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
             <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 1 ? 'text-accent-300' : 'text-ink-400'}`}>
               Level 1 • {userProfile.level === 1 ? 'CURRENT' : 'UNLOCKED'}
             </span>
-            <p className="text-xs font-bold">MBA Intern Quest</p>
+            <p className="text-xs font-bold">MBA Foundation</p>
             <p className="text-[10px] text-ink-400">0 - 499 XP • Foundational</p>
           </div>
 
@@ -318,7 +318,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
             <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 2 ? 'text-highlight-300' : 'text-ink-400'}`}>
               Level 2 • {userProfile.level === 2 ? 'CURRENT' : userProfile.level > 2 ? 'UNLOCKED' : 'LOCKED'}
             </span>
-            <p className="text-xs font-bold">Associate Sprint</p>
+            <p className="text-xs font-bold">Associate</p>
             <p className="text-[10px] text-ink-400">500 - 1,499 XP • CAC & Metrics</p>
           </div>
 
@@ -326,7 +326,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
             <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 3 ? 'text-accent-300' : userProfile.level > 3 ? 'UNLOCKED' : 'LOCKED'}`}>
               Level 3 • {userProfile.level === 3 ? 'CURRENT' : userProfile.level > 3 ? 'UNLOCKED' : 'LOCKED'}
             </span>
-            <p className="text-xs font-bold">VP Strategy Campaign</p>
+            <p className="text-xs font-bold">Advanced Campaign</p>
             <p className="text-[10px] text-ink-400">1,500 - 2,999 XP • M&A Cases</p>
           </div>
 

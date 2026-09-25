@@ -125,7 +125,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
 
   return (
     <div id="aptitude-module-container" className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 space-y-6">
-      {/* Gaming Model Player HUD Header */}
+      {/* Aptitude Preparation Overview */}
       <div className="bg-ink-900 text-white rounded-3xl p-5 border border-ink-800 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div>
@@ -152,13 +152,13 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
       <div id="aptitude-category-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink-200/80 pb-5">
         <div>
           <span className="font-mono text-xs text-accent-600 bg-accent-50 px-3 py-1 rounded-full uppercase font-bold tracking-wider">
-            MBA Gaming Progression Engine
+            Placement Aptitude Programme
           </span>
           <h1 className="text-3xl font-black text-ink-900 mt-2 tracking-tight">
-            Aptitude Level Quests
+            Aptitude Practice
           </h1>
           <p className="text-ink-600 text-sm mt-0.5">
-            20 questions per topic quest and 30 questions per overall module test. Earn XP, rank up, and unlock MD boardroom levels.
+            20 questions per topic quest and 30 questions per overall module test. Build measurable practice progress across core aptitude areas.
           </p>
         </div>
 
@@ -199,20 +199,20 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-ink-900 text-white p-7 rounded-3xl shadow-lg border border-ink-800">
             <div className="space-y-1">
               <span className="text-xs font-mono text-accent-400 font-bold uppercase tracking-wider">
-                🎮 Boardroom Boss Challenge
+                🎮 Comprehensive Module Assessment
               </span>
               <h2 className="text-2xl font-bold">
                 Overall {activeCategory.toUpperCase()} Module Test (30 Questions)
               </h2>
               <p className="text-xs text-ink-300">
-                30 comprehensive, gaming-level questions covering all topics in {activeCategory} aptitude across Intern to Managing Director levels.
+                30 comprehensive, comprehensive questions covering all topics in {activeCategory} aptitude across Intern to Managing Director levels.
               </p>
             </div>
             <button
               onClick={startModuleTest}
               className="bg-accent-600 hover:bg-accent-500 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all flex items-center gap-2 shrink-0 shadow-md"
             >
-              <Award className="w-4 h-4" /> Launch Boss Quest (30 Qs)
+              <Award className="w-4 h-4" /> Start Module Assessment
             </button>
           </div>
 
@@ -243,7 +243,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                       20 Questions • Level Test
                     </span>
                     <span className="text-xs font-bold text-accent-600 flex items-center gap-1">
-                      <CheckCircle className="w-3.5 h-3.5" /> Level 1-4 Ready
+                      <CheckCircle className="w-3.5 h-3.5" /> Placement Practice
                     </span>
                   </div>
                   <h3 className="text-base font-bold text-ink-900 group-hover:text-accent-600 transition-colors">

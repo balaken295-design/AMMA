@@ -230,7 +230,7 @@ export default function App() {
         <button
           onClick={handleGoBack}
           aria-label="Go back"
-          className="fixed top-4 left-4 z-[60] flex items-center gap-1.5 bg-white hover:bg-ink-50 text-ink-800 font-bold px-3.5 py-2 rounded-xl border border-ink-300 text-xs shadow-md transition-all"
+          className="fixed top-[76px] left-4 z-[45] flex items-center gap-1.5 bg-white/95 hover:bg-ink-50 text-ink-800 font-bold px-3 py-2 rounded-lg border border-ink-200 text-xs shadow-sm backdrop-blur transition-all"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back

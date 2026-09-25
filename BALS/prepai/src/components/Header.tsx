@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Settings, BookOpen, Users, Video, Award, LayoutDashboard, Home, LogIn } from 'lucide-react';
+import { Bell, BookOpen, Users, Video, Award, LayoutDashboard, Home } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface HeaderProps {
@@ -11,27 +11,27 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userProfile, onOpenLoginModal }) => {
   return (
-    <header id="main-header" className="sticky top-4 z-50 max-w-[1280px] w-[calc(100%-2rem)] mx-auto mb-2">
-      <div className="flex justify-between items-center px-6 py-3.5 bg-white/90 backdrop-blur-md border border-ink-200/80 rounded-2xl shadow-sm">
+    <header id="main-header" className="sticky top-0 z-50 w-full border-b border-ink-200 bg-white/95 backdrop-blur-xl">
+      <div className="max-w-[1320px] mx-auto flex justify-between items-center px-4 md:px-8 py-3 bg-transparent">
         <div 
           id="header-brand" 
           onClick={() => setActiveTab('landing')} 
           className="font-bold text-xl tracking-tight text-ink-800 cursor-pointer flex items-center gap-3"
         >
-          <div className="w-10 h-10 bg-accent-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-md shadow-accent-200">
+          <div className="w-9 h-9 bg-accent-600 rounded-lg flex items-center justify-center text-white font-black text-lg shadow-md shadow-accent-200">
             B
           </div>
-          <span className="text-ink-900 font-extrabold text-xl whitespace-nowrap">MBA <span className="text-accent-600">BJD</span></span>
+          <span className="text-ink-950 font-extrabold text-lg whitespace-nowrap">MBA <span className="text-accent-600">BJD</span></span>
         </div>
 
         <nav id="header-nav" className="hidden lg:flex gap-6 items-center">
           <button
             id="nav-tab-landing"
             onClick={() => setActiveTab('landing')}
-            className={`font-semibold text-sm transition-all flex items-center gap-2 pb-1 ${
+            className={`font-semibold text-[13px] transition-all flex items-center gap-2 py-2 px-2.5 rounded-lg ${
               activeTab === 'landing'
-                ? 'text-accent-600 border-b-2 border-accent-600'
-                : 'text-ink-500 hover:text-accent-600'
+                ? 'text-accent-700 bg-accent-50'
+                : 'text-ink-600 hover:text-ink-950 hover:bg-ink-50'
             }`}
           >
             <Home className="w-4 h-4" />
@@ -106,12 +106,12 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, userPro
 
         <div id="header-actions" className="flex items-center gap-3">
           {/* Readiness indicator */}
-          <div className="hidden sm:flex items-center gap-2 bg-ink-50 text-ink-700 px-3 py-1.5 rounded-xl border border-ink-200 text-xs">
+          <div className="hidden sm:flex items-center gap-2 bg-ink-50 text-ink-700 px-3 py-1.5 rounded-lg border border-ink-200 text-xs">
             <span className="font-semibold">Readiness</span>
             <span className="font-bold text-accent-700">{userProfile.readinessScore}%</span>
           </div>
 
-          <button id="btn-notifications" className="p-2 text-ink-500 hover:text-accent-600 transition-colors rounded-xl hover:bg-accent-50">
+          <button id="btn-notifications" className="p-2 text-ink-500 hover:text-accent-600 transition-colors rounded-lg hover:bg-accent-50">
             <Bell className="w-4 h-4" />
           </button>
 
