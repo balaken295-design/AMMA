@@ -118,7 +118,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
   return (
     <div id="aptitude-module-container" className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 space-y-6">
       {/* Aptitude Preparation Overview */}
-      <div className="bg-ink-900 text-white rounded-3xl p-5 border border-ink-800 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="interactive-card bg-ink-900 text-white rounded-3xl p-5 border border-ink-800 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div>
             <span className="text-xs font-semibold text-accent-400 uppercase tracking-widest">
@@ -133,7 +133,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             <span className="text-ink-400 text-[10px] uppercase tracking-wide">Tests Completed</span>
             <p className="text-base font-bold text-ink-100">{userProfile ? userProfile.completedTests : 0}</p>
           </div>
-          <div className="text-center border-l border-ink-800 pl-6">
+          <div className="interactive-card text-center border-l border-ink-800 pl-6">
             <span className="text-ink-400 text-[10px] uppercase tracking-wide">Readiness Score</span>
             <p className="text-base font-bold text-success-400">{userProfile ? userProfile.readinessScore : 0}%</p>
           </div>
@@ -141,7 +141,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
       </div>
 
       {/* Category Navigation Bar */}
-      <div id="aptitude-category-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink-200/80 pb-5">
+      <div id="aptitude-category-header" className="interactive-card flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink-200/80 pb-5">
         <div>
           <span className="font-mono text-xs text-accent-600 bg-accent-50 px-3 py-1 rounded-full uppercase font-bold tracking-wider">
             Placement Aptitude Programme
@@ -155,7 +155,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
         </div>
 
         {/* Category Pills */}
-        <div className="flex items-center gap-2 bg-ink-100 p-1.5 rounded-2xl border border-ink-200/80 self-start md:self-auto">
+        <div className="interactive-card flex items-center gap-2 bg-ink-100 p-1.5 rounded-2xl border border-ink-200/80 self-start md:self-auto">
           <button
             onClick={() => { setActiveCategory('verbal'); setSelectedTopic(null); setViewMode('learn'); setCurrentQuestions([]); }}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
@@ -188,7 +188,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
         /* Topic List Screen */
         <div className="space-y-6">
           {/* Top Actions: Module Test Launch & Search */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-ink-900 text-white p-7 rounded-3xl shadow-lg border border-ink-800">
+          <div className="interactive-card flex flex-col sm:flex-row items-center justify-between gap-4 bg-ink-900 text-white p-7 rounded-3xl shadow-lg border border-ink-800">
             <div className="space-y-1">
               <span className="text-xs font-mono text-accent-400 font-bold uppercase tracking-wider">
                 🎮 Comprehensive Module Assessment
@@ -217,7 +217,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                 placeholder={`Search ${activeCategory} topics...`}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-2 bg-white border border-ink-200/90 rounded-2xl text-xs text-ink-800 placeholder-ink-400 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-600 shadow-xs"
+                className="interactive-card w-full pl-11 pr-4 py-2 bg-white border border-ink-200/90 rounded-2xl text-xs text-ink-800 placeholder-ink-400 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-600 shadow-xs"
               />
             </div>
           </div>
@@ -227,7 +227,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             {currentTopics.map(topic => (
               <div
                 key={topic.id}
-                className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-4 group"
+                className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-4 group"
               >
                 <div className="space-y-2">
                   <div className="topic-card-visual" aria-hidden="true">
@@ -250,7 +250,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-ink-100 flex gap-2">
+                <div className="interactive-card pt-3 border-t border-ink-100 flex gap-2">
                   <button
                     onClick={() => { setSelectedTopic(topic); setViewMode('learn'); }}
                     className="flex-1 bg-ink-100 hover:bg-ink-200 text-ink-800 text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1"
@@ -278,9 +278,9 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             <ArrowLeft className="w-4 h-4" /> Back to {activeCategory} topics
           </button>
 
-          <div className="bg-white border border-ink-200/90 rounded-3xl p-6 md:p-8 shadow-sm space-y-8">
+          <div className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 md:p-8 shadow-sm space-y-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink-100 pb-6">
+            <div className="interactive-card flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink-100 pb-6">
               <div className="space-y-1">
                 <span className="text-xs font-mono text-accent-600 bg-accent-50 px-3 py-1 rounded-full uppercase font-bold">
                   Deep Concept Mastery
@@ -329,7 +329,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {selectedTopic.concepts.map((concept, idx) => (
-                  <div key={idx} className="p-4 bg-ink-50 border border-ink-200/80 rounded-2xl space-y-1">
+                  <div key={idx} className="interactive-card p-4 bg-ink-50 border border-ink-200/80 rounded-2xl space-y-1">
                     <span className="font-mono text-xs font-bold text-accent-600">Rule 0{idx + 1}</span>
                     <p className="text-xs text-ink-800 leading-relaxed font-medium">{concept}</p>
                   </div>
@@ -345,7 +345,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                 </h3>
                 <div className="flex flex-wrap gap-3">
                   {selectedTopic.keyFormulas.map((f, idx) => (
-                    <span key={idx} className="font-mono text-xs bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
+                    <span key={idx} className="interactive-card font-mono text-xs bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
                       {f}
                     </span>
                   ))}
@@ -359,16 +359,16 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                 Worked Example & Solution
               </h3>
               {selectedTopic.examples.map((ex, idx) => (
-                <div key={idx} className="border border-ink-200/80 rounded-2xl p-5 space-y-3 bg-ink-50/50">
+                <div key={idx} className="interactive-card border border-ink-200/80 rounded-2xl p-5 space-y-3 bg-ink-50/50">
                   <div className="space-y-1">
                     <span className="text-[10px] font-mono font-bold text-accent-600 uppercase">Question</span>
                     <p className="text-sm font-bold text-ink-900">{ex.question}</p>
                   </div>
-                  <div className="space-y-1 pt-2 border-t border-ink-200/60">
+                  <div className="interactive-card space-y-1 pt-2 border-t border-ink-200/60">
                     <span className="text-[10px] font-mono font-bold text-ink-700 uppercase">Solution & Logic</span>
                     <p className="text-xs text-ink-700 leading-relaxed">{ex.solution}</p>
                   </div>
-                  <div className="p-3 bg-accent-50 border border-accent-200/60 rounded-xl text-xs text-accent-950 flex items-start gap-2">
+                  <div className="interactive-card p-3 bg-accent-50 border border-accent-200/60 rounded-xl text-xs text-accent-950 flex items-start gap-2">
                     <Sparkles className="w-4 h-4 text-accent-600 shrink-0 mt-0.5" />
                     <span><strong>Pro Tip:</strong> {ex.tip}</span>
                   </div>
@@ -387,8 +387,8 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             <ArrowLeft className="w-4 h-4" /> Exit Test Mode
           </button>
 
-          <div className="bg-white border border-ink-200/90 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-            <div className="flex justify-between items-center border-b border-ink-200 pb-4">
+          <div className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+            <div className="interactive-card flex justify-between items-center border-b border-ink-200 pb-4">
               <div>
                 <span className="font-mono text-xs font-bold uppercase text-accent-600 bg-accent-50 px-3 py-1 rounded-full">
                   {viewMode === 'module_test' ? 'Module Final Test' : 'Topic Test'}
@@ -405,7 +405,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
 
             {isLoadingQuestions ? (
               <div className="py-16 text-center space-y-3">
-                <div className="w-8 h-8 border-4 border-accent-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div className="interactive-card w-8 h-8 border-4 border-accent-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
                 <p className="text-sm text-ink-600 font-medium">Loading questions from the question bank...</p>
               </div>
             ) : currentQuestions.length === 0 ? (
@@ -415,7 +415,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
             ) : (
               <div className="space-y-8">
                 {currentQuestions.map((q, qIdx) => (
-                  <div key={q.id || qIdx} className="p-5 border border-ink-200/80 rounded-2xl space-y-4 bg-ink-50/40">
+                  <div key={q.id || qIdx} className="interactive-card p-5 border border-ink-200/80 rounded-2xl space-y-4 bg-ink-50/40">
                     <div className="flex items-start gap-3">
                       <span className="w-6 h-6 rounded-full bg-ink-900 text-white text-xs font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
                         {qIdx + 1}
@@ -460,7 +460,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                     </div>
 
                     {testSubmitted && (
-                      <div className="pl-9 pt-2 text-xs text-ink-600 bg-white p-4 rounded-xl border border-ink-200/80 space-y-1">
+                      <div className="interactive-card pl-9 pt-2 text-xs text-ink-600 bg-white p-4 rounded-xl border border-ink-200/80 space-y-1">
                         <p className="font-bold text-ink-900">Explanation:</p>
                         <p>{q.explanation}</p>
                       </div>
@@ -469,7 +469,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                 ))}
 
                 {!testSubmitted ? (
-                  <div className="pt-4 border-t border-ink-200 text-right">
+                  <div className="interactive-card pt-4 border-t border-ink-200 text-right">
                     <button
                       onClick={handleSubmitTest}
                       disabled={Object.keys(userAnswers).length === 0}
@@ -479,7 +479,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <div className="p-8 bg-ink-900 text-white rounded-3xl space-y-4 text-center border border-ink-800 shadow-xl">
+                  <div className="interactive-card p-8 bg-ink-900 text-white rounded-3xl space-y-4 text-center border border-ink-800 shadow-xl">
                     <h3 className="text-2xl font-bold">
                       Assessment Complete! Score: {testScore} / {currentQuestions.length}
                     </h3>
