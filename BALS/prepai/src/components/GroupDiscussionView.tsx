@@ -300,6 +300,9 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);
   const ignoreSpeechResultsRef = useRef(false);
+  const pendingSpeechTextRef = useRef<string | null>(null);
+  const speechUiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recognitionStartingRef = useRef(false);
   const messageBaseRef = useRef('');
 
   useEffect(() => {
@@ -327,7 +330,16 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
       if (finalChunk) {
         messageBaseRef.current = (messageBaseRef.current + ' ' + finalChunk).trim();
       }
-      setMessageText((messageBaseRef.current + ' ' + interim).trim());
+      pendingSpeechTextRef.current = (messageBaseRef.current + ' ' + interim).trim();
+      if (speechUiTimerRef.current === null) {
+        speechUiTimerRef.current = window.setTimeout(() => {
+          speechUiTimerRef.current = null;
+          if (pendingSpeechTextRef.current !== null) {
+            setMessageText(pendingSpeechTextRef.current);
+            pendingSpeechTextRef.current = null;
+          }
+        }, 80);
+      }
     };
 
     recognition.onerror = (event: any) => {
@@ -349,7 +361,18 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
     // mic is still meant to be on — a GD turn can have pauses mid-thought.
     recognition.onend = () => {
       if (shouldListenRef.current) {
-        try { recognition.start(); } catch { /* already running */ }
+        window.setTimeout(() => {
+          if (!shouldListenRef.current || recognitionStartingRef.current) return;
+          recognitionStartingRef.current = true;
+          try { recognition.start(); } catch {
+            window.setTimeout(() => {
+              if (!shouldListenRef.current) return;
+              try { recognition.start(); } catch {}
+            }, 120);
+          } finally {
+            recognitionStartingRef.current = false;
+          }
+        }, 50);
       } else {
         setIsListening(false);
       }
@@ -363,6 +386,9 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
       recognition.onerror = null;
       recognition.onend = null;
       try { recognition.abort(); } catch { /* noop */ }
+      if (speechUiTimerRef.current !== null) clearTimeout(speechUiTimerRef.current);
+      speechUiTimerRef.current = null;
+      pendingSpeechTextRef.current = null;
       recognitionRef.current = null;
     };
   }, []);
@@ -430,7 +456,10 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
       messageBaseRef.current = messageText;
       ignoreSpeechResultsRef.current = false;
       shouldListenRef.current = true;
-      try { recognitionRef.current?.start(); setIsListening(true); } catch { /* already starting */ }
+      if (recognitionStartingRef.current) return;
+      recognitionStartingRef.current = true;
+      try { recognitionRef.current?.start(); setIsListening(true); } catch { /* onend will retry */ }
+      finally { recognitionStartingRef.current = false; }
     } else {
       shouldListenRef.current = false;
       ignoreSpeechResultsRef.current = true;
