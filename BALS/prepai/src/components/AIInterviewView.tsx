@@ -155,9 +155,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         // Ignore very low-confidence final fragments when the browser exposes
         // confidence. This reduces accidental words caused by background noise
         // without blocking browsers that report confidence as 0.
-        const confidence = Number(result[0]?.confidence || 0);
-        if (result.isFinal && confidence > 0 && confidence < 0.35) continue;
-
         if (result.isFinal) finalChunk += transcript + ' ';
         else interim += transcript;
       }
@@ -210,19 +207,15 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
         window.setTimeout(() => {
           if (!shouldListenRef.current || recognitionStartingRef.current) return;
           recognitionStartingRef.current = true;
-          try {
-            recognition.start();
-          } catch (error: any) {
-            console.warn('Speech recognition restart failed:', error);
-            // Chrome may still be transitioning from the previous session.
+          try { recognition.start(); } catch {
             window.setTimeout(() => {
               if (!shouldListenRef.current) return;
               try { recognition.start(); } catch {}
-            }, 180);
+            }, 120);
           } finally {
             recognitionStartingRef.current = false;
           }
-        }, 80);
+        }, 50);
       } else {
         setIsListening(false);
         setMicEnabled(false);
@@ -240,10 +233,10 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try { recognition.abort(); } catch {}
       if (speechUiTimerRef.current !== null) clearTimeout(speechUiTimerRef.current);
       speechUiTimerRef.current = null;
-      stopVoiceActivityMonitor();
+
       recognitionRef.current = null;
     };
-  }, [selectedDomain, selectedFocus?.label, resumeSummary]);
+  }, []);
 
   const toggleMic = async () => {
     const recognition = recognitionRef.current;
@@ -256,7 +249,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       shouldListenRef.current = false;
       ignoreSpeechResultsRef.current = true;
       try { recognition.abort(); } catch {}
-      stopVoiceActivityMonitor();
+
       speechBaseRef.current = userAnswerInput.trim();
       interimSpeechRef.current = '';
       lastFinalChunkRef.current = { text: '', at: 0 };
@@ -300,7 +293,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       shouldListenRef.current = false;
       ignoreSpeechResultsRef.current = true;
       recognitionStartingRef.current = false;
-      stopVoiceActivityMonitor();
+
       setIsListening(false);
       setMicEnabled(false);
       setSpeechError('Could not start voice recognition. Please allow microphone access and click Speak Answer again.');
@@ -372,7 +365,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       shouldListenRef.current = false;
       ignoreSpeechResultsRef.current = true;
       try { recognitionRef.current?.abort(); } catch {}
-      stopVoiceActivityMonitor();
+
       setIsListening(false);
       setMicEnabled(false);
     }
@@ -481,7 +474,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     speechBaseRef.current = '';
     interimSpeechRef.current = '';
     try { recognitionRef.current?.abort(); } catch {}
-    stopVoiceActivityMonitor();
+
     setIsListening(false); setIsGenerating(true);
     const newHistoryItem: InterviewQuestion = { id: currentStep, question: currentQuestionText, category: 'technical', userAnswer: userAnswerInput.trim(), aiFeedback: currentFeedback || undefined };
     const updatedHistory = [...questionsHistory, newHistoryItem]; setQuestionsHistory(updatedHistory); setUserAnswerInput('');
@@ -571,7 +564,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const cancelSession = () => {
     shouldListenRef.current = false;
     try { recognitionRef.current?.abort(); } catch {}
-    stopVoiceActivityMonitor();
+
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     setIsListening(false);
     setMicEnabled(false);
