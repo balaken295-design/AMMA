@@ -128,9 +128,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
           >
             <div>
               <div className="flex justify-between items-start mb-3">
-                <span className="p-3 bg-accent-50 text-accent-600 rounded-2xl group-hover:bg-accent-600 group-hover:text-white transition-colors">
-                  <BookOpen className="w-5 h-5" />
-                </span>
+                <span className="ui-3d-stage ui-3d-stage-sm" aria-hidden="true"><span className="ui-3d-tile"><BookOpen className="w-5 h-5" /></span></span>
                 <span className="px-3 py-1 bg-ink-100 text-ink-700 font-mono text-xs font-bold rounded-full">
                   10 Topics
                 </span>
