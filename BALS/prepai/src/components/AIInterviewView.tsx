@@ -114,10 +114,9 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     return () => window.clearTimeout(timer);
   }, [userAnswerInput]);
 
-  // Low-latency browser speech recognition.
-  // UI updates are frame-batched so frequent interim results do not cause a
-  // React render for every partial word. Final fragments with very low browser
-  // confidence are ignored to reduce obvious background-noise false positives.
+  // --- Speech-to-text (Web Speech API) -----------------------------------
+  // Keep AI Interview voice recognition identical to the working GD path.
+  // No VAD, no second microphone stream, no Gemini transcription service.
   useEffect(() => {
     const SpeechRecognitionCtor: any =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -144,38 +143,31 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     recognition.onresult = (event: any) => {
       if (ignoreSpeechResultsRef.current) return;
 
-      let finalChunk = '';
       let interim = '';
-
+      let finalChunk = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcript = String(result[0]?.transcript || '').trim();
+        const transcript = String(event.results[i][0]?.transcript || '').trim();
         if (!transcript) continue;
-
-        // Ignore very low-confidence final fragments when the browser exposes
-        // confidence. This reduces accidental words caused by background noise
-        // without blocking browsers that report confidence as 0.
-        if (result.isFinal) finalChunk += transcript + ' ';
+        if (event.results[i].isFinal) finalChunk += transcript + ' ';
         else interim += transcript;
       }
 
-      const normalizedFinal = finalChunk.trim().replace(/\s+/g, ' ');
-      const now = performance.now();
-      const repeatedFinal =
-        normalizedFinal &&
-        normalizedFinal.toLowerCase() === lastFinalChunkRef.current.text.toLowerCase() &&
-        now - lastFinalChunkRef.current.at < 1800;
-
-      // Chrome can occasionally emit the same final result again when a
-      // continuous recognition session is restarted. Never append that
-      // duplicate, otherwise one ambient word can flood the answer box.
-      if (normalizedFinal && !repeatedFinal) {
-        speechBaseRef.current = (speechBaseRef.current + ' ' + normalizedFinal).trim();
-        lastFinalChunkRef.current = { text: normalizedFinal, at: now };
+      if (finalChunk) {
+        speechBaseRef.current = (speechBaseRef.current + ' ' + finalChunk).trim();
       }
 
-      interimSpeechRef.current = interim;
-      queueSpeechUi(speechBaseRef.current + (interim ? ' ' + interim : ''));
+      pendingSpeechTextRef.current =
+        (speechBaseRef.current + ' ' + interim).trim();
+
+      if (speechUiTimerRef.current === null) {
+        speechUiTimerRef.current = window.setTimeout(() => {
+          speechUiTimerRef.current = null;
+          if (pendingSpeechTextRef.current !== null) {
+            setUserAnswerInput(pendingSpeechTextRef.current);
+            pendingSpeechTextRef.current = null;
+          }
+        }, 80);
+      }
     };
 
     recognition.onerror = (event: any) => {
@@ -183,14 +175,14 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         shouldListenRef.current = false;
-          setIsListening(false);
+        setIsListening(false);
         setMicEnabled(false);
         setSpeechError('Microphone access was blocked. Allow microphone access for this site, then try again.');
       } else if (event.error === 'no-speech') {
         setSpeechError('Listening…');
       } else if (event.error === 'audio-capture') {
         shouldListenRef.current = false;
-            setIsListening(false);
+        setIsListening(false);
         setMicEnabled(false);
         setSpeechError('No microphone was found. Check your microphone and try again.');
       } else if (event.error === 'network') {
@@ -202,12 +194,12 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
     recognition.onend = () => {
       if (shouldListenRef.current) {
-        // Give the browser a short transition window before restarting. This
-        // avoids start/stop race conditions that can add noticeable gaps.
         window.setTimeout(() => {
           if (!shouldListenRef.current || recognitionStartingRef.current) return;
           recognitionStartingRef.current = true;
-          try { recognition.start(); } catch {
+          try {
+            recognition.start();
+          } catch {
             window.setTimeout(() => {
               if (!shouldListenRef.current) return;
               try { recognition.start(); } catch {}
@@ -233,12 +225,12 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try { recognition.abort(); } catch {}
       if (speechUiTimerRef.current !== null) clearTimeout(speechUiTimerRef.current);
       speechUiTimerRef.current = null;
-
+      pendingSpeechTextRef.current = null;
       recognitionRef.current = null;
     };
   }, []);
 
-  const toggleMic = async () => {
+  const toggleMic = () => {
     const recognition = recognitionRef.current;
     if (!recognition) {
       setSpeechError('Voice recognition is not ready yet. Please wait a moment and try again.');
@@ -251,8 +243,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try { recognition.abort(); } catch {}
 
       speechBaseRef.current = userAnswerInput.trim();
-      interimSpeechRef.current = '';
-      lastFinalChunkRef.current = { text: '', at: 0 };
+      pendingSpeechTextRef.current = null;
       setUserAnswerInput(speechBaseRef.current);
       setIsListening(false);
       setMicEnabled(false);
@@ -260,11 +251,8 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       return;
     }
 
-    // Start Chrome/Edge SpeechRecognition FIRST. The VAD is only a background
-    // noise monitor; it must never block the Speak Answer button from starting.
     speechBaseRef.current = userAnswerInput.trim();
-    interimSpeechRef.current = '';
-    lastFinalChunkRef.current = { text: '', at: 0 };
+    pendingSpeechTextRef.current = null;
     ignoreSpeechResultsRef.current = false;
     shouldListenRef.current = true;
     setSpeechError('Listening…');
@@ -278,39 +266,31 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try {
         recognition.start();
       } catch (error: any) {
-        // A previous browser recognition session may still be closing.
-        // Retry once instead of making the button appear dead.
         if (String(error?.name || '').toLowerCase().includes('invalidstate')) {
-          await new Promise(resolve => window.setTimeout(resolve, 150));
-          if (shouldListenRef.current) recognition.start();
+          window.setTimeout(() => {
+            if (!shouldListenRef.current) return;
+            try { recognition.start(); } catch {}
+          }, 150);
         } else {
           throw error;
         }
       }
-
     } catch (error) {
       console.warn('Speech recognition start failed:', error);
       shouldListenRef.current = false;
       ignoreSpeechResultsRef.current = true;
-      recognitionStartingRef.current = false;
-
       setIsListening(false);
       setMicEnabled(false);
       setSpeechError('Could not start voice recognition. Please allow microphone access and click Speak Answer again.');
-      return;
     } finally {
       recognitionStartingRef.current = false;
     }
   };
 
-  // Keep the speech base synchronized with manual edits while not actively
-  // showing an interim recognition hypothesis. This preserves Backspace/editing.
   const handleAnswerChange = (value: string) => {
-    // Manual typing, Backspace and Delete are authoritative even while
-    // speech recognition is active.
     setUserAnswerInput(value);
     speechBaseRef.current = value;
-    interimSpeechRef.current = '';
+    pendingSpeechTextRef.current = null;
   };
 
   useEffect(() => {
