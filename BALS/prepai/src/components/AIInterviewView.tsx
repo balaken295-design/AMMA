@@ -131,7 +131,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     const recognition = new SpeechRecognitionCtor();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'en-IN';
+    recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
@@ -179,24 +179,38 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     };
 
     recognition.onerror = (event: any) => {
-      console.warn('AI Interview speech recognition error:', event.error);
+      const error = String(event?.error || 'unknown');
+      console.warn('AI Interview speech recognition error:', error);
 
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      if (error === 'not-allowed' || error === 'service-not-allowed') {
         shouldListenRef.current = false;
-          setIsListening(false);
+        setIsListening(false);
         setMicEnabled(false);
         setSpeechError('Microphone access was blocked. Allow microphone access for this site, then try again.');
-      } else if (event.error === 'no-speech') {
-        setSpeechError('Listening…');
-      } else if (event.error === 'audio-capture') {
+        return;
+      }
+
+      if (error === 'audio-capture') {
         shouldListenRef.current = false;
-            setIsListening(false);
+        setIsListening(false);
         setMicEnabled(false);
         setSpeechError('No microphone was found. Check your microphone and try again.');
-      } else if (event.error === 'network') {
-        setSpeechError('Speech recognition needs an internet connection.');
-      } else {
-        setSpeechError('Voice recognition encountered an error. Please try again.');
+        return;
+      }
+
+      // Chrome can briefly report no-speech/network/aborted while its
+      // recognition service is switching between audio chunks. These are
+      // transient when the candidate is still actively listening. Do not show
+      // a red error or make the user press Speak again; onend will restart it.
+      if (error === 'no-speech' || error === 'network' || error === 'aborted') {
+        if (shouldListenRef.current) {
+          setSpeechError('Listening…');
+        }
+        return;
+      }
+
+      if (shouldListenRef.current) {
+        setSpeechError('Voice recognition paused. Restarting…');
       }
     };
 
