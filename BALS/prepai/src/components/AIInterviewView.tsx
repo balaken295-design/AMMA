@@ -434,9 +434,9 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     setCurrentStep(1);
     setQuestionsHistory([]);
     setUserAnswerInput('');
-    speechBaseRef.current = '';
-    interimSpeechRef.current = '';
-    ignoreSpeechResultsRef.current = false;
+    stopLiveTranscription(false);
+    setIsListening(false);
+    setMicEnabled(false);
     setCurrentFeedback(null);
 
     // Without a resume we keep the three standard opening questions.
@@ -491,14 +491,10 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
   const handleNextStep = async () => {
     if (!userAnswerInput.trim() || isGenerating) return;
-    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-    shouldListenRef.current = false;
-    ignoreSpeechResultsRef.current = true;
-    speechBaseRef.current = '';
-    interimSpeechRef.current = '';
-    try { recognitionRef.current?.abort(); } catch {}
-
-    setIsListening(false); setIsGenerating(true);
+    stopLiveTranscription(true);
+    setIsListening(false);
+    setMicEnabled(false);
+    setIsGenerating(true);
     const newHistoryItem: InterviewQuestion = { id: currentStep, question: currentQuestionText, category: 'technical', userAnswer: userAnswerInput.trim(), aiFeedback: currentFeedback || undefined };
     const updatedHistory = [...questionsHistory, newHistoryItem]; setQuestionsHistory(updatedHistory); setUserAnswerInput('');
     speechBaseRef.current = '';
