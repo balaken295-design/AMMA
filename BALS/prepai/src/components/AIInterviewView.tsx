@@ -497,8 +497,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     setIsGenerating(true);
     const newHistoryItem: InterviewQuestion = { id: currentStep, question: currentQuestionText, category: 'technical', userAnswer: userAnswerInput.trim(), aiFeedback: currentFeedback || undefined };
     const updatedHistory = [...questionsHistory, newHistoryItem]; setQuestionsHistory(updatedHistory); setUserAnswerInput('');
-    speechBaseRef.current = '';
-    interimSpeechRef.current = '';
     if (currentStep >= TOTAL_STEPS) {
       try { const res = await fetch('/api/gemini/interview-evaluation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
           role: selectedRole,
