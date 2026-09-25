@@ -110,7 +110,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
         <div className="flex justify-between items-end px-1">
           <div>
             <h2 className="text-2xl font-black text-ink-900 tracking-tight">Aptitude Mastery Modules</h2>
-            <p className="text-ink-600 text-sm">Learn concepts topic-by-topic, complete 20Q topic tests, and unlock 30Q module evaluations.</p>
+            <p className="text-ink-600 text-sm">Study by topic, complete practice tests, and review your progress.</p>
           </div>
           <button
             onClick={() => setActiveTab('aptitude')}
@@ -304,7 +304,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
           </div>
         </div>
 
-        {/* Dynamic Gaming Level Career Track Badges */}
+        {/* Preparation Progress */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-ink-900 text-white p-4 rounded-2xl border border-ink-800">
           <div className={`p-3 rounded-xl border space-y-1 transition-all ${userProfile.level === 1 ? 'bg-accent-950/90 border-accent-500 shadow-md ring-1 ring-accent-500' : 'bg-ink-800/70 border-ink-700'}`}>
             <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 1 ? 'text-accent-300' : 'text-ink-400'}`}>
@@ -332,7 +332,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
 
           <div className={`p-3 rounded-xl border space-y-1 transition-all ${userProfile.level === 4 ? 'bg-danger-950/90 border-danger-500 shadow-md ring-1 ring-danger-500' : 'bg-ink-800/50 border-ink-800 opacity-80'}`}>
             <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 4 ? 'text-danger-300' : 'text-ink-400'}`}>
-              Level 4 • {userProfile.level === 4 ? 'CURRENT BOSS' : 'BOSS LOCK'}
+              Level 4 • {userProfile.level === 4 ? 'CURRENT' : 'LOCKED'}
             </span>
             <p className="text-xs font-bold">MD Boardroom Challenge</p>
             <p className="text-[10px] text-ink-400">3,000+ XP • Executive Final</p>
