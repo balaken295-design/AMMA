@@ -81,21 +81,11 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const answerBoxRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const shouldListenRef = useRef(false);
-  const ignoreSpeechResultsRef = useRef(false);
-  const speechBaseRef = useRef('');
-  const interimSpeechRef = useRef('');
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const eyeSamplesRef = useRef<boolean[]>([]);
   const lastDetectTimeRef = useRef(0);
   const lastHudRef = useRef({ eye: -1, posture: '' });
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const speechUiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSpeechTextRef = useRef<string | null>(null);
-  const lastFinalChunkRef = useRef({ text: '', at: 0 });
-  const recognitionStartingRef = useRef(false);
   const liveSocketRef = useRef<WebSocket | null>(null);
   const liveStreamRef = useRef<MediaStream | null>(null);
   const liveAudioContextRef = useRef<AudioContext | null>(null);
@@ -104,6 +94,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const liveTranscriptBaseRef = useRef('');
   const liveInterimRef = useRef('');
   const liveCleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveReadyRef = useRef(false);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
@@ -142,6 +133,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       try { liveAudioContextRef.current?.close(); } catch {}
       liveStreamRef.current?.getTracks().forEach(track => track.stop());
       try { liveSocketRef.current?.close(); } catch {}
+      liveReadyRef.current = false;
 
       liveAudioWorkletRef.current = null;
       liveAudioSourceRef.current = null;
@@ -251,12 +243,20 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
           },
         }));
 
-        setSpeechError('Voice channel connected — speak naturally');
       };
 
       ws.onmessage = (event) => {
         let payload: any;
         try { payload = JSON.parse(event.data); } catch { return; }
+        if (payload?.setupComplete) {
+          liveReadyRef.current = true;
+          setSpeechError('Listening live — speak naturally');
+          try {
+            ws.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+          } catch {}
+          return;
+        }
+
         const content = payload?.serverContent;
         if (!content) return;
 
@@ -278,11 +278,13 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       };
 
       ws.onerror = () => {
+        liveReadyRef.current = false;
         setSpeechError('Gemini Live voice connection failed. Please try Speak Answer again.');
       };
 
       ws.onclose = () => {
-        if (isListening) {
+        liveReadyRef.current = false;
+        if (liveSocketRef.current === ws) {
           setIsListening(false);
           setMicEnabled(false);
         }
@@ -291,9 +293,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       // Do not use a second microphone consumer. Gemini Live owns this stream.
       // The worklet only transforms the same stream into the PCM format Gemini
       // expects, so there is no competing SpeechRecognition service.
-      ws.addEventListener('open', () => {
-        try { ws.send(JSON.stringify({ realtimeInput: { activityStart: {} } })); } catch {}
-      });
 
       // Load the PCM worklet only after the user gesture has opened the microphone.
       // The worklet URL is revoked after registration to avoid leaking object URLs.
@@ -305,7 +304,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       const source = audioContext.createMediaStreamSource(stream);
       const worklet = new AudioWorkletNode(audioContext, 'interview-pcm-processor');
       worklet.port.onmessage = (event) => {
-        if (ws.readyState !== WebSocket.OPEN) return;
+        if (ws.readyState !== WebSocket.OPEN || !liveReadyRef.current) return;
         const bytes = new Uint8Array(event.data);
         let binary = '';
         const sliceSize = 0x8000;
@@ -322,10 +321,6 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
       liveAudioContextRef.current = audioContext;
       liveAudioSourceRef.current = source;
       liveAudioWorkletRef.current = worklet;
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
-      }
-
     } catch (error: any) {
       console.error('Gemini Live voice start failed:', error);
       stopLiveTranscription(false);
@@ -390,14 +385,10 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
 
-    // Never let the candidate recorder remain active while the AI interviewer
-    // is speaking. This prevents the interviewer's voice from being transcribed
-    // as part of the candidate's answer.
-    if (shouldListenRef.current) {
-      shouldListenRef.current = false;
-      ignoreSpeechResultsRef.current = true;
-      try { recognitionRef.current?.abort(); } catch {}
-
+    // Never keep candidate transcription active while the AI interviewer
+    // is speaking.
+    if (isListening) {
+      stopLiveTranscription(true);
       setIsListening(false);
       setMicEnabled(false);
     }
