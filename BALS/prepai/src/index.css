@@ -1,16 +1,117 @@
 @import "tailwindcss";
+
 @theme {
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --color-ink-50:#f7f9fc;--color-ink-100:#eef2f7;--color-ink-200:#dce3ec;--color-ink-300:#c4ceda;--color-ink-400:#94a3b8;--color-ink-500:#64748b;--color-ink-600:#475569;--color-ink-700:#334155;--color-ink-800:#1e293b;--color-ink-900:#0f172a;--color-ink-950:#080f1d;
-  --color-accent-50:#eff6ff;--color-accent-100:#dbeafe;--color-accent-200:#bfdbfe;--color-accent-300:#93c5fd;--color-accent-400:#60a5fa;--color-accent-500:#3b82f6;--color-accent-600:#2563eb;--color-accent-700:#1d4ed8;--color-accent-800:#1e40af;--color-accent-900:#1e3a8a;--color-accent-950:#172554;
-  --color-success-50:#f0fdf4;--color-success-100:#dcfce7;--color-success-200:#bbf7d0;--color-success-300:#86efac;--color-success-400:#4ade80;--color-success-500:#22c55e;--color-success-600:#16a34a;--color-success-700:#15803d;--color-success-800:#166534;--color-success-900:#14532d;
-  --color-danger-50:#fef2f2;--color-danger-100:#fee2e2;--color-danger-200:#fecaca;--color-danger-300:#fca5a5;--color-danger-400:#f87171;--color-danger-500:#ef4444;--color-danger-600:#dc2626;--color-danger-700:#b91c1c;--color-danger-800:#991b1b;--color-danger-900:#7f1d1d;--color-danger-950:#450a0a;
-  --color-highlight-50:#eff6ff;--color-highlight-100:#dbeafe;--color-highlight-200:#bfdbfe;--color-highlight-300:#93c5fd;--color-highlight-400:#60a5fa;--color-highlight-500:#3b82f6;--color-highlight-600:#2563eb;--color-highlight-700:#1d4ed8;--color-highlight-800:#1e40af;
-  --color-paper:#f8fafc;
+  --font-sans: "Times New Roman", Times, serif;
+  --color-paper:#f5f1e8;
+  --color-ink-50:#fbfaf7;--color-ink-100:#eee9df;--color-ink-200:#d9d0c2;--color-ink-300:#c2b6a5;--color-ink-400:#9b8e7d;--color-ink-500:#746858;--color-ink-600:#5a5045;--color-ink-700:#40382f;--color-ink-800:#29231e;--color-ink-900:#1b1714;--color-ink-950:#100d0b;
+  --color-accent-50:#f7e9e7;--color-accent-100:#efd0cc;--color-accent-200:#dfaaa3;--color-accent-300:#cb7d74;--color-accent-400:#b5574d;--color-accent-500:#963d34;--color-accent-600:#7f2f2a;--color-accent-700:#682521;--color-accent-800:#521d1a;--color-accent-900:#421815;--color-accent-950:#2b0e0c;
+  --color-highlight-50:#f8f0df;--color-highlight-100:#f1dfb8;--color-highlight-200:#e6c98a;--color-highlight-300:#d7ad54;--color-highlight-400:#c39432;--color-highlight-500:#aa7922;--color-highlight-600:#8f631c;--color-highlight-700:#714d17;--color-highlight-800:#593c12;
+  --color-success-50:#edf5ed;--color-success-100:#d9e9d9;--color-success-500:#527a55;--color-success-600:#426746;--color-success-700:#355438;
+  --color-danger-50:#f8e9e7;--color-danger-100:#efd0cc;--color-danger-500:#a33e35;--color-danger-600:#8b3028;--color-danger-700:#70231e;
 }
-html{scroll-behavior:smooth} html,body,#root{min-height:100%}
-body{margin:0;font-family:var(--font-sans);background:var(--color-paper);color:var(--color-ink-900);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-button,input,textarea,select{font:inherit}button{-webkit-tap-highlight-color:transparent}
-::selection{background:var(--color-accent-200);color:var(--color-ink-950)}
-#app-root{background:radial-gradient(circle at 50% -10%,rgba(37,99,235,.045),transparent 34rem),var(--color-paper)}
-#app-main{width:100%}
+
+html{scroll-behavior:smooth}
+html,body,#root{min-height:100%}
+body{
+ margin:0;font-family:"Times New Roman",Times,serif;
+ background:#f5f1e8;color:#1b1714;
+ -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+button,input,textarea,select{font-family:"Times New Roman",Times,serif}
+button{-webkit-tap-highlight-color:transparent}
+::selection{background:#dfaaa3;color:#1b1714}
+
+#app-root{
+ min-height:100vh;
+ background:#f5f1e8;
+}
+#app-main{width:100%;padding-bottom:48px}
+
+/* ===== Site-wide editorial design system ===== */
+#main-header{
+ background:#1b1714!important;
+ border-color:#40382f!important;
+ box-shadow:0 2px 18px rgba(27,23,20,.14);
+}
+#main-header *{font-family:"Times New Roman",Times,serif}
+#header-brand{color:#fff!important}
+#header-brand span{color:#fff!important}
+#header-brand span span{color:#d7ad54!important}
+#header-nav button{
+ border-radius:2px!important;
+ letter-spacing:.01em;
+}
+#header-actions .rounded-full{border-radius:2px!important}
+#user-profile-avatar{background:#963d34!important;border-color:#d7ad54!important;border-radius:2px!important}
+
+/* Remove the excessive rounded / gaming-card language across the application. */
+#app-main .rounded-3xl,
+#app-main .rounded-2xl,
+#app-main .rounded-xl,
+#app-main .rounded-lg{
+ border-radius:3px!important;
+}
+#app-main .rounded-full{border-radius:2px!important}
+#app-main .shadow-xl,#app-main .shadow-lg,#app-main .shadow-md,#app-main .shadow-sm{
+ box-shadow:0 8px 24px rgba(43,31,23,.07)!important;
+}
+#app-main [class*="bg-white"]{background-color:#fffdf9}
+#app-main [class*="border-ink-200"]{border-color:#d9d0c2!important}
+
+/* Consistent page widths and section rhythm. */
+#dashboard-view-container,#aptitude-module-container,#gd-module-container,#ai-interview-container,
+#evaluation-summary-container,#gd-evaluation-summary-container{
+ max-width:1180px!important;
+ margin-left:auto!important;margin-right:auto!important;
+}
+
+/* Make dark panels feel like intentional editorial sections, not game HUDs. */
+#app-main .bg-ink-900{
+ background:#241d19!important;
+ border-color:#40382f!important;
+}
+#app-main .bg-accent-600{background:#7f2f2a!important}
+#app-main .hover\:bg-accent-700:hover{background:#682521!important}
+#app-main .text-accent-600,#app-main .text-accent-700{color:#7f2f2a!important}
+#app-main .text-highlight-600,#app-main .text-highlight-700{color:#8f631c!important}
+#app-main .bg-accent-50{background:#f7e9e7!important}
+#app-main .bg-highlight-50{background:#f8f0df!important}
+#app-main .border-accent-200{border-color:#dfaaa3!important}
+#app-main .border-highlight-200{border-color:#e6c98a!important}
+
+/* Form controls: quiet, print-like and readable. */
+#app-main input,#app-main textarea,#app-main select{
+ border-radius:2px!important;
+ background:#fffdf9;
+ border-color:#cfc4b4;
+}
+#app-main input:focus,#app-main textarea:focus,#app-main select:focus{
+ outline:none!important;
+ border-color:#7f2f2a!important;
+ box-shadow:0 0 0 2px rgba(127,47,42,.08)!important;
+}
+
+/* Landing page gets a restrained editorial layout. */
+#landing-page-container{
+ background:#f5f1e8!important;color:#1b1714!important;
+ font-family:"Times New Roman",Times,serif!important;
+}
+#landing-page-container header{
+ background:#1b1714!important;border-color:#40382f!important;
+}
+#landing-page-container h1,#landing-page-container h2,#landing-page-container h3{
+ font-family:"Times New Roman",Times,serif!important;
+ letter-spacing:-.015em;
+}
+#landing-page-container .rounded-full{border-radius:2px!important}
+#landing-page-container .rounded-2xl,#landing-page-container .rounded-xl,#landing-page-container .rounded-3xl{border-radius:3px!important}
+#landing-page-container .bg-accent-600{background:#7f2f2a!important}
+#landing-page-container .text-highlight-600,#landing-page-container .text-highlight-700{color:#8f631c!important}
+#landing-page-container .bg-ink-100{background:#ece6da!important}
+#landing-page-container footer{background:#1b1714!important}
+
+/* Mobile: preserve hierarchy without crowding. */
+@media(max-width:900px){
+ #header-nav{display:none!important}
+ #app-main{padding-bottom:24px}
+}
