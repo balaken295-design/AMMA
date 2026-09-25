@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { GDParticipant, GDMessage, GDRoom } from '../types';
-import { Video, VideoOff, Mic, MicOff, Users, Send, Sparkles, PlusCircle, LogIn, Copy, Check, Volume2, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, Users, Send, Sparkles, PlusCircle, LogIn, Copy, Check, Volume2, Clock3, ShieldAlert, AlertTriangle } from 'lucide-react';
 
 // Fallback used only until /api/ice-servers responds (or if it fails).
 const DEFAULT_RTC_CONFIG: RTCConfiguration = {
@@ -1138,179 +1138,92 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
         </div>
       ) : (
         /* Active Group Discussion Room Stage */
-        <div className="space-y-6">
-          {/* Room Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-ink-900 text-white p-5 px-7 rounded-3xl shadow-xl border border-ink-800">
-            <div>
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-0.5 bg-accent-500/20 text-accent-300 font-mono text-xs font-bold rounded-full border border-accent-500/30">
-                  LIVE GD ROOM
-                </span>
-                <span className="font-mono text-xs text-ink-400">Room Code: <strong className="text-white font-mono">{activeRoom.code}</strong></span>
-                <button onClick={copyRoomCode} className="p-1 hover:text-accent-400 transition-colors">
-                  {copiedCode ? <Check className="w-3.5 h-3.5 text-accent-400" /> : <Copy className="w-3.5 h-3.5" />}
+        <div className="gd-room space-y-5">
+          <header className="gd-session-header">
+            <div className="min-w-0">
+              <div className="gd-session-meta">
+                <span className="gd-live-dot"><span /></span>
+                <span>LIVE DISCUSSION</span>
+                <span className="gd-meta-separator">•</span>
+                <span>Room {activeRoom.code}</span>
+                <button onClick={copyRoomCode} className="gd-copy-button" title="Copy room code">
+                  {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedCode ? 'Copied' : 'Copy'}
                 </button>
               </div>
-              <h2 className="text-lg font-bold mt-1 line-clamp-1">
-                {activeRoom.topic}
-              </h2>
-              <div className="mt-2 inline-flex items-center gap-2 text-xs font-mono font-bold text-accent-300">
-                <span>Time left</span>
-                <span className="px-2 py-1 rounded-lg bg-white/10 text-white">
+              <h2 className="gd-topic-title">{activeRoom.topic}</h2>
+              <p className="gd-session-note">Speak naturally, listen carefully, and build on the discussion.</p>
+            </div>
+            <div className={\`gd-timer \${activeRoom.timeRemaining <= 60 ? 'gd-timer-warning' : ''}\`} aria-label="GD time remaining">
+              <Clock3 className="gd-timer-icon w-5 h-5" />
+              <div>
+                <span className="gd-timer-label">TIME REMAINING</span>
+                <strong className="gd-timer-value">
                   {String(Math.floor(activeRoom.timeRemaining / 60)).padStart(2, '0')}:{String(activeRoom.timeRemaining % 60).padStart(2, '0')}
-                </span>
+                </strong>
               </div>
             </div>
+            <button onClick={handleLeaveRoom} className="gd-leave-button">Leave discussion</button>
+          </header>
 
-            <button
-              onClick={handleLeaveRoom}
-              className="bg-danger-500/20 hover:bg-danger-500/30 text-danger-300 border border-danger-500/30 font-bold px-5 py-2.5 rounded-xl text-xs transition-all"
-            >
-              Leave Room
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left 2 Columns: Video Feeds Grid */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {/* User Camera Tile */}
-                <div className="relative aspect-video bg-ink-950 rounded-2xl overflow-hidden border border-ink-800 shadow-sm group">
-                  <video
-                    ref={el => {
-                      localVideoRef.current = el;
-                      if (el && mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) {
-                        el.srcObject = mediaStreamRef.current;
-                      }
-                    }}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`w-full h-full object-cover ${!videoEnabled ? 'hidden' : ''}`}
-                  />
-                  {!videoEnabled && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-500 space-y-2">
-                      <VideoOff className="w-8 h-8" />
-                      <span className="text-xs font-mono">Camera Muted</span>
-                    </div>
-                  )}
-                  <div className="absolute bottom-3 left-3 bg-ink-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-2 border border-white/10">
-                    <span className="w-2 h-2 rounded-full bg-accent-400 animate-pulse"></span>
-                    You (Candidate)
-                  </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.55fr)_minmax(340px,.85fr)] gap-7 items-start">
+            <section className="gd-stage">
+              <div className="gd-stage-heading">
+                <div><span className="gd-section-kicker">PARTICIPANTS</span><h3>Discussion room</h3></div>
+                <span className="gd-participant-count"><Users className="w-3.5 h-3.5" />{activeRoom.participants.length} {activeRoom.participants.length === 1 ? 'participant' : 'participants'}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="gd-video-tile group">
+                  <video ref={el => { localVideoRef.current = el; if (el && mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) el.srcObject = mediaStreamRef.current; }} autoPlay playsInline muted className={\`w-full h-full object-cover \${!videoEnabled ? 'hidden' : ''}\`} />
+                  {!videoEnabled && <div className="absolute inset-0 flex flex-col items-center justify-center bg-ink-900 text-ink-300 gap-2"><VideoOff className="w-7 h-7" /><span className="text-xs">Camera is off</span></div>}
+                  <div className="gd-nameplate"><span className="gd-speaking-dot" />You</div>
                 </div>
-
-                {/* Real peer + AI participant tiles */}
                 {remoteParticipants.map(p => {
                   const stream = p.socketId ? remoteStreams[p.socketId] : undefined;
                   return (
-                    <div key={p.socketId || p.id} className="relative aspect-video bg-ink-900 rounded-2xl overflow-hidden border border-ink-800 shadow-sm flex items-center justify-center">
-                      {isRealPersonRole(p.role) && stream ? (
-                        <RemoteVideoTile stream={stream} socketId={p.socketId as string} remoteVideoRefs={remoteVideoRefs} />
-                      ) : isRealPersonRole(p.role) ? (
-                        <div className="flex flex-col items-center gap-2 text-ink-500">
-                          <div className="w-3 h-3 border-2 border-accent-500 border-t-transparent rounded-full animate-spin"></div>
-                          <span className="text-[10px] font-mono">Connecting camera…</span>
-                        </div>
-                      ) : (
-                        <img src={p.avatar} alt={p.name} className="w-full h-full object-cover opacity-80" />
-                      )}
-                      <div className="absolute bottom-3 left-3 bg-ink-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-2 border border-white/10">
-                        <span className={`w-2 h-2 rounded-full ${p.isSpeaking ? 'bg-accent-400 animate-ping' : 'bg-ink-500'}`}></span>
-                        {p.name}
-                      </div>
+                    <div key={p.socketId || p.id} className="gd-video-tile">
+                      {isRealPersonRole(p.role) && stream ? <RemoteVideoTile stream={stream} socketId={p.socketId as string} remoteVideoRefs={remoteVideoRefs} /> : isRealPersonRole(p.role) ? (
+                        <div className="flex flex-col items-center justify-center h-full bg-ink-900 text-ink-400 gap-2"><div className="w-3 h-3 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" /><span className="text-[11px]">Connecting…</span></div>
+                      ) : <img src={p.avatar} alt={p.name} className="w-full h-full object-cover opacity-80" />}
+                      <div className="gd-nameplate"><span className={\`gd-speaking-dot \${p.isSpeaking ? 'gd-speaking' : 'gd-idle'}\`} />{p.name}</div>
                     </div>
                   );
                 })}
               </div>
-
-              {/* Hardware Controls */}
-              <div className="flex justify-center items-center gap-4 p-4 bg-white border border-ink-200/90 rounded-2xl shadow-xs">
-                <button
-                  onClick={toggleVideo}
-                  className={`p-3 px-5 rounded-xl transition-all flex items-center gap-2 text-xs font-bold ${
-                    videoEnabled ? 'bg-ink-900 text-white' : 'bg-danger-50 text-danger-600 border border-danger-200'
-                  }`}
-                >
-                  {videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                  {videoEnabled ? 'Camera On' : 'Camera Off'}
-                </button>
-
-                <button
-                  onClick={toggleMic}
-                  className={`p-3 px-5 rounded-xl transition-all flex items-center gap-2 text-xs font-bold ${
-                    micEnabled ? 'bg-accent-600 text-white shadow-md shadow-accent-200' : 'bg-danger-50 text-danger-600 border border-danger-200'
-                  }`}
-                >
-                  {micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                  {micEnabled ? 'Mic Active' : 'Mic Muted'}
-                </button>
+              <div className="gd-controls">
+                <button onClick={toggleVideo} className={\`gd-control-button \${videoEnabled ? 'is-on' : 'is-off'}\`}>{videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}{videoEnabled ? 'Camera' : 'Camera off'}</button>
+                <button onClick={toggleMic} className={\`gd-control-button \${micEnabled ? 'is-on' : 'is-off'}\`}>{micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}{micEnabled ? 'Microphone' : 'Mic muted'}</button>
               </div>
-            </div>
+            </section>
 
-            {/* Right Column: Discussion Transcript & AI Moderator Insights */}
-            <div className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm flex flex-col justify-between h-[520px]">
-              <div className="border-b border-ink-100 pb-3 flex justify-between items-center">
-                <h3 className="font-bold text-ink-900 text-sm flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-accent-600" /> Discussion Transcript
-                </h3>
-                <span className={`text-[10px] font-mono ${isListening ? 'text-danger-600 animate-pulse' : 'text-ink-500'}`}>
-                  {isListening ? '● Listening' : speechSupported ? 'Live Audio STT' : 'STT unsupported — type instead'}
-                </span>
+            <section className="gd-conversation">
+              <div className="gd-conversation-header">
+                <div><span className="gd-section-kicker">LIVE NOTES</span><h3>Discussion</h3></div>
+                <span className={\`gd-listening-status \${isListening ? 'is-listening' : ''}\`}>{isListening ? 'Listening' : speechSupported ? 'Voice ready' : 'Type your response'}</span>
               </div>
-
-              {/* Message List */}
-              <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
+              <div className="gd-message-list">
+                {activeRoom.messages.length === 0 && <div className="gd-empty-conversation"><Volume2 className="w-5 h-5" /><p>The discussion is ready.</p><span>Use your microphone or type your opening point below.</span></div>}
                 {activeRoom.messages.map(m => (
-                  <div key={m.id} className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-ink-900">{m.senderName}</span>
-                      <span className="text-[10px] font-mono text-ink-400">{m.timestamp}</span>
-                    </div>
-                    <p className="text-xs text-ink-700 bg-ink-50 p-3 rounded-2xl border border-ink-100 leading-relaxed">
-                      {m.text}
-                    </p>
-                    {m.aiInsight && (
-                      <div className="p-3 bg-accent-50 border border-accent-200/80 rounded-xl text-[11px] text-accent-950 flex items-start gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-accent-600 shrink-0 mt-0.5" />
-                        <span><strong>Moderator Insight:</strong> {m.aiInsight}</span>
-                      </div>
-                    )}
-                  </div>
+                  <article key={m.id} className={\`gd-message \${m.senderName === displayName ? 'is-you' : ''}\`}>
+                    <div className="gd-message-head"><strong>{m.senderName}</strong><time title={m.timestamp}><Clock3 className="w-3 h-3" />{m.timestamp}</time></div>
+                    <p>{m.text}</p>
+                    {m.aiInsight && <div className="gd-insight"><Sparkles className="w-3.5 h-3.5 shrink-0" /><span><strong>Moderator:</strong> {m.aiInsight}</span></div>}
+                  </article>
                 ))}
-                {isAiProcessing && (
-                  <div className="text-xs text-ink-400 italic flex items-center gap-2 p-2">
-                    <div className="w-3 h-3 border-2 border-accent-600 border-t-transparent rounded-full animate-spin"></div>
-                    AI Candidate is formulating response...
-                  </div>
-                )}
+                {isAiProcessing && <div className="gd-processing"><span className="gd-processing-dot" />AI participant is responding…</div>}
               </div>
-
-              {/* Speech Input / Chat Box */}
-              <div className="pt-3 border-t border-ink-100 flex gap-2">
-                <textarea
-                  rows={4}
-                  placeholder="Speak or type your GD argument..."
-                  value={messageText}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setMessageText(value);
-                    // Manual typing, Backspace and Delete are authoritative
-                    // even while speech recognition is active.
-                    messageBaseRef.current = value;
-                  }}
-                  onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1 p-3 bg-ink-50 border border-ink-200/80 rounded-2xl text-xs focus:outline-none focus:border-accent-600 shadow-xs"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!messageText.trim()}
-                  className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white font-bold px-4 py-3 rounded-2xl text-xs transition-all flex items-center gap-1 shadow-md shadow-accent-200"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
+              <div className="gd-composer">
+                <div className="gd-composer-label"><span>Your contribution</span><span>{messageText.length}/1000</span></div>
+                <div className="gd-composer-row">
+                  <textarea rows={3} maxLength={1000} placeholder="Make your point, add an example, or respond to another speaker…" value={messageText}
+                    onChange={e => { const value=e.target.value; setMessageText(value); messageBaseRef.current=value; }}
+                    onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSendMessage();} }}
+                    className="gd-message-input" />
+                  <button onClick={handleSendMessage} disabled={!messageText.trim()} className="gd-send-button" title="Send contribution"><Send className="w-4 h-4" /><span>Send</span></button>
+                </div>
+                <p className="gd-composer-hint">Press Enter to send · Shift + Enter for a new line</p>
               </div>
-            </div>
+            </section>
           </div>
         </div>
       )}
