@@ -95,6 +95,7 @@ export const AIInterviewView: React.FC<AIInterviewViewProps> = ({ onCompleteInte
   const liveInterimRef = useRef('');
   const liveCleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveReadyRef = useRef(false);
+  const liveSessionIdRef = useRef(0);
 
   const selectedFocus: InterviewFocusOption | undefined = resumeSummary?.focusOptions.find(f => f.id === selectedFocusId);
   const selectedRole = startedWithResume && resumeSummary
