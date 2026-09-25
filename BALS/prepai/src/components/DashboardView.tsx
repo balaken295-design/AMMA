@@ -17,17 +17,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
   return (
     <div id="dashboard-container" className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 space-y-6">
       {/* Welcome & Readiness Hero Section in Bento style */}
-      <div id="hero-readiness" className="bg-ink-900 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden border border-ink-800">
+      <div id="hero-readiness" className="interactive-card bg-ink-900 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden border border-ink-800">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-3.5 max-w-2xl">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/20 text-accent-300 text-xs font-semibold uppercase tracking-wider border border-accent-500/30">
+              <span className="interactive-card inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/20 text-accent-300 text-xs font-semibold uppercase tracking-wider border border-accent-500/30">
                 Candidate Overview
               </span>
               {!userProfile.isLoggedIn && (
                 <button
                   onClick={onOpenLoginModal}
-                  className="px-3 py-1 rounded-full bg-success-500/20 text-success-300 text-xs font-mono font-bold hover:bg-success-500/30 border border-success-500/30 flex items-center gap-1 transition-colors"
+                  className="interactive-card px-3 py-1 rounded-full bg-success-500/20 text-success-300 text-xs font-mono font-bold hover:bg-success-500/30 border border-success-500/30 flex items-center gap-1 transition-colors"
                 >
                   <LogIn className="w-3 h-3" /> Connect Gmail
                 </button>
@@ -58,7 +58,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
               <button
                 id="btn-quick-gd"
                 onClick={() => setActiveTab('gd')}
-                className="bg-white/10 hover:bg-white/20 text-white font-medium px-5 py-3 rounded-xl text-sm transition-all border border-white/20 flex items-center gap-2"
+                className="interactive-card bg-white/10 hover:bg-white/20 text-white font-medium px-5 py-3 rounded-xl text-sm transition-all border border-white/20 flex items-center gap-2"
               >
                 <Users className="w-4 h-4" />
                 Join Group Discussion Room
@@ -66,7 +66,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
             </div>
           </div>
 
-          <div className="bg-white/10 border border-white/15 rounded-2xl p-5 flex items-center gap-6 backdrop-blur-md self-start lg:self-center shadow-inner">
+          <div className="interactive-card bg-white/10 border border-white/15 rounded-2xl p-5 flex items-center gap-6 backdrop-blur-md self-start lg:self-center shadow-inner">
             <div className="relative w-28 h-28 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90">
                 <circle className="text-white/10" cx="56" cy="56" fill="transparent" r="48" stroke="currentColor" strokeWidth="8" />
@@ -124,7 +124,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
           {/* Verbal Aptitude Card */}
           <div 
             id="card-module-verbal"
-            className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
+            className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
           >
             <div>
               <div className="flex justify-between items-start mb-3">
@@ -144,7 +144,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
                     {userProfile.completedTests > 0 ? `${Math.min(10, userProfile.completedTests)} / 10` : '0 / 10 (0%)'}
                   </span>
                 </div>
-                <div className="h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
+                <div className="interactive-card h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
                   <div 
                     className="h-full bg-accent-600 rounded-full transition-all duration-500" 
                     style={{ width: `${userProfile.completedTests > 0 ? Math.min(100, userProfile.completedTests * 10) : 0}%` }}
@@ -153,7 +153,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
               </div>
             </div>
 
-            <div className="pt-3 border-t border-ink-100 flex gap-2">
+            <div className="interactive-card pt-3 border-t border-ink-100 flex gap-2">
               <button
                 onClick={() => {
                   onSelectCategory('verbal');
@@ -178,7 +178,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
           {/* Logical Aptitude Card */}
           <div 
             id="card-module-logical"
-            className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
+            className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
           >
             <div>
               <div className="flex justify-between items-start mb-3">
@@ -200,7 +200,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
                     {userProfile.completedTests > 1 ? `${Math.min(10, userProfile.completedTests - 1)} / 10` : '0 / 10 (0%)'}
                   </span>
                 </div>
-                <div className="h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
+                <div className="interactive-card h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
                   <div 
                     className="h-full bg-accent-600 rounded-full transition-all duration-500" 
                     style={{ width: `${userProfile.completedTests > 1 ? Math.min(100, (userProfile.completedTests - 1) * 10) : 0}%` }}
@@ -209,7 +209,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
               </div>
             </div>
 
-            <div className="pt-3 border-t border-ink-100 flex gap-2">
+            <div className="interactive-card pt-3 border-t border-ink-100 flex gap-2">
               <button
                 onClick={() => {
                   onSelectCategory('logical');
@@ -234,7 +234,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
           {/* Quants Aptitude Card */}
           <div 
             id="card-module-quants"
-            className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
+            className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
           >
             <div>
               <div className="flex justify-between items-start mb-3">
@@ -256,7 +256,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
                     {userProfile.completedTests > 2 ? `${Math.min(10, userProfile.completedTests - 2)} / 10` : '0 / 10 (0%)'}
                   </span>
                 </div>
-                <div className="h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
+                <div className="interactive-card h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
                   <div 
                     className="h-full bg-accent-600 rounded-full transition-all duration-500" 
                     style={{ width: `${userProfile.completedTests > 2 ? Math.min(100, (userProfile.completedTests - 2) * 10) : 0}%` }}
@@ -265,7 +265,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
               </div>
             </div>
 
-            <div className="pt-3 border-t border-ink-100 flex gap-2">
+            <div className="interactive-card pt-3 border-t border-ink-100 flex gap-2">
               <button
                 onClick={() => {
                   onSelectCategory('quants');
@@ -290,20 +290,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
       </div>
 
       {/* MBA Specialization Domain Readiness Matrix */}
-      <div className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ink-100 pb-4">
+      <div className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-xs space-y-4">
+        <div className="interactive-card flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ink-100 pb-4">
           <div>
             <h2 className="text-lg font-bold text-ink-900">MBA Domain Mastery & Level Progression</h2>
             <p className="text-xs text-ink-500">Benchmark performance across Finance, HR, Marketing, Analytics, Operations & Strategy.</p>
           </div>
-          <div className="flex items-center gap-2 bg-success-50 text-success-700 px-3 py-1 rounded-full text-xs font-mono font-bold border border-success-200/60 self-start sm:self-auto">
+          <div className="interactive-card flex items-center gap-2 bg-success-50 text-success-700 px-3 py-1 rounded-full text-xs font-mono font-bold border border-success-200/60 self-start sm:self-auto">
             <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse"></span>
             MongoDB Atlas Connected
           </div>
         </div>
 
         {/* Preparation Progress */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-ink-900 text-white p-4 rounded-2xl border border-ink-800">
+        <div className="interactive-card grid grid-cols-2 md:grid-cols-4 gap-3 bg-ink-900 text-white p-4 rounded-2xl border border-ink-800">
           <div className={`p-3 rounded-xl border space-y-1 transition-all ${userProfile.level === 1 ? 'bg-accent-950/90 border-accent-500 shadow-md ring-1 ring-accent-500' : 'bg-ink-800/70 border-ink-700'}`}>
             <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 1 ? 'text-accent-300' : 'text-ink-400'}`}>
               Level 1 • {userProfile.level === 1 ? 'CURRENT' : 'UNLOCKED'}
@@ -349,7 +349,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
           ].map((item) => {
             const domainScore = userProfile.domainScores ? userProfile.domainScores[item.domain as MBADomain] || 0 : 0;
             return (
-              <div key={item.domain} className="p-3.5 rounded-2xl border bg-ink-50 border-ink-200 space-y-1">
+              <div key={item.domain} className="interactive-card p-3.5 rounded-2xl border bg-ink-50 border-ink-200 space-y-1">
                 <div className="flex justify-between items-center text-xs font-mono font-bold">
                   <span className="truncate max-w-[90px]">{item.domain}</span>
                   <span className={domainScore > 0 ? "text-accent-600 font-bold" : "text-ink-400 font-normal"}>
@@ -367,9 +367,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* GD Feature Spotlight */}
-        <div className="bg-ink-900 text-white rounded-3xl p-7 shadow-lg flex flex-col justify-between relative overflow-hidden border border-ink-800">
+        <div className="interactive-card bg-ink-900 text-white rounded-3xl p-7 shadow-lg flex flex-col justify-between relative overflow-hidden border border-ink-800">
           <div className="space-y-3 z-10">
-            <span className="inline-block px-3 py-1 bg-accent-500/20 text-accent-300 font-mono text-xs font-extrabold rounded-full border border-accent-500/30">
+            <span className="interactive-card inline-block px-3 py-1 bg-accent-500/20 text-accent-300 font-mono text-xs font-extrabold rounded-full border border-accent-500/30">
               CAMERA & MIC PIPELINE
             </span>
             <h3 className="text-2xl font-bold">Realtime Group Discussion</h3>
@@ -388,7 +388,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
         </div>
 
         {/* AI Face Interview Spotlight */}
-        <div className="bg-accent-50/70 border border-accent-200/80 rounded-3xl p-7 shadow-sm flex flex-col justify-between">
+        <div className="interactive-card bg-accent-50/70 border border-accent-200/80 rounded-3xl p-7 shadow-sm flex flex-col justify-between">
           <div className="space-y-3">
             <span className="inline-block px-3 py-1 bg-accent-100 text-accent-700 font-mono text-xs font-extrabold rounded-full">
               STEP-BY-STEP SIMULATION
@@ -407,7 +407,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSe
             </button>
             <button
               onClick={() => setActiveTab('evaluation')}
-              className="bg-white hover:bg-ink-100 text-ink-800 border border-ink-200 font-semibold px-5 py-3 rounded-xl text-xs transition-all flex items-center gap-2"
+              className="interactive-card bg-white hover:bg-ink-100 text-ink-800 border border-ink-200 font-semibold px-5 py-3 rounded-xl text-xs transition-all flex items-center gap-2"
             >
               <Award className="w-4 h-4 text-accent-600" /> Past Evaluation
             </button>
