@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { InterviewQuestion, InterviewEvaluation, MBADomain, ResumeSummary, InterviewFocusOption } from '../types';
-import { Video, VideoOff, Mic, MicOff, Send, Sparkles, Award, Bot, CheckCircle2, Volume2, Activity, Play, Upload, Loader2 } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, Sparkles, Bot, CheckCircle2, Volume2, Play, Upload, Loader2 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver, type FaceLandmarkerResult } from '@mediapipe/tasks-vision';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
