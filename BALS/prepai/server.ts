@@ -587,7 +587,6 @@ app.post("/api/gemini/interview-transcribe", speechAudioParser, async (req, res)
   if (!audio || !Buffer.isBuffer(audio) || audio.length === 0) {
     return res.status(400).json({ success: false, error: "No audio was received." });
   }
-
   if (!apiKey) {
     return res.status(500).json({ success: false, error: "AI Interview transcription is not configured." });
   }
@@ -595,70 +594,88 @@ app.post("/api/gemini/interview-transcribe", speechAudioParser, async (req, res)
   const contentType = String(req.headers["content-type"] || "audio/webm").split(";")[0].trim();
 
   try {
-    // Gemini 3.5 Transcribe is invoked through the Interactions API.
-    // This avoids the older generateContent/audioTranscriptionConfig path.
-    const response = await withRetry(async () => {
-      const apiResponse = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/interactions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
+    // Correct Gemini 3.5 Transcribe file flow:
+    // 1) upload the audio through the Files API;
+    // 2) pass the returned file URI to Interactions.
+    const initResponse = await fetch("https://generativelanguage.googleapis.com/upload/v1beta/files", {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Length": String(audio.length),
+        "X-Goog-Upload-Header-Content-Type": contentType,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ file: { display_name: "ai-interview-answer" } }),
+    });
+
+    if (!initResponse.ok) {
+      const detail = await initResponse.text().catch(() => "");
+      throw new Error("Gemini Files upload initialization failed: " + initResponse.status + " " + detail);
+    }
+
+    const uploadUrl = initResponse.headers.get("x-goog-upload-url");
+    if (!uploadUrl) throw new Error("Gemini Files API did not return an upload URL.");
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "Content-Length": String(audio.length),
+        "X-Goog-Upload-Offset": "0",
+        "X-Goog-Upload-Command": "upload, finalize",
+      },
+      body: audio,
+    });
+
+    const uploadBodyText = await uploadResponse.text();
+    let uploadBody: any = {};
+    try { uploadBody = uploadBodyText ? JSON.parse(uploadBodyText) : {}; } catch {}
+    if (!uploadResponse.ok || !uploadBody?.file?.uri) {
+      throw new Error("Gemini Files upload failed: " + uploadResponse.status + " " + uploadBodyText);
+    }
+
+    const interactionResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        model: "gemini-3.5-transcribe",
+        input: [{
+          type: "audio",
+          uri: uploadBody.file.uri,
+          mime_type: contentType,
+        }],
+        generation_config: {
+          transcription_config: {
+            language_codes: [],
+            mode: "smart",
           },
-          body: JSON.stringify({
-            model: "gemini-3.5-transcribe",
-            input: [
-              {
-                type: "audio",
-                data: audio.toString("base64"),
-                mime_type: contentType,
-              },
-            ],
-            generation_config: {
-              transcription_config: {
-                language_codes: ["en-IN"],
-                mode: "smart",
-              },
-            },
-          }),
-        }
-      );
+        },
+      }),
+    });
 
-      const bodyText = await apiResponse.text();
-      let body: any = {};
-      try {
-        body = bodyText ? JSON.parse(bodyText) : {};
-      } catch {
-        body = { raw: bodyText };
-      }
-
-      if (!apiResponse.ok) {
-        console.error("Gemini transcription HTTP error:", apiResponse.status, body);
-        throw new Error("Gemini transcription HTTP " + apiResponse.status);
-      }
-
-      return body;
-    }, 2, 800);
+    const responseText = await interactionResponse.text();
+    let responseBody: any = {};
+    try { responseBody = responseText ? JSON.parse(responseText) : {}; } catch {}
+    if (!interactionResponse.ok) {
+      throw new Error("Gemini transcription failed: " + interactionResponse.status + " " + responseText);
+    }
 
     const transcript = String(
-      response?.output_text ||
-      response?.outputs?.find((item: any) => item?.type === "text")?.text ||
+      responseBody?.output_text ||
+      responseBody?.outputs?.find((item: any) => item?.type === "text")?.text ||
       ""
     ).trim();
-
-    console.log(
-      "AI Interview transcription:",
-      transcript ? "received" : "empty",
-      "(" + audio.length + " bytes, " + contentType + ")"
-    );
 
     return res.json({ success: true, transcript });
   } catch (error) {
     console.error("AI Interview transcription error:", error);
     return res.status(500).json({
       success: false,
-      error: "Speech transcription failed. Check the Render logs for the Gemini response and try again.",
+      error: "Speech transcription failed. Check the Render logs for the Gemini response.",
     });
   }
 });
