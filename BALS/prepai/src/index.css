@@ -135,3 +135,25 @@ button:hover .ui-3d-tile,.group:hover .ui-3d-tile,.group:hover .topic-card-3d{tr
 .learning-video-3d{width:42px;height:42px;display:grid;place-items:center;flex:none;color:#fff;background:#7f2f2a;border:1px solid #d7ad54;box-shadow:5px 6px 0 rgba(170,121,34,.30);transform:skewY(-3deg) rotateZ(-2deg)}
 .learning-video-3d-alt{background:#241d19}
 @media(max-width:760px){.learning-video-panel{grid-template-columns:1fr}.learning-video-actions{grid-template-columns:1fr}}
+
+
+/* Interactive assessment experience */
+:root{--ease-pro:cubic-bezier(.22,.8,.2,1)}
+.interactive-card{position:relative;overflow:hidden;transition:transform .35s var(--ease-pro),box-shadow .35s var(--ease-pro),border-color .25s ease;will-change:transform}
+.interactive-card::before{content:"";position:absolute;inset:-40%;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(215,173,84,.12),transparent 28%);pointer-events:none;opacity:0;transition:opacity .3s}
+.interactive-card:hover{transform:translateY(-5px);box-shadow:0 18px 40px rgba(43,31,23,.12);border-color:#b88a42}
+.interactive-card:hover::before{opacity:1}
+.interactive-icon{transition:transform .4s var(--ease-pro)}
+.interactive-card:hover .interactive-icon{transform:translate3d(0,-5px,18px) rotate(-4deg) scale(1.05)}
+.interactive-arrow{transition:transform .3s var(--ease-pro)}
+.interactive-card:hover .interactive-arrow{transform:translateX(5px)}
+.interactive-progress{height:3px;background:#e8dfd2;overflow:hidden}
+.interactive-progress>span{display:block;height:100%;background:linear-gradient(90deg,#7f2f2a,#d7ad54);transform-origin:left;animation:progressIn .9s var(--ease-pro)}
+@keyframes progressIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.reveal-up{animation:revealUp .55s var(--ease-pro) both}
+.reveal-up:nth-child(2){animation-delay:.05s}.reveal-up:nth-child(3){animation-delay:.1s}.reveal-up:nth-child(4){animation-delay:.15s}
+@keyframes revealUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.dynamic-badge{position:relative;overflow:hidden}
+.dynamic-badge::after{content:"";position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);transform:skewX(-20deg);animation:shine 4s ease-in-out infinite}
+@keyframes shine{0%,70%{left:-100%}100%{left:160%}}
+@media(prefers-reduced-motion:reduce){.interactive-card,.interactive-card::before,.interactive-icon,.interactive-arrow,.reveal-up,.dynamic-badge::after{animation:none!important;transition:none!important}}
