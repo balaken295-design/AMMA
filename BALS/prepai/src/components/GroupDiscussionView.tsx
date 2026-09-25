@@ -1288,8 +1288,8 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
 
               {/* Speech Input / Chat Box */}
               <div className="pt-3 border-t border-ink-100 flex gap-2">
-                <input
-                  type="text"
+                <textarea
+                  rows={4}
                   placeholder="Speak or type your GD argument..."
                   value={messageText}
                   onChange={e => {
