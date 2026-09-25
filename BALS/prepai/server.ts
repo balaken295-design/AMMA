@@ -415,6 +415,66 @@ const createGeminiClient = (apiKey?: string) => {
 // interview/resume routes.
 const getGeminiClient = () => createGeminiClient(process.env.GEMINI_API_KEY);
 const getInterviewGeminiClient = () => createGeminiClient(process.env.AI_INTERVIEW_GEMINI_API_KEY);
+
+/**
+ * Mint a short-lived, single-use Gemini Live Transcribe token.
+ * The browser never receives the permanent Gemini API key.
+ * This replaces the unreliable browser SpeechRecognition service.
+ */
+app.post("/api/gemini/interview-live-token", async (req, res) => {
+  const apiKey = process.env.AI_INTERVIEW_GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ success: false, error: "AI Interview voice is not configured on the server." });
+  }
+
+  try {
+    const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/auth_tokens", {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        uses: 1,
+        expireTime,
+        liveConnectConstraints: {
+          model: "models/gemini-3.5-transcribe-live",
+          config: {
+            responseModalities: ["TEXT"],
+            realtimeInputConfig: {
+              automaticActivityDetection: { disabled: true },
+            },
+            inputAudioTranscription: {
+              languageCodes: [],
+              mode: "SMART",
+            },
+          },
+        },
+      }),
+    });
+
+    const bodyText = await response.text();
+    let body: any = {};
+    try { body = bodyText ? JSON.parse(bodyText) : {}; } catch { body = { raw: bodyText }; }
+
+    if (!response.ok || !body.name) {
+      console.error("Gemini Live token error:", response.status, body);
+      return res.status(502).json({
+        success: false,
+        error: "Could not start Gemini Live transcription.",
+      });
+    }
+
+    return res.json({ success: true, token: body.name });
+  } catch (error) {
+    console.error("Gemini Live token request failed:", error);
+    return res.status(502).json({
+      success: false,
+      error: "Could not connect to Gemini Live transcription.",
+    });
+  }
+});
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
