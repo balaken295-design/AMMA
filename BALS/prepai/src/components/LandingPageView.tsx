@@ -64,9 +64,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({onStartApp,user
           {FEATURES.map(({tab,icon:Icon,title,text})=>(
             <button key={tab} onClick={()=>onStartApp(tab)} className="text-left p-7 border-r border-b border-ink-200 hover:bg-[#fbfaf7] group">
               <div className="flex items-start justify-between gap-6">
-                <span className="w-11 h-11 flex items-center justify-center border border-accent-200 text-accent-600">
-                  <Icon className="w-5 h-5"/>
-                </span>
+                <span className="ui-3d-stage ui-3d-stage-sm" aria-hidden="true"><span className="ui-3d-tile"><Icon className="w-5 h-5"/></span></span>
                 <ArrowRight className="w-4 h-4 text-ink-400 group-hover:text-accent-600"/>
               </div>
               <h3 className="mt-6 text-xl font-bold text-ink-950">{title}</h3>

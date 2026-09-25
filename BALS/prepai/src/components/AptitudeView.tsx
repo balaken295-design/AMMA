@@ -16,7 +16,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
 }) => {
   const [activeCategory, setActiveCategory] = useState<'verbal' | 'logical' | 'quants'>(initialCategory);
   const [selectedTopic, setSelectedTopic] = useState<TopicItem | null>(null);
-  const [viewMode, setViewMode] = useState<'learn' | 'pretest' | 'test' | 'module_test'>('learn');
+  const [viewMode, setViewMode] = useState<'learn' | 'test' | 'module_test'>('learn');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Test state
@@ -37,14 +37,6 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
     t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     t.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  // Sends the learner to a language-picker screen (video links + a Skip
-  // option) instead of straight into the test. The actual test only starts
-  // once they either click a video link and come back, or hit Skip.
-  const openPreTest = (topic: TopicItem) => {
-    setSelectedTopic(topic);
-    setViewMode('pretest');
-  };
 
   // No hand-picked video IDs here on purpose — a specific hardcoded video
   // link can go dead or turn out wrong, and there's no way to verify one
@@ -238,6 +230,10 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                 className="bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-4 group"
               >
                 <div className="space-y-2">
+                  <div className="topic-card-visual" aria-hidden="true">
+                    <div className="topic-card-3d"><span>{activeCategory === 'verbal' ? 'A' : activeCategory === 'logical' ? '∑' : 'π'}</span></div>
+                    <span className="topic-card-visual-label">{activeCategory === 'verbal' ? 'LANGUAGE' : activeCategory === 'logical' ? 'REASONING' : 'QUANTITATIVE'}</span>
+                  </div>
                   <div className="flex justify-between items-start">
                     <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-full bg-accent-50 text-accent-700">
                       20 Questions • Topic Assessment
@@ -262,7 +258,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                     <BookOpen className="w-3.5 h-3.5" /> Learn
                   </button>
                   <button
-                    onClick={() => openPreTest(topic)}
+                    onClick={() => startTopicTest(topic)}
                     className="flex-1 bg-ink-900 hover:bg-ink-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1"
                   >
                     <Play className="w-3.5 h-3.5" /> Test (20 Qs)
@@ -296,12 +292,35 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
               </div>
 
               <button
-                onClick={() => openPreTest(selectedTopic)}
+                onClick={() => startTopicTest(selectedTopic)}
                 className="bg-accent-600 hover:bg-accent-500 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all flex items-center gap-2 self-start md:self-auto shadow-md"
               >
                 <Play className="w-4 h-4" /> Start Topic Assessment
               </button>
             </div>
+
+            {/* Learning video — intentionally placed inside Learning, before the assessment */}
+            <section className="learning-video-panel" aria-label="Topic learning videos">
+              <div className="learning-video-copy">
+                <span className="text-xs font-mono text-accent-600 uppercase tracking-wider font-bold">Learn before you assess</span>
+                <h3 className="text-xl font-bold text-ink-950 mt-1">Topic explainer videos</h3>
+                <p className="text-sm text-ink-600 mt-1 max-w-2xl">
+                  Build the concept first, then test your understanding. Choose a current YouTube explanation in English or Tamil.
+                </p>
+              </div>
+              <div className="learning-video-actions">
+                <a href={getYoutubeSearchUrl(selectedTopic.title, 'english')} target="_blank" rel="noopener noreferrer" className="learning-video-link group">
+                  <span className="learning-video-3d"><Play className="w-5 h-5" /></span>
+                  <span><strong>Watch in English</strong><small>YouTube · topic explanation</small></span>
+                  <ChevronRight className="w-4 h-4 ml-auto" />
+                </a>
+                <a href={getYoutubeSearchUrl(selectedTopic.title, 'tamil')} target="_blank" rel="noopener noreferrer" className="learning-video-link group">
+                  <span className="learning-video-3d learning-video-3d-alt"><Play className="w-5 h-5" /></span>
+                  <span><strong>தமிழில் கற்கவும்</strong><small>YouTube · தமிழ் விளக்கம்</small></span>
+                  <ChevronRight className="w-4 h-4 ml-auto" />
+                </a>
+              </div>
+            </section>
 
             {/* Key Concepts */}
             <div className="space-y-3">
@@ -355,73 +374,6 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-      ) : selectedTopic && viewMode === 'pretest' ? (
-        /* Pre-Test Language Picker: video links first, Skip goes straight
-           to the test — this is the actual feature the user asked for. */
-        <div className="space-y-6">
-          <button
-            onClick={() => setViewMode('learn')}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-600 hover:text-accent-600 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to {activeCategory} topics
-          </button>
-
-          <div className="bg-white border border-ink-200/90 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-            <div className="space-y-1 border-b border-ink-100 pb-5">
-              <span className="text-xs font-mono text-accent-600 bg-accent-50 px-3 py-1 rounded-full uppercase font-bold">
-                Before You Begin
-              </span>
-              <h2 className="text-2xl font-bold text-ink-900">{selectedTopic.title}</h2>
-              <p className="text-sm text-ink-600">
-                Watch a quick explainer video in your preferred language, or skip straight to the test if you already know this topic.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <a
-                href={getYoutubeSearchUrl(selectedTopic.title, 'english')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-5 border border-ink-200/80 rounded-2xl hover:border-accent-400 hover:bg-accent-50/40 transition-all group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-ink-900 text-white flex items-center justify-center shrink-0">
-                  <Play className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-ink-900 group-hover:text-accent-700">Watch in English</p>
-                  <p className="text-xs text-ink-500 mt-0.5">Opens YouTube search results in a new tab</p>
-                </div>
-              </a>
-
-              <a
-                href={getYoutubeSearchUrl(selectedTopic.title, 'tamil')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-5 border border-ink-200/80 rounded-2xl hover:border-accent-400 hover:bg-accent-50/40 transition-all group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-ink-900 text-white flex items-center justify-center shrink-0">
-                  <Play className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-ink-900 group-hover:text-accent-700">தமிழில் பாருங்கள் (Watch in Tamil)</p>
-                  <p className="text-xs text-ink-500 mt-0.5">Opens YouTube search results in a new tab</p>
-                </div>
-              </a>
-            </div>
-
-            <div className="pt-5 border-t border-ink-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-xs text-ink-500">
-                Already comfortable with {selectedTopic.title}? Skip the video and attend the test directly.
-              </p>
-              <button
-                onClick={() => startTopicTest(selectedTopic)}
-                className="bg-accent-600 hover:bg-accent-500 text-white font-bold px-6 py-3 rounded-xl text-xs transition-all flex items-center gap-2 shrink-0 shadow-md whitespace-nowrap"
-              >
-                <Play className="w-4 h-4" /> Skip &amp; Start Test
-              </button>
             </div>
           </div>
         </div>
