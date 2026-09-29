@@ -1154,7 +1154,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
               <h2 className="gd-topic-title">{activeRoom.topic}</h2>
               <p className="gd-session-note">Speak naturally, listen carefully, and build on the discussion.</p>
             </div>
-            <div className={\`gd-timer \${activeRoom.timeRemaining <= 60 ? 'gd-timer-warning' : ''}\`} aria-label="GD time remaining">
+            <div className={`gd-timer ${activeRoom.timeRemaining <= 60 ? 'gd-timer-warning' : ''}`} aria-label="GD time remaining">
               <Clock3 className="gd-timer-icon w-5 h-5" />
               <div>
                 <span className="gd-timer-label">TIME REMAINING</span>
@@ -1174,7 +1174,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="gd-video-tile group">
-                  <video ref={el => { localVideoRef.current = el; if (el && mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) el.srcObject = mediaStreamRef.current; }} autoPlay playsInline muted className={\`w-full h-full object-cover \${!videoEnabled ? 'hidden' : ''}\`} />
+                  <video ref={el => { localVideoRef.current = el; if (el && mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) el.srcObject = mediaStreamRef.current; }} autoPlay playsInline muted className={`w-full h-full object-cover ${!videoEnabled ? 'hidden' : ''}`} />
                   {!videoEnabled && <div className="absolute inset-0 flex flex-col items-center justify-center bg-ink-900 text-ink-300 gap-2"><VideoOff className="w-7 h-7" /><span className="text-xs">Camera is off</span></div>}
                   <div className="gd-nameplate"><span className="gd-speaking-dot" />You</div>
                 </div>
@@ -1185,26 +1185,26 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
                       {isRealPersonRole(p.role) && stream ? <RemoteVideoTile stream={stream} socketId={p.socketId as string} remoteVideoRefs={remoteVideoRefs} /> : isRealPersonRole(p.role) ? (
                         <div className="flex flex-col items-center justify-center h-full bg-ink-900 text-ink-400 gap-2"><div className="w-3 h-3 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" /><span className="text-[11px]">Connecting…</span></div>
                       ) : <img src={p.avatar} alt={p.name} className="w-full h-full object-cover opacity-80" />}
-                      <div className="gd-nameplate"><span className={\`gd-speaking-dot \${p.isSpeaking ? 'gd-speaking' : 'gd-idle'}\`} />{p.name}</div>
+                      <div className="gd-nameplate"><span className={`gd-speaking-dot ${p.isSpeaking ? 'gd-speaking' : 'gd-idle'}`} />{p.name}</div>
                     </div>
                   );
                 })}
               </div>
               <div className="gd-controls">
-                <button onClick={toggleVideo} className={\`gd-control-button \${videoEnabled ? 'is-on' : 'is-off'}\`}>{videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}{videoEnabled ? 'Camera' : 'Camera off'}</button>
-                <button onClick={toggleMic} className={\`gd-control-button \${micEnabled ? 'is-on' : 'is-off'}\`}>{micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}{micEnabled ? 'Microphone' : 'Mic muted'}</button>
+                <button onClick={toggleVideo} className={`gd-control-button ${videoEnabled ? 'is-on' : 'is-off'}`}>{videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}{videoEnabled ? 'Camera' : 'Camera off'}</button>
+                <button onClick={toggleMic} className={`gd-control-button ${micEnabled ? 'is-on' : 'is-off'}`}>{micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}{micEnabled ? 'Microphone' : 'Mic muted'}</button>
               </div>
             </section>
 
             <section className="gd-conversation">
               <div className="gd-conversation-header">
                 <div><span className="gd-section-kicker">LIVE NOTES</span><h3>Discussion</h3></div>
-                <span className={\`gd-listening-status \${isListening ? 'is-listening' : ''}\`}>{isListening ? 'Listening' : speechSupported ? 'Voice ready' : 'Type your response'}</span>
+                <span className={`gd-listening-status ${isListening ? 'is-listening' : ''}`}>{isListening ? 'Listening' : speechSupported ? 'Voice ready' : 'Type your response'}</span>
               </div>
               <div className="gd-message-list">
                 {activeRoom.messages.length === 0 && <div className="gd-empty-conversation"><Volume2 className="w-5 h-5" /><p>The discussion is ready.</p><span>Use your microphone or type your opening point below.</span></div>}
                 {activeRoom.messages.map(m => (
-                  <article key={m.id} className={\`gd-message \${m.senderName === displayName ? 'is-you' : ''}\`}>
+                  <article key={m.id} className={`gd-message ${m.senderName === displayName ? 'is-you' : ''}`}>
                     <div className="gd-message-head"><strong>{m.senderName}</strong><time title={m.timestamp}><Clock3 className="w-3 h-3" />{m.timestamp}</time></div>
                     <p>{m.text}</p>
                     {m.aiInsight && <div className="gd-insight"><Sparkles className="w-3.5 h-3.5 shrink-0" /><span><strong>Moderator:</strong> {m.aiInsight}</span></div>}
