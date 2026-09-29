@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ArrowRight, BookOpen, BriefcaseBusiness, Camera, ChevronRight, Clock3, Keyboard, Map, Mic, MousePointer2, Users, X } from 'lucide-react';
 
 type RoomKey='aptitude'|'gd'|'interview';
-type Character={id:string;name:string;skin:string;hair:string;shirt:string;trouser:string;accent:string};
+type Character={id:string;name:string;skin:string;hair:string;shirt:string;trouser:string;accent:string;modelPath?:string};
 const CHARACTERS:Character[]=[
  {id:'arjun',name:'Arjun',skin:'#9b6548',hair:'#17110f',shirt:'#263b52',trouser:'#26303a',accent:'#c7a05a'},
  {id:'meera',name:'Meera',skin:'#b87558',hair:'#241512',shirt:'#7f2f2a',trouser:'#302a35',accent:'#d7ad54'},
  {id:'rahul',name:'Rahul',skin:'#8a573f',hair:'#16100e',shirt:'#536b55',trouser:'#252a2d',accent:'#c7a05a'},
- {id:'nisha',name:'Nisha',skin:'#a96d50',hair:'#2b1815',shirt:'#704a6b',trouser:'#252a35',accent:'#d7ad54'}
+ {id:'nisha',name:'Nisha',skin:'#a96d50',hair:'#2b1815',shirt:'#704a6b',trouser:'#252a35',accent:'#d7ad54'},
+ {id:'spiderman',name:'Spider-Man',skin:'#b86b55',hair:'#17110f',shirt:'#b71c1c',trouser:'#171717',accent:'#d7ad54',modelPath:'/avatars/spiderman.glb'}
 ];
 const ROOM_INFO:Record<RoomKey,{title:string;subtitle:string;icon:React.ElementType;color:string;position:[number,number,number]}>={
  aptitude:{title:'Aptitude Assessment',subtitle:'Placement aptitude classroom',icon:BookOpen,color:'#7f2f2a',position:[-12,0,-6]},
@@ -99,6 +101,7 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
  useEffect(()=>{try{const s=localStorage.getItem('prepai_character');if(s&&CHARACTERS.some(c=>c.id===s))setCharacterId(s);const n=localStorage.getItem('prepai_character_names');if(n)setCharacterNames(JSON.parse(n));}catch{}},[]);
  useEffect(()=>{let stream:MediaStream|null=null;setGdCameraReady(false);if(selectedRoom!=='gd')return;let cancelled=false;(async()=>{try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});if(cancelled){stream.getTracks().forEach(t=>t.stop());return;}if(gdVideoRef.current){gdVideoRef.current.srcObject=stream;await gdVideoRef.current.play().catch(()=>{});setGdCameraReady(true);}}catch{setGdCameraReady(false);}})();return()=>{cancelled=true;if(stream)stream.getTracks().forEach(t=>t.stop());if(gdVideoRef.current)gdVideoRef.current.srcObject=null;};},[selectedRoom]);
  const character=CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0];const named=(c:Character)=>({...c,name:characterNames[c.id]||c.name});
+ const chooseCharacter=(id:string)=>{setCharacterId(id);try{localStorage.setItem('prepai_character',id);}catch{}};
  useEffect(()=>{
   if(!mountRef.current)return;const mount=mountRef.current;const scene=new THREE.Scene();scene.background=new THREE.Color('#bfc9cb');scene.fog=new THREE.Fog('#bfc9cb',24,58);
   const camera=new THREE.PerspectiveCamera(46,1,.1,100);camera.position.set(8,8,12);
@@ -111,6 +114,28 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   const npcs:[Character,[number,number,number]][]=[[CHARACTERS[1],[-8,0,-2]],[CHARACTERS[2],[7,0,-1]],[CHARACTERS[3],[0,0,-5.5]]];
   const npcGroups=npcs.map(([c,p],i)=>{const a=makeHuman(named(c));a.position.set(...p);a.rotation.y=i%2?-.5:.5;scene.add(a);return a;});
   const player=makeHuman(named(character),true);player.position.set(0,0,6);scene.add(player);
+  let avatarDisposed=false;
+  if(character.modelPath){
+   player.children.forEach(child=>{child.visible=false;});
+   const loader=new GLTFLoader();
+   loader.load(character.modelPath,(gltf)=>{
+    if(avatarDisposed)return;
+    const avatarRoot=gltf.scene;
+    const bounds=new THREE.Box3().setFromObject(avatarRoot);
+    const size=bounds.getSize(new THREE.Vector3());
+    const center=bounds.getCenter(new THREE.Vector3());
+    const scale=2.35/Math.max(size.y,.001);
+    avatarRoot.scale.setScalar(scale);
+    avatarRoot.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);
+    avatarRoot.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
+    player.add(avatarRoot);
+    const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,28),new THREE.MeshBasicMaterial({color:0x101010,transparent:true,opacity:.16,depthWrite:false}));
+    shadow.rotation.x=-Math.PI/2;shadow.position.y=.025;player.add(shadow);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(.58,.66,32),new THREE.MeshBasicMaterial({color:0xd7ad54,side:THREE.DoubleSide,transparent:true,opacity:.9}));
+    ring.rotation.x=-Math.PI/2;ring.position.y=.045;player.add(ring);
+    const tag=textSprite('YOU','#7f2f2a',1.9);tag.position.y=2.65;player.add(tag);
+   },undefined,(error)=>{player.children.forEach(child=>{child.visible=true;});console.warn('Character model could not be loaded:',error);});
+  }
   const target=new THREE.Vector3(0,0,6),keys=new Set<string>();let currentNear:RoomKey|null=null,raf=0;const clock=new THREE.Clock();
   const onKeyDown=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){keys.add(k);e.preventDefault();}if(k==='e'&&currentNear)setSelectedRoom(currentNear);if(k==='escape')setSelectedRoom(null);};
   const onKeyUp=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
@@ -125,12 +150,12 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
    let closest:RoomKey|null=null,best=3.2;roomPoints.forEach(({room,point})=>{const d=Math.hypot(player.position.x-point.x,player.position.z-point.z);if(d<best){best=d;closest=room;}});if(closest!==currentNear){currentNear=closest;setNearRoom(closest);}
    const desired=new THREE.Vector3(player.position.x+7.5,7.2,player.position.z+10);camera.position.lerp(desired,.075);camera.lookAt(player.position.x,1.1,player.position.z);renderer.render(scene,camera);
   };animate();
-  return()=>{cancelAnimationFrame(raf);window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);window.removeEventListener('resize',resize);renderer.domElement.removeEventListener('click',onClick);renderer.dispose();scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const m=o.material;if(Array.isArray(m))m.forEach(x=>x.dispose());else m.dispose();}});if(mount.contains(renderer.domElement))mount.removeChild(renderer.domElement);};
+  return()=>{avatarDisposed=true;cancelAnimationFrame(raf);window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);window.removeEventListener('resize',resize);renderer.domElement.removeEventListener('click',onClick);renderer.dispose();scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const m=o.material;if(Array.isArray(m))m.forEach(x=>x.dispose());else m.dispose();}});if(mount.contains(renderer.domElement))mount.removeChild(renderer.domElement);};
  },[characterId,characterNames]);
  const openRoom=()=>{if(selectedRoom)setActiveTab(selectedRoom);else if(nearRoom)setSelectedRoom(nearRoom);};
  return <div className="metaverse-campus metaverse-office">
   <div ref={mountRef} className="metaverse-canvas"/>
-  <div className="metaverse-topbar"><div className="metaverse-brand"><span className="metaverse-mark">M</span><div><strong>MBA CAREER CENTRE</strong><small>Virtual Placement Office</small></div></div><div className="metaverse-stats"><div><b>{Math.round(userProfile?.readinessScore||0)}%</b><span>Readiness</span></div><div><b>{userProfile?.xp||0}</b><span>XP</span></div><div><b>LV {userProfile?.level||1}</b><span>{userProfile?.levelTitle||'Foundation'}</span></div></div></div>
+  <div className="metaverse-topbar"><div className="metaverse-brand"><span className="metaverse-mark">M</span><div><strong>MBA CAREER CENTRE</strong><small>Virtual Placement Office</small></div></div><div className="metaverse-stats"><div><b>{Math.round(userProfile?.readinessScore||0)}%</b><span>Readiness</span></div><div><b>{userProfile?.xp||0}</b><span>XP</span></div><div><b>LV {userProfile?.level||1}</b><span>{userProfile?.levelTitle||'Foundation'}</span></div><label className="metaverse-character-select"><span>Character</span><select value={characterId} onChange={e=>chooseCharacter(e.target.value)}>{CHARACTERS.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label></div></div>
   <div className="metaverse-minimap"><div className="minimap-title"><Map/> OFFICE MAP</div><div className="minimap-grid"><span className="map-road vertical"/><span className="map-road horizontal"/><i className="map-dot aptitude"/><i className="map-dot gd"/><i className="map-dot interview"/><i className="map-you"/></div><small>Walk through the office and enter a room</small></div>
   <div className="metaverse-controls"><div><Keyboard/><b>W A S D</b><span>Move</span></div><div><MousePointer2/><b>Click</b><span>Walk</span></div><div><span className="key-e">E</span><b>Enter</b></div></div>
   {nearRoom&&!selectedRoom&&<div className="metaverse-interact"><span className="interact-key">E</span><div><strong>{ROOM_INFO[nearRoom].title}</strong><small>{ROOM_INFO[nearRoom].subtitle}</small></div><button onClick={()=>setSelectedRoom(nearRoom)}>Enter <ChevronRight/></button></div>}
