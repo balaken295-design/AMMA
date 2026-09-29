@@ -134,7 +134,7 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
     const ring=new THREE.Mesh(new THREE.RingGeometry(.58,.66,32),new THREE.MeshBasicMaterial({color:0xd7ad54,side:THREE.DoubleSide,transparent:true,opacity:.9}));
     ring.rotation.x=-Math.PI/2;ring.position.y=.045;player.add(ring);
     const tag=textSprite('YOU','#7f2f2a',1.9);tag.position.y=2.65;player.add(tag);
-   },undefined,(error)=>console.warn('Character model could not be loaded:',error));
+   },undefined,(error)=>{player.children.forEach(child=>{child.visible=true;});console.warn('Character model could not be loaded:',error);});
   }
   const target=new THREE.Vector3(0,0,6),keys=new Set<string>();let currentNear:RoomKey|null=null,raf=0;const clock=new THREE.Clock();
   const onKeyDown=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){keys.add(k);e.preventDefault();}if(k==='e'&&currentNear)setSelectedRoom(currentNear);if(k==='escape')setSelectedRoom(null);};
