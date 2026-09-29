@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ArrowRight, BookOpen, BriefcaseBusiness, Camera, Check, ChevronRight, Clock3, Keyboard, Map, Mic, MousePointer2, Pencil, Users, X } from 'lucide-react';
 
 type RoomKey='aptitude'|'gd'|'interview';
 type Character={id:string;name:string;skin:string;hair:string;shirt:string;trouser:string;accent:string};
 const CHARACTERS:Character[]=[
+ {id:'spiderman',name:'Spider-Man',skin:'#b96f55',hair:'#17110f',shirt:'#9b1717',trouser:'#173a6b',accent:'#d7ad54'},
  {id:'arjun',name:'Arjun',skin:'#9b6548',hair:'#17110f',shirt:'#263b52',trouser:'#26303a',accent:'#c7a05a'},
  {id:'meera',name:'Meera',skin:'#b87558',hair:'#241512',shirt:'#7f2f2a',trouser:'#302a35',accent:'#d7ad54'},
  {id:'rahul',name:'Rahul',skin:'#8a573f',hair:'#16100e',shirt:'#536b55',trouser:'#252a2d',accent:'#c7a05a'},
@@ -93,7 +95,7 @@ function makeLobby(){
 
 export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitude'|'gd'|'interview'|'evaluation')=>void;userProfile:any;onOpenLoginModal:()=>void;}>=({setActiveTab,userProfile})=>{
  const mountRef=useRef<HTMLDivElement|null>(null);
- const [characterId,setCharacterId]=useState('arjun');const [characterNames,setCharacterNames]=useState<Record<string,string>>({});
+ const [characterId,setCharacterId]=useState('spiderman');const [characterNames,setCharacterNames]=useState<Record<string,string>>({});
  const [nearRoom,setNearRoom]=useState<RoomKey|null>(null);const [selectedRoom,setSelectedRoom]=useState<RoomKey|null>(null);const [showHelp,setShowHelp]=useState(false);const [editingCharacter,setEditingCharacter]=useState<string|null>(null);const [draftName,setDraftName]=useState('');const [gdCameraReady,setGdCameraReady]=useState(false);const gdVideoRef=useRef<HTMLVideoElement|null>(null);
  useEffect(()=>{try{const s=localStorage.getItem('prepai_character');if(s&&CHARACTERS.some(c=>c.id===s))setCharacterId(s);const n=localStorage.getItem('prepai_character_names');if(n)setCharacterNames(JSON.parse(n));}catch{}},[]);
  useEffect(()=>{let stream:MediaStream|null=null;setGdCameraReady(false);if(selectedRoom!=='gd')return;let cancelled=false;(async()=>{try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});if(cancelled){stream.getTracks().forEach(t=>t.stop());return;}if(gdVideoRef.current){gdVideoRef.current.srcObject=stream;await gdVideoRef.current.play().catch(()=>{});setGdCameraReady(true);}}catch{setGdCameraReady(false);}})();return()=>{cancelled=true;if(stream)stream.getTracks().forEach(t=>t.stop());if(gdVideoRef.current)gdVideoRef.current.srcObject=null;};},[selectedRoom]);
@@ -141,9 +143,8 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   scene.add(testLight);
   const testFloor=new THREE.Mesh(new THREE.PlaneGeometry(60,50),new THREE.MeshStandardMaterial({color:'#d6cec1',roughness:.85}));
   testFloor.rotation.x=-Math.PI/2;testFloor.position.y=0;testFloor.receiveShadow=true;scene.add(testFloor);
-  const testCube=new THREE.Mesh(new THREE.BoxGeometry(2.5,2.5,2.5),new THREE.MeshStandardMaterial({color:'#7f2f2a',roughness:.5}));
-  testCube.position.set(0,1.25,-2);testCube.castShadow=true;scene.add(testCube);
-  scene.add(new THREE.HemisphereLight('#fffaf1','#4d5656',1.8));const key=new THREE.DirectionalLight('#fff2d6',3.2);key.position.set(-12,16,10);key.castShadow=true;key.shadow.mapSize.set(1536,1536);key.shadow.camera.left=-25;key.shadow.camera.right=25;key.shadow.camera.top=25;key.shadow.camera.bottom=-25;scene.add(key);
+
+  const key=new THREE.DirectionalLight('#fff2d6',3.2);key.position.set(-12,16,10);key.castShadow=true;key.shadow.mapSize.set(1536,1536);key.shadow.camera.left=-25;key.shadow.camera.right=25;key.shadow.camera.top=25;key.shadow.camera.bottom=-25;scene.add(key);
   const fill=new THREE.PointLight('#c9dbe2',1.2,28);fill.position.set(0,4,-4);scene.add(fill);
   scene.add(makeLobby());
   const corridorMat=mat('#a99478',.88);
@@ -153,7 +154,29 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   const roomPoints=(Object.keys(ROOM_INFO) as RoomKey[]).map(r=>({room:r,point:new THREE.Vector3(...ROOM_INFO[r].position)}));
   const npcs:[Character,[number,number,number]][]=[[CHARACTERS[1],[-8,0,-2]],[CHARACTERS[2],[7,0,-1]],[CHARACTERS[3],[0,0,-5.5]]];
   const npcGroups=npcs.map(([c,p],i)=>{const a=makeHuman(named(c));a.position.set(...p);a.rotation.y=i%2?-.5:.5;scene.add(a);return a;});
-  const player=makeHuman(named(character),true);player.position.set(0,0,6);scene.add(player);
+  const playerRoot=new THREE.Group();
+  playerRoot.position.set(0,0,6);
+  const fallbackPlayer=makeHuman(named(character),true);
+  playerRoot.add(fallbackPlayer);
+  scene.add(playerRoot);
+
+  let modelLoaded=false;
+  const gltfLoader=new GLTFLoader();
+  gltfLoader.load('/avatars/spiderman.glb',(gltf)=>{
+    const model=gltf.scene;
+    model.traverse((o)=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
+    const box=new THREE.Box3().setFromObject(model);
+    const size=box.getSize(new THREE.Vector3());
+    const height=Math.max(size.y,0.1);
+    model.scale.setScalar(2.15/height);
+    const scaledBox=new THREE.Box3().setFromObject(model);
+    const center=scaledBox.getCenter(new THREE.Vector3());
+    model.position.set(-center.x,-scaledBox.min.y,-center.z);
+    model.rotation.y=Math.PI;
+    playerRoot.remove(fallbackPlayer);
+    playerRoot.add(model);
+    modelLoaded=true;
+  },undefined,(error)=>console.warn('Spider-Man GLB not found at /avatars/spiderman.glb',error));
   const target=new THREE.Vector3(0,0,6),keys=new Set<string>();let currentNear:RoomKey|null=null,raf=0;const clock=new THREE.Clock();
   const onKeyDown=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){keys.add(k);e.preventDefault();}if(k==='e'&&currentNear)setSelectedRoom(currentNear);if(k==='escape')setSelectedRoom(null);};
   const onKeyUp=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
@@ -163,7 +186,7 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   const animate=()=>{raf=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);const speed=4.8*dt;let moving=false;if(keys.size){moving=true;target.copy(player.position);if(keys.has('w')||keys.has('arrowup'))target.z-=speed;if(keys.has('s')||keys.has('arrowdown'))target.z+=speed;if(keys.has('a')||keys.has('arrowleft'))target.x-=speed;if(keys.has('d')||keys.has('arrowright'))target.x+=speed;}
    const dx=target.x-player.position.x,dz=target.z-player.position.z,dist=Math.hypot(dx,dz);if(dist>.03){const step=Math.min(dist,speed*1.5);player.position.x+=dx/dist*step;player.position.z+=dz/dist*step;player.rotation.y=Math.atan2(dx,dz);}
    player.position.x=THREE.MathUtils.clamp(player.position.x,-17,17);player.position.z=THREE.MathUtils.clamp(player.position.z,-13,12);
-   const parts=player.userData.parts;if(parts){const swing=moving?Math.sin(clock.elapsedTime*9)*.32:0;parts.armL.rotation.x=swing;parts.armR.rotation.x=-swing;parts.legL.rotation.x=-swing;parts.legR.rotation.x=swing;}
+   const parts=fallbackPlayer.userData.parts;if(!modelLoaded&&parts){const swing=moving?Math.sin(clock.elapsedTime*9)*.32:0;parts.armL.rotation.x=swing;parts.armR.rotation.x=-swing;parts.legL.rotation.x=-swing;parts.legR.rotation.x=swing;}
    npcGroups.forEach((n,i)=>{n.position.y=Math.sin(clock.elapsedTime*1.5+i)*.015;n.rotation.y+=Math.sin(clock.elapsedTime*.4+i)*.0007;});
    let closest:RoomKey|null=null,best=3.2;roomPoints.forEach(({room,point})=>{const d=Math.hypot(player.position.x-point.x,player.position.z-point.z);if(d<best){best=d;closest=room;}});if(closest!==currentNear){currentNear=closest;setNearRoom(closest);}
    const desired=new THREE.Vector3(player.position.x+7.5,7.2,player.position.z+10);camera.position.lerp(desired,.075);camera.lookAt(player.position.x,0.9,player.position.z);renderer.render(scene,camera);
