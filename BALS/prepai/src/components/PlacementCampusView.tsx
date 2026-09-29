@@ -139,7 +139,7 @@ function makeGDEnvironment(video:HTMLVideoElement, mount:HTMLDivElement, onStart
  for(let i=0;i<8;i++){const a=i*Math.PI/4;makeGDChair(scene,Math.cos(a)*3.25,Math.sin(a)*2.45,a+Math.PI/2);}
  const screenFrame=box(6.4,3.25,.16,mat('#202528',.32,.4));screenFrame.position.set(0,3.15,-6.22);scene.add(screenFrame);
  const screen=new THREE.Mesh(new THREE.PlaneGeometry(5.95,2.8),new THREE.MeshBasicMaterial({color:'#11181b'}));screen.position.set(0,3.15,-6.33);scene.add(screen);
- if(video.readyState>=2){const tex=new THREE.VideoTexture(video);tex.colorSpace=THREE.SRGBColorSpace;tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;(screen.material as THREE.MeshBasicMaterial).map=tex;(screen.material as THREE.MeshBasicMaterial).needsUpdate=true;}
+ const tex=new THREE.VideoTexture(video);tex.colorSpace=THREE.SRGBColorSpace;tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;(screen.material as THREE.MeshBasicMaterial).map=tex;(screen.material as THREE.MeshBasicMaterial).needsUpdate=true;
  const title=textSprite('LIVE GROUP DISCUSSION','#7f2f2a',3.2);title.position.set(0,5,-6.28);scene.add(title);
  const avatars:[Character,number,number][]=[[CHARACTERS[2],-3.25,0],[CHARACTERS[3],3.25,0],[CHARACTERS[4],0,2.45]];
  avatars.forEach(([c,x,z],i)=>{const a=makeHuman(named(c));a.position.set(x,0,z);a.rotation.y=i===0?Math.PI/2:i===1?-Math.PI/2:Math.PI;scene.add(a);});
