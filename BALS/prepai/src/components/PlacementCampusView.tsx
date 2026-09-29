@@ -188,7 +188,7 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   const fill=new THREE.PointLight('#c9dbe2',1.2,28);fill.position.set(0,4,-4);scene.add(fill);
   scene.add(makeLobby());
   const corridorMat=mat('#9d8a72',.9);
-  const corridorPaths:[[number,number,number,number]]=[[-12,-6,6,0],[0,-6,6,-7],[12,-6,6,0]];
+  const corridorPaths:[number,number,number,number][]=[[-12,-6,6,0],[0,-6,6,-7],[12,-6,6,0]];
   corridorPaths.forEach(([x,z,w,d])=>{const len=Math.hypot(w,d);const path=box(3.1,.055,len,corridorMat);path.position.set(x,.2,z);path.rotation.y=Math.atan2(w,d);scene.add(path);});
   const roomGroups:THREE.Group[]=[];(Object.keys(ROOM_INFO) as RoomKey[]).forEach(r=>{const q=makeRoom(ROOM_INFO[r],r);scene.add(q);roomGroups.push(q);});
   const roomPoints=(Object.keys(ROOM_INFO) as RoomKey[]).map(r=>({room:r,point:new THREE.Vector3(...ROOM_INFO[r].position)}));
