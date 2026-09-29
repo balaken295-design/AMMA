@@ -1,154 +1,336 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Clock3, Trophy, Users, BriefcaseBusiness, DoorOpen, Pencil, Check, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { ArrowRight, BookOpen, BriefcaseBusiness, ChevronRight, Clock3, Keyboard, Map, Mic, MousePointer2, Users } from 'lucide-react';
 
-type Room = 'campus' | 'aptitude' | 'gd' | 'interview';
+type RoomKey = 'aptitude' | 'gd' | 'interview';
 type Character = { id:string; name:string; skin:string; hair:string; shirt:string };
 
-const CHARACTERS: Character[] = [
+const CHARACTERS:Character[] = [
   {id:'arjun',name:'Arjun',skin:'#c98f68',hair:'#251b18',shirt:'#315b7d'},
   {id:'meera',name:'Meera',skin:'#d39a76',hair:'#1f1715',shirt:'#7f2f2a'},
   {id:'rahul',name:'Rahul',skin:'#b97955',hair:'#181412',shirt:'#536b55'},
   {id:'nisha',name:'Nisha',skin:'#c88967',hair:'#34201a',shirt:'#704a6b'}
 ];
 
-const CharacterAvatar:React.FC<{character:Character;small?:boolean;seated?:boolean;label?:string}>=({character,small,seated,label})=>(
-  <div className={'campus-character '+(small?'small ':'')+(seated?'seated':'')}>
-    <div className="avatar-hair" style={{background:character.hair}}/>
-    <div className="avatar-head" style={{background:character.skin}}/>
-    <div className="avatar-body" style={{background:character.shirt}}><span className="avatar-collar"/></div>
-    <div className="avatar-legs"><i/><i/></div>
-    {label&&<span className="avatar-label">{label}</span>}
-  </div>
-);
+const ROOM_INFO:Record<RoomKey,{title:string;subtitle:string;icon:React.ElementType;color:string;position:[number,number,number]}> = {
+  aptitude:{title:'Aptitude Hall',subtitle:'Timed aptitude assessment',icon:BookOpen,color:'#7f2f2a',position:[-13,0,-8]},
+  gd:{title:'GD Arena',subtitle:'Live group discussion',icon:Users,color:'#315b7d',position:[0,0,-15]},
+  interview:{title:'Interview Suite',subtitle:'One-to-one AI interview',icon:BriefcaseBusiness,color:'#8a641f',position:[14,0,-7]}
+};
+
+function labelSprite(text:string, color='#1b1714', scale=2.8) {
+  const canvas=document.createElement('canvas');
+  canvas.width=512; canvas.height=128;
+  const ctx=canvas.getContext('2d')!;
+  ctx.clearRect(0,0,512,128);
+  ctx.fillStyle='rgba(250,247,239,.94)';
+  ctx.roundRect(8,18,496,92,18);
+  ctx.fill();
+  ctx.strokeStyle='rgba(127,47,42,.28)';
+  ctx.lineWidth=3;
+  ctx.stroke();
+  ctx.fillStyle=color;
+  ctx.font='bold 38px Georgia, serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText(text,256,65,470);
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false}));
+  sprite.scale.set(scale,scale*.25,1);
+  return sprite;
+}
+
+function makeAvatar(c:Character, selected=false) {
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:c.skin,roughness:.8});
+  const hair=new THREE.MeshStandardMaterial({color:c.hair,roughness:.9});
+  const shirt=new THREE.MeshStandardMaterial({color:c.shirt,roughness:.85});
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.42,16,12),skin);
+  head.position.y=1.72;
+  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.43,.72,5,10),shirt);
+  body.position.y=1.02;
+  const hairCap=new THREE.Mesh(new THREE.SphereGeometry(.45,16,8,0,Math.PI*2,0,Math.PI*.48),hair);
+  hairCap.position.y=1.9;
+  const legMat=new THREE.MeshStandardMaterial({color:'#302a27'});
+  const l=new THREE.Mesh(new THREE.CylinderGeometry(.12,.14,.7,10),legMat);
+  const r=l.clone();
+  l.position.set(-.2,.43,0); r.position.set(.2,.43,0);
+  g.add(head,hairCap,body,l,r);
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,24),new THREE.MeshBasicMaterial({color:0x1b1714,transparent:true,opacity:.13,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2; shadow.position.y=.05; g.add(shadow);
+  if(selected) {
+    const ring=new THREE.Mesh(new THREE.RingGeometry(.62,.7,32),new THREE.MeshBasicMaterial({color:0xd7ad54,side:THREE.DoubleSide,transparent:true,opacity:.9}));
+    ring.rotation.x=-Math.PI/2; ring.position.y=.08; g.add(ring);
+  }
+  const tag=labelSprite(selected?'YOU':c.name, selected?'#7f2f2a':'#1b1714',2.15);
+  tag.position.y=2.55; g.add(tag);
+  return g;
+}
+
+function makeTree(x:number,z:number,scale=1) {
+  const g=new THREE.Group();
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.15,.22,1.6,8),new THREE.MeshStandardMaterial({color:0x74503b}));
+  trunk.position.y=.8;
+  const crown=new THREE.Mesh(new THREE.SphereGeometry(1.15,12,10),new THREE.MeshStandardMaterial({color:0x536b55,roughness:1}));
+  crown.position.y=2.1;
+  g.add(trunk,crown); g.position.set(x,0,z); g.scale.setScalar(scale);
+  return g;
+}
+
+function makeBuilding(info:typeof ROOM_INFO[RoomKey], room:RoomKey) {
+  const g=new THREE.Group();
+  g.position.set(...info.position);
+  g.userData.room=room;
+  const base=new THREE.Mesh(new THREE.BoxGeometry(7,3.8,5.5),new THREE.MeshStandardMaterial({color:0xf0e8da,roughness:.82}));
+  base.position.y=1.9;
+  const upper=new THREE.Mesh(new THREE.BoxGeometry(6.5,1.1,5.1),new THREE.MeshStandardMaterial({color:0x7f2f2a,roughness:.8}));
+  upper.position.y=4.35;
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(4.6,.95,4),new THREE.MeshStandardMaterial({color:0x5e241f,roughness:.9}));
+  roof.rotation.y=Math.PI/4; roof.position.y=5.35;
+  const door=new THREE.Mesh(new THREE.BoxGeometry(1.15,2.1,.18),new THREE.MeshStandardMaterial({color:0x3c302b}));
+  door.position.set(0,1.1,2.78);
+  const steps=new THREE.Mesh(new THREE.BoxGeometry(2, .18, .9),new THREE.MeshStandardMaterial({color:0xc8b9a2}));
+  steps.position.set(0,.1,3.05);
+  g.add(base,upper,roof,door,steps);
+  const windows=new THREE.MeshStandardMaterial({color:0x9bb6bd,metalness:.1,roughness:.3});
+  [-2.1,2.1].forEach(x=>{const w=new THREE.Mesh(new THREE.BoxGeometry(1.35,1.15,.12),windows); w.position.set(x,2.45,2.78); g.add(w);});
+  const tag=labelSprite(info.title.toUpperCase(),'#7f2f2a',4.1); tag.position.set(0,6.55,0); g.add(tag);
+  const glow=new THREE.Mesh(new THREE.CircleGeometry(1.35,32),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.09,side:THREE.DoubleSide}));
+  glow.rotation.x=-Math.PI/2; glow.position.y=.08; g.add(glow);
+  return g;
+}
 
 export const PlacementCampusView:React.FC<{
   setActiveTab:(tab:'dashboard'|'aptitude'|'gd'|'interview'|'evaluation')=>void;
   userProfile:any;
   onOpenLoginModal:()=>void;
 }> = ({setActiveTab,userProfile,onOpenLoginModal}) => {
-  const [room,setRoom]=useState<Room>('campus');
+  const mountRef=useRef<HTMLDivElement|null>(null);
   const [characterId,setCharacterId]=useState('arjun');
   const [characterNames,setCharacterNames]=useState<Record<string,string>>({});
-  const [editingId,setEditingId]=useState<string|null>(null);
-  const [draftName,setDraftName]=useState('');
+  const [nearRoom,setNearRoom]=useState<RoomKey|null>(null);
+  const [selectedRoom,setSelectedRoom]=useState<RoomKey|null>(null);
+  const [showHelp,setShowHelp]=useState(false);
 
   useEffect(()=>{
     try {
-      const s=localStorage.getItem('prepai_character');
-      if(s&&CHARACTERS.some(c=>c.id===s)) setCharacterId(s);
-      const saved=localStorage.getItem('prepai_character_names');
-      if(saved) setCharacterNames(JSON.parse(saved));
+      const saved=localStorage.getItem('prepai_character');
+      if(saved&&CHARACTERS.some(c=>c.id===saved)) setCharacterId(saved);
+      const names=localStorage.getItem('prepai_character_names');
+      if(names) setCharacterNames(JSON.parse(names));
     } catch {}
   },[]);
 
-  const getCharacter=(base:Character):Character=>({...base,name:characterNames[base.id]||base.name});
-  const character=getCharacter(CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0]);
+  const character=CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0];
+  const named=(c:Character)=>({...c,name:characterNames[c.id]||c.name});
 
-  const chooseCharacter=(id:string)=>{
-    setCharacterId(id);
-    localStorage.setItem('prepai_character',id);
-  };
+  useEffect(()=>{
+    if(!mountRef.current) return;
+    const mount=mountRef.current;
+    const scene=new THREE.Scene();
+    scene.background=new THREE.Color(0xd9e3e4);
+    scene.fog=new THREE.Fog(0xd9e3e4,28,62);
 
-  const beginRename=(c:Character)=>{
-    setEditingId(c.id);
-    setDraftName(c.name);
-  };
+    const camera=new THREE.PerspectiveCamera(48,1,.1,100);
+    camera.position.set(10,13,17);
+    const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.7));
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace=THREE.SRGBColorSpace;
+    mount.appendChild(renderer.domElement);
 
-  const saveRename=()=>{
-    if(!editingId) return;
-    const clean=draftName.trim().slice(0,24);
-    if(!clean) return;
-    const next={...characterNames,[editingId]:clean};
-    setCharacterNames(next);
-    localStorage.setItem('prepai_character_names',JSON.stringify(next));
-    setEditingId(null);
-  };
+    const hemi=new THREE.HemisphereLight(0xf8f2e7,0x536b55,2.2);
+    scene.add(hemi);
+    const sun=new THREE.DirectionalLight(0xfff3d6,3.2);
+    sun.position.set(-15,28,10); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+    sun.shadow.camera.left=-35; sun.shadow.camera.right=35; sun.shadow.camera.top=35; sun.shadow.camera.bottom=-35;
+    scene.add(sun);
 
-  if(room==='campus') return (
-    <div className="campus-game">
-      <div className="campus-topbar">
-        <div><span className="campus-eyebrow">MBA PLACEMENT CAMPUS</span><h1>Good morning, {userProfile?.name||'Candidate'}.</h1><p>Your preparation day starts here. Choose a room and take your seat.</p></div>
-        <div className="campus-status"><div><strong>{Math.round(userProfile?.readinessScore||0)}%</strong><span>Readiness</span></div><div><strong>{userProfile?.xp||0}</strong><span>XP</span></div><div><strong>{userProfile?.level||1}</strong><span>Level</span></div></div>
-      </div>
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.MeshStandardMaterial({color:0xb8c5a6,roughness:1}));
+    ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
 
-      <section className="campus-scene">
-        <div className="campus-skyline"><span/><span/><span/><span/><span/></div>
-        <div className="campus-ground">
-          <div className="campus-path path-left"/><div className="campus-path path-center"/>
-          <div className="campus-character campus-walker"><CharacterAvatar character={character} small label="You"/></div>
-          {[
-            {key:'aptitude',cls:'aptitude-building',icon:BookOpen,label:'APTITUDE HALL'},
-            {key:'gd',cls:'gd-building',icon:Users,label:'GD ROOM'},
-            {key:'interview',cls:'interview-building',icon:BriefcaseBusiness,label:'INTERVIEW SUITE'}
-          ].map(({key,cls,icon:Icon,label})=>(
-            <button key={key} className={'campus-building '+cls} onClick={()=>setRoom(key as Room)}>
-              <div className="building-roof"/><div className="building-sign"><Icon/>{label}</div>
-              <div className="building-door"/><div className="building-window w1"/><div className="building-window w2"/>
-              <span className="building-prompt">ENTER →</span>
-            </button>
-          ))}
-        </div>
-        <div className="campus-map-label">PLACEMENT CENTRE · FLOOR 1</div>
-      </section>
+    const roadMat=new THREE.MeshStandardMaterial({color:0x9d968c,roughness:1});
+    const road=new THREE.Mesh(new THREE.PlaneGeometry(12,48),roadMat); road.rotation.x=-Math.PI/2; road.position.set(0,.015,1); scene.add(road);
+    const cross=new THREE.Mesh(new THREE.PlaneGeometry(48,10),roadMat); cross.rotation.x=-Math.PI/2; cross.position.set(0,.016,-2); scene.add(cross);
+    const plaza=new THREE.Mesh(new THREE.CircleGeometry(7,48),new THREE.MeshStandardMaterial({color:0xe8dfd0,roughness:1}));
+    plaza.rotation.x=-Math.PI/2; plaza.position.y=.025; scene.add(plaza);
 
-      <section className="campus-character-panel">
-        <div><span className="campus-eyebrow">YOUR CANDIDATE</span><h2>Choose your character</h2><p>Your character appears throughout the preparation rooms.</p></div>
-        <div className="character-picker">{CHARACTERS.map(base=>{
-          const c=getCharacter(base);
-          const editing=editingId===c.id;
-          return <div key={c.id} className={'character-option-wrap '+(c.id===characterId?'selected':'')}>
-            <button onClick={()=>chooseCharacter(c.id)} className={'character-option '+(c.id===characterId?'selected':'')}>
-              <CharacterAvatar character={c} small/><span>{c.name}</span>
-            </button>
-            <button className="character-rename" onClick={()=>beginRename(c)} aria-label={'Rename '+c.name}><Pencil/></button>
-            {editing&&<div className="character-name-editor">
-              <input autoFocus value={draftName} maxLength={24} onChange={e=>setDraftName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')saveRename();if(e.key==='Escape')setEditingId(null)}}/>
-              <button onClick={saveRename} aria-label="Save name"><Check/></button>
-              <button onClick={()=>setEditingId(null)} aria-label="Cancel"><X/></button>
-            </div>}
-          </div>;
-        })}</div>
-      </section>
+    const fountainBase=new THREE.Mesh(new THREE.CylinderGeometry(2.3,2.5,.45,32),new THREE.MeshStandardMaterial({color:0xd0c3ae}));
+    fountainBase.position.y=.25; scene.add(fountainBase);
+    const water=new THREE.Mesh(new THREE.CylinderGeometry(1.95,1.95,.12,32),new THREE.MeshStandardMaterial({color:0x8fb8c1,metalness:.15,roughness:.25}));
+    water.position.y=.52; scene.add(water);
 
-      <section className="campus-quick-actions">
-        <button onClick={()=>setActiveTab('evaluation')}><Trophy/> View latest report <ArrowRight/></button>
-        <button onClick={onOpenLoginModal}><Users/> Candidate profile <ArrowRight/></button>
-      </section>
-    </div>
-  );
+    [-24,-18,18,24].forEach(x=>[-25,-18,10,19].forEach(z=>scene.add(makeTree(x,z,.85+Math.random()*.3))));
+    [-12,12].forEach(x=>[-23,-17,-10,8,17,24].forEach(z=>scene.add(makeTree(x,z,.65+Math.random()*.25))));
 
-  const roomInfo:any={
-    aptitude:{title:'Aptitude Room',subtitle:'Take your seat. Pick a topic. Beat the clock.',icon:BookOpen},
-    gd:{title:'Group Discussion Room',subtitle:'The HR panel is waiting. Make your point and listen to the room.',icon:Users},
-    interview:{title:'Interview Room',subtitle:'One interviewer. One candidate. One focused conversation.',icon:BriefcaseBusiness}
-  }[room];
-  const Icon=roomInfo.icon;
+    const buildingGroups:THREE.Group[]=[];
+    (Object.keys(ROOM_INFO) as RoomKey[]).forEach(room=>{const b=makeBuilding(ROOM_INFO[room],room); b.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}}); scene.add(b); buildingGroups.push(b);});
+
+    const npcGroups:THREE.Group[]=[];
+    const npcPositions:[[number,number],[number,number],[number,number]]=[[-5,4],[5,4],[7,-1]];
+    [CHARACTERS[1],CHARACTERS[2],CHARACTERS[3]].forEach((c,i)=>{const a=makeAvatar(named(c)); a.position.set(npcPositions[i][0],0,npcPositions[i][1]); scene.add(a); npcGroups.push(a);});
+
+    const player=makeAvatar(named(character),true);
+    player.position.set(0,0,7);
+    scene.add(player);
+
+    const target=new THREE.Vector3(0,0,7);
+    const keys=new Set<string>();
+    let currentNear:RoomKey|null=null;
+    let raf=0;
+    const clock=new THREE.Clock();
+    const roomPoints=(Object.keys(ROOM_INFO) as RoomKey[]).map(room=>({room,point:new THREE.Vector3(...ROOM_INFO[room].position)}));
+
+    const onKeyDown=(e:KeyboardEvent)=>{
+      if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {keys.add(e.key.toLowerCase()); e.preventDefault();}
+      if(e.key.toLowerCase()==='e' && currentNear) setSelectedRoom(currentNear);
+      if(e.key==='Escape') setSelectedRoom(null);
+    };
+    const onKeyUp=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
+    const onClick=(e:MouseEvent)=>{
+      const rect=renderer.domElement.getBoundingClientRect();
+      const mouse=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+      const ray=new THREE.Raycaster(); ray.setFromCamera(mouse,camera);
+      const hits=ray.intersectObjects(buildingGroups,true);
+      if(!hits.length) return;
+      let obj:any=hits[0].object;
+      while(obj && !obj.userData.room) obj=obj.parent;
+      if(obj?.userData.room) {
+        const info=ROOM_INFO[obj.userData.room as RoomKey];
+        target.set(info.position[0],0,info.position[2]+3.8);
+      }
+    };
+
+    window.addEventListener('keydown',onKeyDown);
+    window.addEventListener('keyup',onKeyUp);
+    renderer.domElement.addEventListener('click',onClick);
+
+    const resize=()=>{
+      const w=mount.clientWidth||window.innerWidth; const h=mount.clientHeight||window.innerHeight;
+      camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h,false);
+    };
+    resize(); window.addEventListener('resize',resize);
+
+    const animate=()=>{
+      raf=requestAnimationFrame(animate);
+      const dt=Math.min(clock.getDelta(),.05);
+      const speed=6*dt;
+      const moving=keys.size>0;
+      if(moving){
+        target.copy(player.position);
+        if(keys.has('w')) target.z-=speed;
+        if(keys.has('s')) target.z+=speed;
+        if(keys.has('a')) target.x-=speed;
+        if(keys.has('d')) target.x+=speed;
+      }
+      const dx=target.x-player.position.x, dz=target.z-player.position.z;
+      const dist=Math.hypot(dx,dz);
+      if(dist>.03){
+        const step=Math.min(dist,speed*1.7);
+        player.position.x+=dx/dist*step;
+        player.position.z+=dz/dist*step;
+        player.rotation.y=Math.atan2(dx,dz);
+      }
+      player.position.x=THREE.MathUtils.clamp(player.position.x,-22,22);
+      player.position.z=THREE.MathUtils.clamp(player.position.z,-25,24);
+
+      let closest:RoomKey|null=null; let best=3.7;
+      roomPoints.forEach(({room,point})=>{const d=Math.hypot(player.position.x-point.x,player.position.z-point.z); if(d<best){best=d;closest=room;}});
+      if(closest!==currentNear){currentNear=closest;setNearRoom(closest);}
+
+      const desired=new THREE.Vector3(player.position.x+9,12.5,player.position.z+13);
+      camera.position.lerp(desired,.075);
+      camera.lookAt(player.position.x,0,player.position.z);
+
+      npcGroups.forEach((n,i)=>{n.rotation.y=Math.sin(clock.elapsedTime*.55+i)*.12;});
+      player.position.y=.02+Math.sin(clock.elapsedTime*5)*.015;
+      renderer.render(scene,camera);
+    };
+    animate();
+
+    return ()=>{
+      cancelAnimationFrame(raf);
+      window.removeEventListener('keydown',onKeyDown); window.removeEventListener('keyup',onKeyUp); window.removeEventListener('resize',resize);
+      renderer.domElement.removeEventListener('click',onClick);
+      renderer.dispose();
+      scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose(); const m=o.material; if(Array.isArray(m))m.forEach(x=>x.dispose()); else m.dispose();}});
+      mount.removeChild(renderer.domElement);
+    };
+  },[characterId,characterNames]);
+
+  const openRoom=()=>{if(selectedRoom) setActiveTab(selectedRoom); else if(nearRoom) setSelectedRoom(nearRoom);};
 
   return (
-    <div className={'campus-game room-page room-'+room}>
-      <div className="room-topbar"><button onClick={()=>setRoom('campus')} className="room-back"><DoorOpen/> Back to campus</button><div className="room-title"><span>{roomInfo.title}</span><small>{roomInfo.subtitle}</small></div><div className="room-chip"><Clock3/> Assessment mode</div></div>
+    <div className="metaverse-campus">
+      <div ref={mountRef} className="metaverse-canvas"/>
+      <div className="metaverse-topbar">
+        <div className="metaverse-brand">
+          <span className="metaverse-mark">M</span>
+          <div><strong>MBA PLACEMENT CAMPUS</strong><small>Interactive Career Simulation</small></div>
+        </div>
+        <div className="metaverse-stats">
+          <div><b>{Math.round(userProfile?.readinessScore||0)}%</b><span>Readiness</span></div>
+          <div><b>{userProfile?.xp||0}</b><span>XP</span></div>
+          <div><b>LV {userProfile?.level||1}</b><span>{userProfile?.levelTitle||'Foundation'}</span></div>
+        </div>
+      </div>
 
-      {room==='aptitude'&&<section className="simulation-scene aptitude-scene">
-        <div className="scene-wall"><div className="scene-board"><span>APTITUDE PRACTICE</span><strong>FOCUS · SPEED · ACCURACY</strong></div><div className="wall-clock">09:45</div></div>
-        {[character,getCharacter(CHARACTERS[2]),getCharacter(CHARACTERS[3])].map((c,i)=><div key={c.id+i} className={'bench bench-'+(i+1)}><div className="bench-seat"/><div className="bench-leg l"/><div className="bench-leg r"/><CharacterAvatar character={c} seated label={i===0?'You':undefined}/></div>)}
-        <div className="teacher-desk"><BookOpen/><span>Practice desk</span></div>
-        <div className="scene-action-card"><Icon/><h2>Ready for the aptitude test?</h2><p>Choose your section and start the timed assessment.</p><div className="room-actions"><button onClick={()=>setActiveTab('aptitude')}>Enter Aptitude Practice <ArrowRight/></button><button className="secondary" onClick={()=>setRoom('campus')}>Return to campus</button></div></div>
-      </section>}
+      <div className="metaverse-minimap">
+        <div className="minimap-title"><Map/> CAMPUS MAP</div>
+        <div className="minimap-grid">
+          <span className="map-road vertical"/><span className="map-road horizontal"/>
+          <i className="map-dot aptitude"/><i className="map-dot gd"/><i className="map-dot interview"/><i className="map-you"/>
+        </div>
+        <small>Click a building to walk there</small>
+      </div>
 
-      {room==='gd'&&<section className="simulation-scene gd-sim-scene">
-        <div className="scene-wall"><div className="hr-board"><span>HR PANEL</span><strong>GROUP DISCUSSION</strong><small>Listen · Build · Lead</small></div></div>
-        <div className="hr-person"><div className="hr-head"/><div className="hr-body"/><span>HR</span></div>
-        <div className="discussion-table"><div className="table-top"/>{CHARACTERS.map((base,i)=>{const c=getCharacter(base);return <div key={c.id} className={'gd-seat seat-'+i}><div className="seat-chair"/><CharacterAvatar character={c.id===characterId?character:c} seated label={c.id===characterId?'You':undefined}/></div>})}</div>
-        <div className="scene-action-card"><Icon/><h2>Take your place in the circle</h2><p>The HR moderator will introduce the topic. Speak, respond and build on the group.</p><div className="room-actions"><button onClick={()=>setActiveTab('gd')}>Join Group Discussion <ArrowRight/></button><button className="secondary" onClick={()=>setRoom('campus')}>Return to campus</button></div></div>
-      </section>}
+      <div className="metaverse-controls">
+        <div><Keyboard/><b>W A S D</b><span>Move</span></div>
+        <div><MousePointer2/><b>Click</b><span>Walk to building</span></div>
+        <div><span className="key-e">E</span><b>Interact</b></div>
+      </div>
 
-      {room==='interview'&&<section className="simulation-scene interview-scene">
-        <div className="scene-wall"><div className="interview-logo">PLACEMENT INTERVIEW<small>ONE-TO-ONE</small></div></div>
-        <div className="interview-desk"><div className="desk-top"/><div className="desk-front"/></div>
-        <div className="interviewer"><div className="hr-head"/><div className="interviewer-body"/><span>INTERVIEWER</span></div>
-        <div className="candidate-chair"><div className="chair-seat"/><CharacterAvatar character={character} label="You"/></div>
-        <div className="scene-action-card"><Icon/><h2>Your interview starts here</h2><p>One interviewer, your resume, your answers. The room stays focused on you.</p><div className="room-actions"><button onClick={()=>setActiveTab('interview')}>Start AI Interview <ArrowRight/></button><button className="secondary" onClick={()=>setRoom('campus')}>Return to campus</button></div></div>
-      </section>}
+      {nearRoom && !selectedRoom && (
+        <div className="metaverse-interact">
+          <span className="interact-key">E</span>
+          <div><strong>{ROOM_INFO[nearRoom].title}</strong><small>{ROOM_INFO[nearRoom].subtitle}</small></div>
+          <button onClick={()=>setSelectedRoom(nearRoom)}>Enter <ChevronRight/></button>
+        </div>
+      )}
+
+      {selectedRoom && (
+        <div className="metaverse-modal-backdrop" onClick={()=>setSelectedRoom(null)}>
+          <div className="metaverse-room-modal" onClick={e=>e.stopPropagation()}>
+            {React.createElement(ROOM_INFO[selectedRoom].icon,{className:"room-modal-icon"})}
+            <span className="modal-kicker">YOU ARE HERE</span>
+            <h2>{ROOM_INFO[selectedRoom].title}</h2>
+            <p>{ROOM_INFO[selectedRoom].subtitle}. Enter the assessment room and continue your preparation.</p>
+            <div className="modal-actions">
+              <button onClick={openRoom}>Enter assessment <ArrowRight/></button>
+              <button className="modal-secondary" onClick={()=>setSelectedRoom(null)}>Keep exploring</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="metaverse-bottom">
+        <div className="metaverse-player">
+          <div className="player-avatar-dot" style={{background:character.shirt}}/>
+          <div><small>YOU ARE</small><strong>{character.name}</strong></div>
+        </div>
+        <button className="metaverse-help" onClick={()=>setShowHelp(v=>!v)}><Clock3/> Campus guide</button>
+      </div>
+
+      {showHelp && (
+        <div className="metaverse-guide">
+          <strong>Welcome to your placement campus</strong>
+          <p>Walk around the campus, meet the other candidates and enter each assessment when you're ready.</p>
+          <div><Mic/> <span>Use your existing voice-enabled GD and AI Interview rooms after entering.</span></div>
+          <button onClick={()=>setShowHelp(false)}>Got it</button>
+        </div>
+      )}
     </div>
   );
 };
