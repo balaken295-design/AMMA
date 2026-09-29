@@ -356,3 +356,18 @@ button:hover .ui-3d-tile,.group:hover .ui-3d-tile,.group:hover .topic-card-3d{tr
  .discussion-table{width:340px;height:280px;border-width:18px;bottom:105px}.gd-seat{transform:scale(.8)}.seat-0{left:-32px;top:65px}.seat-1{right:-32px;top:65px}.seat-2{left:55px;bottom:-55px}.seat-3{right:55px;bottom:-55px}.hr-person{top:18%}
  .interview-desk{width:340px}.candidate-chair{left:6%}.scene-action-card{left:15px;right:15px;bottom:18px;width:auto}.room-actions{flex-direction:column}.room-actions button{justify-content:center}
 }
+
+
+/* Custom character naming */
+.character-option-wrap{position:relative;display:flex;align-items:center;gap:4px;padding:4px;border:1px solid transparent;background:transparent}
+.character-option-wrap.selected{border-color:#b88a42;background:rgba(255,255,255,.55)}
+.character-option-wrap .character-option{border:0!important;padding:5px 8px!important;background:transparent!important}
+.character-rename{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #cfc3b4;background:#fff;color:#682521;cursor:pointer}
+.character-rename:hover{background:#f5f1e8}
+.character-rename svg{width:13px;height:13px}
+.character-name-editor{position:absolute;left:0;top:calc(100% + 7px);z-index:30;display:flex;gap:4px;padding:6px;background:#fff;border:1px solid #b8aa9b;box-shadow:0 10px 25px rgba(43,31,23,.16)}
+.character-name-editor input{width:125px;height:30px;padding:4px 7px;border:1px solid #b8aa9b;font:14px "Times New Roman",Times,serif;color:#1b1714;outline:none}
+.character-name-editor input:focus{border-color:#7f2f2a}
+.character-name-editor button{width:30px;height:30px;border:1px solid #b8aa9b;background:#f5f1e8;color:#682521;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.character-name-editor button:hover{background:#e9dfd2}
+.character-name-editor svg{width:14px;height:14px}

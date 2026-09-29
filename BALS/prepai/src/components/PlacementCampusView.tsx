@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Clock3, Trophy, Users, BriefcaseBusiness, DoorOpen } from 'lucide-react';
+import { ArrowRight, BookOpen, Clock3, Trophy, Users, BriefcaseBusiness, DoorOpen, Pencil, Check, X } from 'lucide-react';
 
 type Room = 'campus' | 'aptitude' | 'gd' | 'interview';
 type Character = { id:string; name:string; skin:string; hair:string; shirt:string };
@@ -28,10 +28,41 @@ export const PlacementCampusView:React.FC<{
 }> = ({setActiveTab,userProfile,onOpenLoginModal}) => {
   const [room,setRoom]=useState<Room>('campus');
   const [characterId,setCharacterId]=useState('arjun');
+  const [characterNames,setCharacterNames]=useState<Record<string,string>>({});
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [draftName,setDraftName]=useState('');
 
-  useEffect(()=>{try{const s=localStorage.getItem('prepai_character');if(s&&CHARACTERS.some(c=>c.id===s))setCharacterId(s)}catch{}},[]);
-  const character=CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0];
-  const chooseCharacter=(id:string)=>{setCharacterId(id);localStorage.setItem('prepai_character',id)};
+  useEffect(()=>{
+    try {
+      const s=localStorage.getItem('prepai_character');
+      if(s&&CHARACTERS.some(c=>c.id===s)) setCharacterId(s);
+      const saved=localStorage.getItem('prepai_character_names');
+      if(saved) setCharacterNames(JSON.parse(saved));
+    } catch {}
+  },[]);
+
+  const getCharacter=(base:Character):Character=>({...base,name:characterNames[base.id]||base.name});
+  const character=getCharacter(CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0]);
+
+  const chooseCharacter=(id:string)=>{
+    setCharacterId(id);
+    localStorage.setItem('prepai_character',id);
+  };
+
+  const beginRename=(c:Character)=>{
+    setEditingId(c.id);
+    setDraftName(c.name);
+  };
+
+  const saveRename=()=>{
+    if(!editingId) return;
+    const clean=draftName.trim().slice(0,24);
+    if(!clean) return;
+    const next={...characterNames,[editingId]:clean};
+    setCharacterNames(next);
+    localStorage.setItem('prepai_character_names',JSON.stringify(next));
+    setEditingId(null);
+  };
 
   if(room==='campus') return (
     <div className="campus-game">
@@ -62,7 +93,21 @@ export const PlacementCampusView:React.FC<{
 
       <section className="campus-character-panel">
         <div><span className="campus-eyebrow">YOUR CANDIDATE</span><h2>Choose your character</h2><p>Your character appears throughout the preparation rooms.</p></div>
-        <div className="character-picker">{CHARACTERS.map(c=><button key={c.id} onClick={()=>chooseCharacter(c.id)} className={'character-option '+(c.id===characterId?'selected':'')}><CharacterAvatar character={c} small/><span>{c.name}</span></button>)}</div>
+        <div className="character-picker">{CHARACTERS.map(base=>{
+          const c=getCharacter(base);
+          const editing=editingId===c.id;
+          return <div key={c.id} className={'character-option-wrap '+(c.id===characterId?'selected':'')}>
+            <button onClick={()=>chooseCharacter(c.id)} className={'character-option '+(c.id===characterId?'selected':'')}>
+              <CharacterAvatar character={c} small/><span>{c.name}</span>
+            </button>
+            <button className="character-rename" onClick={()=>beginRename(c)} aria-label={'Rename '+c.name}><Pencil/></button>
+            {editing&&<div className="character-name-editor">
+              <input autoFocus value={draftName} maxLength={24} onChange={e=>setDraftName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')saveRename();if(e.key==='Escape')setEditingId(null)}}/>
+              <button onClick={saveRename} aria-label="Save name"><Check/></button>
+              <button onClick={()=>setEditingId(null)} aria-label="Cancel"><X/></button>
+            </div>}
+          </div>;
+        })}</div>
       </section>
 
       <section className="campus-quick-actions">
@@ -85,7 +130,7 @@ export const PlacementCampusView:React.FC<{
 
       {room==='aptitude'&&<section className="simulation-scene aptitude-scene">
         <div className="scene-wall"><div className="scene-board"><span>APTITUDE PRACTICE</span><strong>FOCUS · SPEED · ACCURACY</strong></div><div className="wall-clock">09:45</div></div>
-        {[character,CHARACTERS[2],CHARACTERS[3]].map((c,i)=><div key={c.id+i} className={'bench bench-'+(i+1)}><div className="bench-seat"/><div className="bench-leg l"/><div className="bench-leg r"/><CharacterAvatar character={c} seated label={i===0?'You':undefined}/></div>)}
+        {[character,getCharacter(CHARACTERS[2]),getCharacter(CHARACTERS[3])].map((c,i)=><div key={c.id+i} className={'bench bench-'+(i+1)}><div className="bench-seat"/><div className="bench-leg l"/><div className="bench-leg r"/><CharacterAvatar character={c} seated label={i===0?'You':undefined}/></div>)}
         <div className="teacher-desk"><BookOpen/><span>Practice desk</span></div>
         <div className="scene-action-card"><Icon/><h2>Ready for the aptitude test?</h2><p>Choose your section and start the timed assessment.</p><div className="room-actions"><button onClick={()=>setActiveTab('aptitude')}>Enter Aptitude Practice <ArrowRight/></button><button className="secondary" onClick={()=>setRoom('campus')}>Return to campus</button></div></div>
       </section>}
@@ -93,7 +138,7 @@ export const PlacementCampusView:React.FC<{
       {room==='gd'&&<section className="simulation-scene gd-sim-scene">
         <div className="scene-wall"><div className="hr-board"><span>HR PANEL</span><strong>GROUP DISCUSSION</strong><small>Listen · Build · Lead</small></div></div>
         <div className="hr-person"><div className="hr-head"/><div className="hr-body"/><span>HR</span></div>
-        <div className="discussion-table"><div className="table-top"/>{CHARACTERS.map((c,i)=><div key={c.id} className={'gd-seat seat-'+i}><div className="seat-chair"/><CharacterAvatar character={c.id===characterId?character:c} seated label={c.id===characterId?'You':undefined}/></div>)}</div>
+        <div className="discussion-table"><div className="table-top"/>{CHARACTERS.map((base,i)=>{const c=getCharacter(base);return <div key={c.id} className={'gd-seat seat-'+i}><div className="seat-chair"/><CharacterAvatar character={c.id===characterId?character:c} seated label={c.id===characterId?'You':undefined}/></div>})}</div>
         <div className="scene-action-card"><Icon/><h2>Take your place in the circle</h2><p>The HR moderator will introduce the topic. Speak, respond and build on the group.</p><div className="room-actions"><button onClick={()=>setActiveTab('gd')}>Join Group Discussion <ArrowRight/></button><button className="secondary" onClick={()=>setRoom('campus')}>Return to campus</button></div></div>
       </section>}
 
