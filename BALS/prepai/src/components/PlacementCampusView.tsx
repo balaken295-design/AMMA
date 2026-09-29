@@ -18,8 +18,7 @@ const ROOM_INFO:Record<RoomKey,{title:string;subtitle:string;icon:React.ElementT
 
 function textSprite(text:string,color='#1b1714',scale=2.5){
  const c=document.createElement('canvas'); c.width=640;c.height=150; const x=c.getContext('2d')!;
- x.fillStyle='rgba(249,246,239,.96)';x.roundRect(10,18,620,114,18);x.fill();
- x.strokeStyle='rgba(127,47,42,.28)';x.lineWidth=3;x.stroke();
+ x.fillStyle='rgba(249,246,239,.96)';x.fillRect(10,18,620,114);
  x.fillStyle=color;x.font='bold 42px Georgia,serif';x.textAlign='center';x.textBaseline='middle';x.fillText(text,320,75,580);
  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false}));s.scale.set(scale,scale*.235,1);return s;
@@ -101,8 +100,8 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
  const character=CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0];const named=(c:Character)=>({...c,name:characterNames[c.id]||c.name});
  useEffect(()=>{
   if(!mountRef.current)return;const mount=mountRef.current;const scene=new THREE.Scene();scene.background=new THREE.Color('#bfc9cb');scene.fog=new THREE.Fog('#bfc9cb',24,58);
-  const camera=new THREE.PerspectiveCamera(46,1,.1,100);camera.position.set(8,8,12);
-  const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.8));renderer.setSize(10,10);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;mount.appendChild(renderer.domElement);
+  const camera=new THREE.PerspectiveCamera(48,1,.1,100);camera.position.set(10,10,14);
+  const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.setClearColor('#bfc9cb',1);renderer.setSize(10,10);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;mount.appendChild(renderer.domElement);
   scene.add(new THREE.HemisphereLight('#fffaf1','#4d5656',2.4));const key=new THREE.DirectionalLight('#fff2d6',3.2);key.position.set(-12,16,10);key.castShadow=true;key.shadow.mapSize.set(1536,1536);key.shadow.camera.left=-25;key.shadow.camera.right=25;key.shadow.camera.top=25;key.shadow.camera.bottom=-25;scene.add(key);
   const fill=new THREE.PointLight('#c9dbe2',1.2,28);fill.position.set(0,4,-4);scene.add(fill);
   scene.add(makeLobby());
@@ -123,7 +122,7 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
    const parts=player.userData.parts;if(parts){const swing=moving?Math.sin(clock.elapsedTime*9)*.32:0;parts.armL.rotation.x=swing;parts.armR.rotation.x=-swing;parts.legL.rotation.x=-swing;parts.legR.rotation.x=swing;}
    npcGroups.forEach((n,i)=>{n.position.y=Math.sin(clock.elapsedTime*1.5+i)*.015;n.rotation.y+=Math.sin(clock.elapsedTime*.4+i)*.0007;});
    let closest:RoomKey|null=null,best=3.2;roomPoints.forEach(({room,point})=>{const d=Math.hypot(player.position.x-point.x,player.position.z-point.z);if(d<best){best=d;closest=room;}});if(closest!==currentNear){currentNear=closest;setNearRoom(closest);}
-   const desired=new THREE.Vector3(player.position.x+7.5,7.2,player.position.z+10);camera.position.lerp(desired,.075);camera.lookAt(player.position.x,1.1,player.position.z);renderer.render(scene,camera);
+   const desired=new THREE.Vector3(player.position.x+7.5,7.2,player.position.z+10);camera.position.lerp(desired,.075);camera.lookAt(player.position.x,0.9,player.position.z);renderer.render(scene,camera);
   };animate();
   return()=>{cancelAnimationFrame(raf);window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);window.removeEventListener('resize',resize);renderer.domElement.removeEventListener('click',onClick);renderer.dispose();scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const m=o.material;if(Array.isArray(m))m.forEach(x=>x.dispose());else m.dispose();}});if(mount.contains(renderer.domElement))mount.removeChild(renderer.domElement);};
  },[characterId,characterNames]);
