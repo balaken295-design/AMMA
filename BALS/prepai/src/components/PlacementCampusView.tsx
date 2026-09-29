@@ -335,7 +335,7 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
    <div className="character-list">
     {CHARACTERS.map(c=><div key={c.id} className={"character-row "+(characterId===c.id?"active":"")}>
       <button className="character-choice" onClick={()=>chooseCharacter(c.id)}><span className="character-mini" style={{background:c.shirt}}>{c.name.charAt(0)}</span><strong>{characterNames[c.id]||c.name}</strong></button>
-      <button className="character-edit" onClick={()=>beginRename(c.id)} aria-label={"Rename "+c.name}><Pencil/></button>
+      <button className="character-edit" onClick={()=>beginRename(c.id)} aria-label={"Rename "+c.name}><Pencil/><span>Rename</span></button>
       {editingCharacter===c.id&&<div className="character-editor"><input autoFocus value={draftName} maxLength={24} onChange={e=>setDraftName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')saveRename();if(e.key==='Escape')setEditingCharacter(null)}}/><button onClick={saveRename}><Check/></button><button onClick={()=>setEditingCharacter(null)}><X/></button></div>}
     </div>)}
    </div>
