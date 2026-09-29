@@ -114,14 +114,14 @@ function makeRoom(info:typeof ROOM_INFO[RoomKey],room:RoomKey){
  g.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});return g;
 }
 
-function makeGDChair(g:THREE.Group,x:number,z:number,rot:number){
+function makeGDChair(g:THREE.Object3D,x:number,z:number,rot:number){
  const seat=box(.72,.12,.72,mat('#59666a',.72));seat.position.set(x,.68,z);
  const back=box(.72,.9,.12,mat('#59666a',.72));back.position.set(x,1.12,z-.28);
  const metal=mat('#343a3c',.48,.55);
  [[-.26,-.22],[.26,-.22],[-.26,.22],[.26,.22]].forEach(([dx,dz])=>{const l=box(.07,.64,.07,metal);l.position.set(x+dx,.34,z+dz);g.add(l);});
  const c=new THREE.Group();c.add(seat,back);c.rotation.y=rot;g.add(c);
 }
-function makeGDEnvironment(video:HTMLVideoElement, mount:HTMLDivElement, onStart:()=>void){
+function makeGDEnvironment(video:HTMLVideoElement, mount:HTMLDivElement, onStart:()=>void, playerCharacter:Character, getNamed:(c:Character)=>Character){
  const scene=new THREE.Scene();scene.background=new THREE.Color('#b9c1c1');scene.fog=new THREE.Fog('#b9c1c1',18,42);
  const camera=new THREE.PerspectiveCamera(62,1,.1,80);camera.position.set(0,3.2,8.8);
  const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(mount.clientWidth||800,mount.clientHeight||500,false);renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;mount.appendChild(renderer.domElement);
@@ -142,8 +142,8 @@ function makeGDEnvironment(video:HTMLVideoElement, mount:HTMLDivElement, onStart
  const tex=new THREE.VideoTexture(video);tex.colorSpace=THREE.SRGBColorSpace;tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;(screen.material as THREE.MeshBasicMaterial).map=tex;(screen.material as THREE.MeshBasicMaterial).needsUpdate=true;
  const title=textSprite('LIVE GROUP DISCUSSION','#7f2f2a',3.2);title.position.set(0,5,-6.28);scene.add(title);
  const avatars:[Character,number,number][]=[[CHARACTERS[2],-3.25,0],[CHARACTERS[3],3.25,0],[CHARACTERS[4],0,2.45]];
- avatars.forEach(([c,x,z],i)=>{const a=makeHuman(named(c));a.position.set(x,0,z);a.rotation.y=i===0?Math.PI/2:i===1?-Math.PI/2:Math.PI;scene.add(a);});
- const player=new THREE.Group();player.position.set(0,0,5.3);const fallback=makeHuman(named(character),true);player.add(fallback);scene.add(player);
+ avatars.forEach(([c,x,z],i)=>{const a=makeHuman(getNamed(c));a.position.set(x,0,z);a.rotation.y=i===0?Math.PI/2:i===1?-Math.PI/2:Math.PI;scene.add(a);});
+ const player=new THREE.Group();player.position.set(0,0,5.3);const fallback=makeHuman(getNamed(playerCharacter),true);player.add(fallback);scene.add(player);
  const loader=new GLTFLoader();loader.load('/avatars/spiderman.glb',(g)=>{const model=g.scene;model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});const b=new THREE.Box3().setFromObject(model),sz=b.getSize(new THREE.Vector3());model.scale.setScalar(2.15/Math.max(sz.y,.1));const bb=new THREE.Box3().setFromObject(model),cc=bb.getCenter(new THREE.Vector3());model.position.set(-cc.x,-bb.min.y,-cc.z);model.rotation.y=Math.PI;player.remove(fallback);player.add(model);},undefined,()=>{});
  const keys=new Set<string>();let yaw=0,pitch=-.08,raf=0;const clock=new THREE.Clock();let near=false;
  const down=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(['w','a','s','d'].includes(k)){keys.add(k);e.preventDefault();}if(k==='e'&&near)onStart();};
@@ -181,7 +181,7 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
  const [characterId,setCharacterId]=useState('spiderman');const [characterNames,setCharacterNames]=useState<Record<string,string>>({});
  const [nearRoom,setNearRoom]=useState<RoomKey|null>(null);const [selectedRoom,setSelectedRoom]=useState<RoomKey|null>(null);const [showHelp,setShowHelp]=useState(false);const [editingCharacter,setEditingCharacter]=useState<string|null>(null);const [draftName,setDraftName]=useState('');const [gdCameraReady,setGdCameraReady]=useState(false);const gdVideoRef=useRef<HTMLVideoElement|null>(null);
  useEffect(()=>{try{const s=localStorage.getItem('prepai_character');if(s&&CHARACTERS.some(c=>c.id===s))setCharacterId(s);const n=localStorage.getItem('prepai_character_names');if(n)setCharacterNames(JSON.parse(n));}catch{}},[]);
- useEffect(()=>{if(selectedRoom!=='gd'||!gdStageRef.current)return;const stage=gdStageRef.current;stage.innerHTML='';return makeGDEnvironment(gdVideoRef.current||document.createElement('video'),stage,()=>setActiveTab('gd'));},[selectedRoom,characterId,characterNames]);
+ useEffect(()=>{if(selectedRoom!=='gd'||!gdStageRef.current)return;const stage=gdStageRef.current;stage.innerHTML='';return makeGDEnvironment(gdVideoRef.current||document.createElement('video'),stage,()=>setActiveTab('gd'),character,named);},[selectedRoom,characterId,characterNames]);
  useEffect(()=>{let stream:MediaStream|null=null;setGdCameraReady(false);if(selectedRoom!=='gd')return;let cancelled=false;(async()=>{try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});if(cancelled){stream.getTracks().forEach(t=>t.stop());return;}if(gdVideoRef.current){gdVideoRef.current.srcObject=stream;await gdVideoRef.current.play().catch(()=>{});setGdCameraReady(true);}}catch{setGdCameraReady(false);}})();return()=>{cancelled=true;if(stream)stream.getTracks().forEach(t=>t.stop());if(gdVideoRef.current)gdVideoRef.current.srcObject=null;};},[selectedRoom]);
  const character=CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0];const named=(c:Character)=>({...c,name:characterNames[c.id]||c.name});
  const chooseCharacter=(id:string)=>{setCharacterId(id);try{localStorage.setItem('prepai_character',id);}catch{}};
