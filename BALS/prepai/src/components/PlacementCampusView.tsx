@@ -53,46 +53,86 @@ function addWindow(g:THREE.Group,x:number,y:number,z:number,w:number,h:number){
  const frame=mat('#343b3e',.45,.4); const v=box(.055,h+.12,.09,frame),hbar=box(w+.12,.055,.09,frame);
  v.position.set(x-w/2,y,z+.02);g.add(v);const v2=v.clone();v2.position.x=x+w/2;g.add(v2);hbar.position.set(x,y-h/2,z+.02);g.add(hbar);const h2=hbar.clone();h2.position.y=y+h/2;g.add(h2);
 }
+function makeChair(g:THREE.Group,x:number,z:number,rot=0,seat='#667477'){
+ const m=mat(seat,.8);const seatMesh=box(.62,.12,.62,m);seatMesh.position.set(x,.68,z);
+ const back=box(.62,.78,.12,m);back.position.set(x,1.05,z-.27);
+ const leg=box(.07,.62,.07,mat('#34393a',.45,.45));
+ [[-.23,-.2],[.23,-.2],[-.23,.2],[.23,.2]].forEach(([dx,dz])=>{const l=leg.clone();l.position.set(x+dx,.34,z+dz);g.add(l);});
+ const chair=new THREE.Group();chair.add(seatMesh,back);chair.position.y=0;chair.rotation.y=rot;g.add(chair);
+}
+function makeDesk(g:THREE.Group,x:number,z:number,w=2.4,d=.85){
+ const top=box(w,.12,d,mat('#765640',.62));top.position.set(x,1,z);g.add(top);
+ const leg=box(.09,.95,.09,mat('#42372f',.65));
+ [-w/2+.16,w/2-.16].forEach(dx=>{const a=leg.clone();a.position.set(x+dx,.5,z-d/2+.1);g.add(a);const b=leg.clone();b.position.set(x+dx,.5,z+d/2-.1);g.add(b);});
+ const drawer=box(.55,.35,d-.16,mat('#5d4637',.7));drawer.position.set(x+w/2-.35,.78,z);g.add(drawer);
+}
+function makeCeilingLights(g:THREE.Group,count=5){
+ const glow=mat('#f6f1dc',.28,.1);
+ for(let i=0;i<count;i++){
+   const panel=box(2.4,.06,.35,glow);panel.position.set((i-(count-1)/2)*2.6,4.05,-.5);g.add(panel);
+   const light=new THREE.PointLight('#fff3d2',.45,7);light.position.set(panel.position.x,3.95,panel.position.z);g.add(light);
+ }
+}
+function makePlant(g:THREE.Group,x:number,z:number){
+ const pot=new THREE.Mesh(new THREE.CylinderGeometry(.38,.5,.55,18),mat('#765844',.9));pot.position.set(x,.28,z);g.add(pot);
+ const stem=mat('#456247',.9);
+ for(let i=0;i<5;i++){const leaf=new THREE.Mesh(new THREE.SphereGeometry(.35,12,8),stem);leaf.scale.set(.7,1.5,.55);leaf.position.set(x+(i-2)*.12,1.0+Math.abs(i-2)*.08,z+(i%2-.5)*.15);g.add(leaf);}
+}
 function makeRoom(info:typeof ROOM_INFO[RoomKey],room:RoomKey){
  const g=new THREE.Group();g.position.set(...info.position);g.userData.room=room;
- const floor=box(10,.18,7,mat('#b8aa98',.9));floor.position.y=.09;
- const back=box(10,4.2,.16,mat('#eee9df',.86));back.position.set(0,2.1,-3.45);
- const left=box(.16,4.2,7,mat('#ded5c7',.88));left.position.set(-4.92,2.1,0);
- const right=box(.16,4.2,7,mat('#ded5c7',.88));right.position.set(4.92,2.1,0);
- const roof=box(10,.12,7,mat('#f8f5ee',.9));roof.position.y=4.25;g.add(floor,back,left,right,roof);
- addWindow(g,-2.4,2.35,-3.54,3.6,2);addWindow(g,2.4,2.35,-3.54,3.6,2);
- const door=box(1.25,2.4,.18,mat('#493c34',.7));door.position.set(0,1.2,3.48);g.add(door);
- const sign=textSprite(info.title.toUpperCase(),info.color,3.0);sign.position.set(0,4.85,0);g.add(sign);
+ const floor=box(10,.16,7,mat('#b5aa9d',.88));floor.position.y=.08;
+ const back=box(10,4.2,.16,mat('#e7e0d5',.9));back.position.set(0,2.1,-3.45);
+ const left=box(.16,4.2,7,mat('#d4cbc0',.9));left.position.set(-4.92,2.1,0);
+ const right=left.clone();right.position.x=4.92;
+ const roof=box(10,.12,7,mat('#f7f3ec',.92));roof.position.y=4.25;g.add(floor,back,left,right,roof);
+ addWindow(g,-2.25,2.35,-3.54,3.6,2.05);addWindow(g,2.25,2.35,-3.54,3.6,2.05);
+ const door=box(1.35,2.45,.18,mat('#493d35',.7));door.position.set(0,1.22,3.48);g.add(door);
+ const handle=new THREE.Mesh(new THREE.SphereGeometry(.045,10,8),mat('#d7ad54',.35,.7));handle.position.set(.48,1.22,3.6);g.add(handle);
+ const sign=textSprite(info.title.toUpperCase(),info.color,2.8);sign.position.set(0,4.72,0);g.add(sign);
+ makeCeilingLights(g,5);
  if(room==='aptitude'){
-   const board=box(4.3,1.7,.08,mat('#263f3d',.55));board.position.set(0,2.65,-3.63);g.add(board);
-   const deskMat=mat('#684f3e',.7);[-2.7,0,2.7].forEach((x,i)=>{const d=box(2.1,.14,.9,deskMat);d.position.set(x,.95,.1);g.add(d);const leg=box(.1,.95,.1,deskMat);[-.85,.85].forEach(dx=>{const a=leg.clone();a.position.set(x+dx,.48,-.22);g.add(a);const b=leg.clone();b.position.set(x+dx,.48,.42);g.add(b);});});
+   const board=box(5.2,1.45,.08,mat('#294542',.5));board.position.set(0,2.55,-3.62);g.add(board);
+   const boardTrim=box(5.35,.07,.1,mat('#d7ad54',.45,.4));boardTrim.position.set(0,1.82,-3.64);g.add(boardTrim);
+   [-2.65,0,2.65].forEach((x)=>{makeDesk(g,x,.25,2.2,.9);makeChair(g,x,1.12,Math.PI);});
+   makePlant(g,-4.1,-2.55);makePlant(g,4.1,-2.55);
  } else if(room==='gd'){
-   const table=new THREE.Mesh(new THREE.CylinderGeometry(2.55,2.35,.22,48),mat('#735946',.65));table.position.y=1.05;g.add(table);
-   const base=new THREE.Mesh(new THREE.CylinderGeometry(.7,.9,.9,32),mat('#514238',.7));base.position.y=.52;g.add(base);
-   const screen=box(4.4,1.3,.08,mat('#263b48',.4));screen.position.set(0,2.7,-3.63);g.add(screen);
+   const table=new THREE.Mesh(new THREE.CylinderGeometry(2.55,2.35,.2,48),mat('#755541',.62));table.position.y=1.02;g.add(table);
+   const base=new THREE.Mesh(new THREE.CylinderGeometry(.72,.95,.88,32),mat('#4d3d34',.7));base.position.y=.52;g.add(base);
+   const tableEdge=new THREE.Mesh(new THREE.TorusGeometry(2.43,.035,8,64),mat('#d7ad54',.4,.45));tableEdge.rotation.x=Math.PI/2;tableEdge.position.y=1.14;g.add(tableEdge);
+   for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2;makeChair(g,Math.cos(a)*2.85,Math.sin(a)*2.15,a+Math.PI/2,'#59666a');}
+   const screenFrame=box(5.0,2.0,.1,mat('#24292b',.35,.3));screenFrame.position.set(0,2.72,-3.57);g.add(screenFrame);
+   const screen=box(4.65,1.65,.025,mat('#8faeb5',.18,.1));screen.position.set(0,2.72,-3.64);g.add(screen);
+   const cameraBar=box(1.0,.08,.04,mat('#1b1d1e',.3));cameraBar.position.set(0,1.87,-3.68);g.add(cameraBar);
+   makePlant(g,-4.1,-2.55);makePlant(g,4.1,-2.55);
  } else {
-   const desk=box(4.8,.18,1.55,mat('#5a4638',.65));desk.position.set(0,1.02,-.65);g.add(desk);
-   const panel=box(4.8,1.0,.12,mat('#46372e',.72));panel.position.set(0,.5,-1.3);g.add(panel);
-   const monitor=box(1.2,.72,.12,mat('#20272b',.35,.35));monitor.position.set(0,1.5,-1.05);g.add(monitor);
-   const screen=box(1.0,.52,.02,mat('#8da8b0',.2,.1));screen.position.set(0,1.5,-1.12);g.add(screen);
+   const desk=box(5.0,.16,1.6,mat('#624a39',.62));desk.position.set(0,1.0,-.75);g.add(desk);
+   const modesty=box(5.0,.95,.12,mat('#49382e',.72));modesty.position.set(0,.5,-1.42);g.add(modesty);
+   const monitor=box(1.55,.9,.12,mat('#20272b',.32,.35));monitor.position.set(0,1.5,-1.1);g.add(monitor);
+   const monitorScreen=box(1.3,.66,.02,mat('#88aab2',.18,.12));monitorScreen.position.set(0,1.5,-1.17);g.add(monitorScreen);
+   makeChair(g,0,1.05,0,'#4e5960');makePlant(g,-4.0,-2.5);
  }
  g.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});return g;
 }
 function makeLobby(){
  const g=new THREE.Group();
- const floor=box(38,.16,30,mat('#d6cec1',.8));floor.position.y=.08;g.add(floor);
- const back=box(38,5.4,.2,mat('#e9e3d9',.9));back.position.set(0,2.7,-15);g.add(back);
- const side1=box(.2,5.4,30,mat('#e0d8ca',.9));side1.position.set(-19,2.7,0);g.add(side1);const side2=side1.clone();side2.position.x=19;g.add(side2);
- for(let x=-15;x<=15;x+=5)addWindow(g,x,2.6,-15.12,4.2,3.0);
- const reception=box(6,.9,1.6,mat('#624c3e',.62));reception.position.set(0,.75,-10);g.add(reception);
- const logo=textSprite('MBA CAREER CENTRE','#7f2f2a',4.2);logo.position.set(0,4.8,-14.9);g.add(logo);
- const sofaMat=mat('#667477',.75);
- [-8,8].forEach(x=>{const s=box(4,.65,1.5,sofaMat);s.position.set(x,.42,-7);g.add(s);});
- const plantMat=mat('#536b55',1);[-15,15].forEach(x=>{const pot=new THREE.Mesh(new THREE.CylinderGeometry(.45,.6,.65,18),mat('#80654e',.9));pot.position.set(x,.33,-8);g.add(pot);const crown=new THREE.Mesh(new THREE.SphereGeometry(1.1,14,10),plantMat);crown.position.set(x,1.65,-8);g.add(crown);});
+ const floor=box(38,.16,30,mat('#cfc6b9',.82));floor.position.y=.08;g.add(floor);
+ const back=box(38,5.4,.2,mat('#e5dfd5',.92));back.position.set(0,2.7,-15);g.add(back);
+ const side1=box(.2,5.4,30,mat('#d8d0c5',.92));side1.position.set(-19,2.7,0);g.add(side1);const side2=side1.clone();side2.position.x=19;g.add(side2);
+ for(let x=-15;x<=15;x+=5)addWindow(g,x,2.7,-15.12,4.2,3.0);
  const ceiling=new THREE.Mesh(new THREE.PlaneGeometry(38,30),new THREE.MeshStandardMaterial({color:0xf8f5ee,roughness:.95}));ceiling.rotation.x=Math.PI/2;ceiling.position.y=5.35;g.add(ceiling);
+ for(let x=-15;x<=15;x+=5){const panel=box(3.6,.05,1.0,mat('#f1ede5',.8));panel.position.set(x,5.25,-2);g.add(panel);const l=new THREE.PointLight('#fff3d2',.55,9);l.position.set(x,4.9,-2);g.add(l);}
+ const reception=box(7,.95,1.7,mat('#604839',.6));reception.position.set(0,.78,-10);g.add(reception);
+ const receptionTop=box(7.15,.08,1.76,mat('#d7ad54',.35,.45));receptionTop.position.set(0,1.27,-10);g.add(receptionTop);
+ const deskScreen=box(2.1,.7,.12,mat('#20272b',.32,.35));deskScreen.position.set(0,1.65,-10.72);g.add(deskScreen);
+ const logo=textSprite('MBA CAREER CENTRE','#7f2f2a',4.2);logo.position.set(0,4.72,-14.85);g.add(logo);
+ const sofaMat=mat('#56686b',.72);
+ [-9,9].forEach(x=>{const s=box(4.3,.55,1.65,sofaMat);s.position.set(x,.4,-7);g.add(s);const back=box(4.3,1.0,.22,sofaMat);back.position.set(x,.9,-7.7);g.add(back);});
+ [-13.5,13.5].forEach(x=>makePlant(g,x,-8.2));
+ for(let i=0;i<4;i++){const x=-12+i*8;makeDesk(g,x,1.8,3.0,1.1);makeChair(g,x,2.9,Math.PI,'#687276');}
+ const corridor=box(6,.04,22,mat('#9d8a72',.9));corridor.position.set(0,.19,-1.0);g.add(corridor);
+ const receptionRunner=box(10,.03,5.5,mat('#7f2f2a',.92));receptionRunner.position.set(0,.2,-7.5);g.add(receptionRunner);
  return g;
 }
-
 export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitude'|'gd'|'interview'|'evaluation')=>void;userProfile:any;onOpenLoginModal:()=>void;}>=({setActiveTab,userProfile})=>{
  const mountRef=useRef<HTMLDivElement|null>(null);
  const [characterId,setCharacterId]=useState('spiderman');const [characterNames,setCharacterNames]=useState<Record<string,string>>({});
@@ -147,9 +187,9 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   const key=new THREE.DirectionalLight('#fff2d6',3.2);key.position.set(-12,16,10);key.castShadow=true;key.shadow.mapSize.set(1536,1536);key.shadow.camera.left=-25;key.shadow.camera.right=25;key.shadow.camera.top=25;key.shadow.camera.bottom=-25;scene.add(key);
   const fill=new THREE.PointLight('#c9dbe2',1.2,28);fill.position.set(0,4,-4);scene.add(fill);
   scene.add(makeLobby());
-  const corridorMat=mat('#a99478',.88);
-  const corridorPaths:[number,number,number,number][]=[[-12,-.01,6,0],[0,-.01,6,-13],[12,-.01,6,0]];
-  corridorPaths.forEach(([x,z,w,d],idx)=>{const len=Math.hypot(w,d);const path=box(idx===1?4.2:3.2,.06,len,corridorMat);path.position.set(x,.19,z);path.rotation.y=Math.atan2(w,d);scene.add(path);});
+  const corridorMat=mat('#9d8a72',.9);
+  const corridorPaths:[number,number,number,number][]=[[-12,-6,6,0],[0,-6,6,-7],[12,-6,6,0]];
+  corridorPaths.forEach(([x,z,w,d])=>{const len=Math.hypot(w,d);const path=box(3.1,.055,len,corridorMat);path.position.set(x,.2,z);path.rotation.y=Math.atan2(w,d);scene.add(path);});
   const roomGroups:THREE.Group[]=[];(Object.keys(ROOM_INFO) as RoomKey[]).forEach(r=>{const q=makeRoom(ROOM_INFO[r],r);scene.add(q);roomGroups.push(q);});
   const roomPoints=(Object.keys(ROOM_INFO) as RoomKey[]).map(r=>({room:r,point:new THREE.Vector3(...ROOM_INFO[r].position)}));
   const npcs:[Character,[number,number,number]][]=[[CHARACTERS[1],[-8,0,-2]],[CHARACTERS[2],[7,0,-1]],[CHARACTERS[3],[0,0,-5.5]]];
