@@ -284,7 +284,52 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   <div className="metaverse-minimap"><div className="minimap-title"><Map/> OFFICE MAP</div><div className="minimap-grid"><span className="map-road vertical"/><span className="map-road horizontal"/><i className="map-dot aptitude"/><i className="map-dot gd"/><i className="map-dot interview"/><i className="map-you"/></div><small>Walk through the office and enter a room</small></div>
   <div className="metaverse-controls"><div><Keyboard/><b>W A S D</b><span>Move</span></div><div><MousePointer2/><b>Click</b><span>Walk</span></div><div><span className="key-e">E</span><b>Enter</b></div></div>
   {nearRoom&&!selectedRoom&&<div className="metaverse-interact"><span className="interact-key">E</span><div><strong>{ROOM_INFO[nearRoom].title}</strong><small>{ROOM_INFO[nearRoom].subtitle}</small></div><button onClick={()=>setSelectedRoom(nearRoom)}>Enter <ChevronRight/></button></div>}
-  {selectedRoom&&<div className="metaverse-modal-backdrop" onClick={()=>setSelectedRoom(null)}><div className={selectedRoom==='gd'?"metaverse-room-modal gd-hall-modal":"metaverse-room-modal"} onClick={e=>e.stopPropagation()}>{selectedRoom==='gd'?<><div className="gd-hall-header"><div><span className="modal-kicker">LIVE GROUP DISCUSSION ROOM</span><h2>Conference Hall</h2><p>Take your seat. Other candidates are listening while your live camera appears on the presentation screen.</p></div><button className="gd-hall-close" onClick={()=>setSelectedRoom(null)} aria-label="Close"><X/></button></div><div className="gd-hall-stage gd-metaverse-stage"><div ref={gdStageRef} className="gd-metaverse-canvas"/><video ref={gdVideoRef} autoPlay muted playsInline className="gd-room-video-source"/><div className="gd-metaverse-controls"><b>W A S D</b><span>Move</span><b>Mouse</b><span>Look</span><b>E</b><span>Interact</span></div><div className="gd-camera-badge">{gdCameraReady ? "● LIVE CAMERA" : "Camera permission required"}</div></div></div><div className="gd-hall-footer"><div className="gd-hall-state"><Users/><span>3 candidates are seated and listening</span></div><div className="modal-actions"><button onClick={openRoom}><Mic/> Start GD assessment <ArrowRight/></button><button className="modal-secondary" onClick={()=>setSelectedRoom(null)}>Keep walking</button></div></div></>:<>{React.createElement(ROOM_INFO[selectedRoom].icon,{className:"room-modal-icon"})}<span className="modal-kicker">OFFICE ROOM</span><h2>{ROOM_INFO[selectedRoom].title}</h2><p>{ROOM_INFO[selectedRoom].subtitle}. Enter the existing assessment module when you are ready.</p><div className="modal-actions"><button onClick={openRoom}>Enter assessment <ArrowRight/></button><button className="modal-secondary" onClick={()=>setSelectedRoom(null)}>Keep walking</button></div></>}</div></div>}
+  {selectedRoom && (
+   <div className="metaverse-modal-backdrop" onClick={()=>setSelectedRoom(null)}>
+    <div className={selectedRoom==='gd' ? "metaverse-room-modal gd-hall-modal" : "metaverse-room-modal"} onClick={e=>e.stopPropagation()}>
+     {selectedRoom==='gd' ? (
+      <>
+       <div className="gd-hall-header">
+        <div>
+         <span className="modal-kicker">LIVE GROUP DISCUSSION ROOM</span>
+         <h2>Conference Hall</h2>
+         <p>Take your seat. Other candidates are listening while your live camera appears on the presentation screen.</p>
+        </div>
+        <button className="gd-hall-close" onClick={()=>setSelectedRoom(null)} aria-label="Close"><X/></button>
+       </div>
+       <div className="gd-hall-stage gd-metaverse-stage">
+        <div ref={gdStageRef} className="gd-metaverse-canvas"/>
+        <video ref={gdVideoRef} autoPlay muted playsInline className="gd-room-video-source"/>
+        <div className="gd-metaverse-controls">
+         <b>W A S D</b><span>Move</span>
+         <b>Mouse</b><span>Look</span>
+         <b>E</b><span>Interact</span>
+        </div>
+        <div className="gd-camera-badge">{gdCameraReady ? "● LIVE CAMERA" : "Camera permission required"}</div>
+       </div>
+       <div className="gd-hall-footer">
+        <div className="gd-hall-state"><Users/><span>3 candidates are seated and listening</span></div>
+        <div className="modal-actions">
+         <button onClick={openRoom}><Mic/> Start GD assessment <ArrowRight/></button>
+         <button className="modal-secondary" onClick={()=>setSelectedRoom(null)}>Keep walking</button>
+        </div>
+       </div>
+      </>
+     ) : (
+      <>
+       {React.createElement(ROOM_INFO[selectedRoom].icon,{className:"room-modal-icon"})}
+       <span className="modal-kicker">OFFICE ROOM</span>
+       <h2>{ROOM_INFO[selectedRoom].title}</h2>
+       <p>{ROOM_INFO[selectedRoom].subtitle}. Enter the existing assessment module when you are ready.</p>
+       <div className="modal-actions">
+        <button onClick={openRoom}>Enter assessment <ArrowRight/></button>
+        <button className="modal-secondary" onClick={()=>setSelectedRoom(null)}>Keep walking</button>
+       </div>
+      </>
+     )}
+    </div>
+   </div>
+  )}
   <div className="metaverse-character-panel">
    <div className="character-panel-title"><span>YOUR CHARACTER</span><small>Choose and rename</small></div>
    <div className="character-list">
