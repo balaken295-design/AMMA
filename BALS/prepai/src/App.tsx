@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Header } from './components/Header';
 import { LandingPageView } from './components/LandingPageView';
 import { DashboardView } from './components/DashboardView';
+import { PlacementCampusView } from './components/PlacementCampusView';
 import { AptitudeView } from './components/AptitudeView';
 import { GroupDiscussionView } from './components/GroupDiscussionView';
 import { AIInterviewView } from './components/AIInterviewView';
@@ -248,9 +249,8 @@ export default function App() {
         )}
 
         {activeTab === 'dashboard' && (
-          <DashboardView
+          <PlacementCampusView
             setActiveTab={navigate}
-            onSelectCategory={(cat) => navigate('aptitude', cat)}
             userProfile={userProfile}
             onOpenLoginModal={() => setIsLoginModalOpen(true)}
           />
