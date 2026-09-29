@@ -99,10 +99,48 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
  useEffect(()=>{let stream:MediaStream|null=null;setGdCameraReady(false);if(selectedRoom!=='gd')return;let cancelled=false;(async()=>{try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});if(cancelled){stream.getTracks().forEach(t=>t.stop());return;}if(gdVideoRef.current){gdVideoRef.current.srcObject=stream;await gdVideoRef.current.play().catch(()=>{});setGdCameraReady(true);}}catch{setGdCameraReady(false);}})();return()=>{cancelled=true;if(stream)stream.getTracks().forEach(t=>t.stop());if(gdVideoRef.current)gdVideoRef.current.srcObject=null;};},[selectedRoom]);
  const character=CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0];const named=(c:Character)=>({...c,name:characterNames[c.id]||c.name});
  useEffect(()=>{
-  if(!mountRef.current)return;const mount=mountRef.current;const scene=new THREE.Scene();scene.background=new THREE.Color('#bfc9cb');scene.fog=new THREE.Fog('#bfc9cb',24,58);
-  const camera=new THREE.PerspectiveCamera(48,1,.1,100);camera.position.set(10,10,14);
-  const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.setClearColor('#bfc9cb',1);renderer.setSize(10,10);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;mount.appendChild(renderer.domElement);
-  scene.add(new THREE.HemisphereLight('#fffaf1','#4d5656',2.4));const key=new THREE.DirectionalLight('#fff2d6',3.2);key.position.set(-12,16,10);key.castShadow=true;key.shadow.mapSize.set(1536,1536);key.shadow.camera.left=-25;key.shadow.camera.right=25;key.shadow.camera.top=25;key.shadow.camera.bottom=-25;scene.add(key);
+  if(!mountRef.current)return;
+  const mount=mountRef.current;
+  mount.innerHTML='';
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color('#bfc9cb');
+  scene.fog=new THREE.Fog('#bfc9cb',24,58);
+  const camera=new THREE.PerspectiveCamera(48,1,.1,100);
+  camera.position.set(10,10,14);
+  let renderer:THREE.WebGLRenderer;
+  try{
+    renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance',alpha:false});
+  }catch(error){
+    console.error('MBA Placement Campus WebGL initialization failed',error);
+    mount.innerHTML='<div style="display:grid;place-items:center;width:100%;height:100%;background:#bfc9cb;color:#1b1714;font:16px Times New Roman,serif"><div style="padding:24px;background:#f5f1e8;border:1px solid #b8aa9b;box-shadow:0 12px 30px #0002;text-align:center"><strong>3D campus could not start</strong><br/><small>Please enable hardware acceleration/WebGL in Chrome and reload.</small></div></div>';
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+  renderer.setClearColor('#bfc9cb',1);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.08;
+  renderer.domElement.style.position='absolute';
+  renderer.domElement.style.inset='0';
+  renderer.domElement.style.width='100%';
+  renderer.domElement.style.height='100%';
+  renderer.domElement.style.display='block';
+  renderer.domElement.style.zIndex='0';
+  mount.style.position='absolute';
+  mount.style.inset='0';
+  mount.style.width='100%';
+  mount.style.height='100%';
+  mount.style.zIndex='0';
+  mount.appendChild(renderer.domElement);
+  const testLight=new THREE.HemisphereLight('#fffaf1','#4d5656',2.4);
+  scene.add(testLight);
+  const testFloor=new THREE.Mesh(new THREE.PlaneGeometry(60,50),new THREE.MeshStandardMaterial({color:'#d6cec1',roughness:.85}));
+  testFloor.rotation.x=-Math.PI/2;testFloor.position.y=0;testFloor.receiveShadow=true;scene.add(testFloor);
+  const testCube=new THREE.Mesh(new THREE.BoxGeometry(2.5,2.5,2.5),new THREE.MeshStandardMaterial({color:'#7f2f2a',roughness:.5}));
+  testCube.position.set(0,1.25,-2);testCube.castShadow=true;scene.add(testCube);
+  scene.add(new THREE.HemisphereLight('#fffaf1','#4d5656',1.8));const key=new THREE.DirectionalLight('#fff2d6',3.2);key.position.set(-12,16,10);key.castShadow=true;key.shadow.mapSize.set(1536,1536);key.shadow.camera.left=-25;key.shadow.camera.right=25;key.shadow.camera.top=25;key.shadow.camera.bottom=-25;scene.add(key);
   const fill=new THREE.PointLight('#c9dbe2',1.2,28);fill.position.set(0,4,-4);scene.add(fill);
   scene.add(makeLobby());
   const roomGroups:THREE.Group[]=[];(Object.keys(ROOM_INFO) as RoomKey[]).forEach(r=>{const q=makeRoom(ROOM_INFO[r],r);scene.add(q);roomGroups.push(q);});
