@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { ArrowRight, BookOpen, BriefcaseBusiness, Camera, ChevronRight, Clock3, Keyboard, Map, Mic, MousePointer2, Users, X } from 'lucide-react';
+import { ArrowRight, BookOpen, BriefcaseBusiness, Camera, Check, ChevronRight, Clock3, Keyboard, Map, Mic, MousePointer2, Pencil, Users, X } from 'lucide-react';
 
 type RoomKey='aptitude'|'gd'|'interview';
 type Character={id:string;name:string;skin:string;hair:string;shirt:string;trouser:string;accent:string};
@@ -94,10 +94,13 @@ function makeLobby(){
 export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitude'|'gd'|'interview'|'evaluation')=>void;userProfile:any;onOpenLoginModal:()=>void;}>=({setActiveTab,userProfile})=>{
  const mountRef=useRef<HTMLDivElement|null>(null);
  const [characterId,setCharacterId]=useState('arjun');const [characterNames,setCharacterNames]=useState<Record<string,string>>({});
- const [nearRoom,setNearRoom]=useState<RoomKey|null>(null);const [selectedRoom,setSelectedRoom]=useState<RoomKey|null>(null);const [showHelp,setShowHelp]=useState(false);const [gdCameraReady,setGdCameraReady]=useState(false);const gdVideoRef=useRef<HTMLVideoElement|null>(null);
+ const [nearRoom,setNearRoom]=useState<RoomKey|null>(null);const [selectedRoom,setSelectedRoom]=useState<RoomKey|null>(null);const [showHelp,setShowHelp]=useState(false);const [editingCharacter,setEditingCharacter]=useState<string|null>(null);const [draftName,setDraftName]=useState('');const [gdCameraReady,setGdCameraReady]=useState(false);const gdVideoRef=useRef<HTMLVideoElement|null>(null);
  useEffect(()=>{try{const s=localStorage.getItem('prepai_character');if(s&&CHARACTERS.some(c=>c.id===s))setCharacterId(s);const n=localStorage.getItem('prepai_character_names');if(n)setCharacterNames(JSON.parse(n));}catch{}},[]);
  useEffect(()=>{let stream:MediaStream|null=null;setGdCameraReady(false);if(selectedRoom!=='gd')return;let cancelled=false;(async()=>{try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});if(cancelled){stream.getTracks().forEach(t=>t.stop());return;}if(gdVideoRef.current){gdVideoRef.current.srcObject=stream;await gdVideoRef.current.play().catch(()=>{});setGdCameraReady(true);}}catch{setGdCameraReady(false);}})();return()=>{cancelled=true;if(stream)stream.getTracks().forEach(t=>t.stop());if(gdVideoRef.current)gdVideoRef.current.srcObject=null;};},[selectedRoom]);
  const character=CHARACTERS.find(c=>c.id===characterId)||CHARACTERS[0];const named=(c:Character)=>({...c,name:characterNames[c.id]||c.name});
+ const chooseCharacter=(id:string)=>{setCharacterId(id);try{localStorage.setItem('prepai_character',id);}catch{}};
+ const beginRename=(id:string)=>{const c=CHARACTERS.find(x=>x.id===id);if(!c)return;setEditingCharacter(id);setDraftName(characterNames[id]||c.name);};
+ const saveRename=()=>{if(!editingCharacter)return;const value=draftName.trim().slice(0,24);if(!value){setEditingCharacter(null);return;}const next={...characterNames,[editingCharacter]:value};setCharacterNames(next);try{localStorage.setItem('prepai_character_names',JSON.stringify(next));}catch{}setEditingCharacter(null);};
  useEffect(()=>{
   if(!mountRef.current)return;
   const mount=mountRef.current;
@@ -143,6 +146,9 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   scene.add(new THREE.HemisphereLight('#fffaf1','#4d5656',1.8));const key=new THREE.DirectionalLight('#fff2d6',3.2);key.position.set(-12,16,10);key.castShadow=true;key.shadow.mapSize.set(1536,1536);key.shadow.camera.left=-25;key.shadow.camera.right=25;key.shadow.camera.top=25;key.shadow.camera.bottom=-25;scene.add(key);
   const fill=new THREE.PointLight('#c9dbe2',1.2,28);fill.position.set(0,4,-4);scene.add(fill);
   scene.add(makeLobby());
+  const corridorMat=mat('#a99478',.88);
+  const corridorPaths:[number,number,number,number][]=[[-12,-.01,6,0],[0,-.01,6,-13],[12,-.01,6,0]];
+  corridorPaths.forEach(([x,z,w,d],idx)=>{const len=Math.hypot(w,d);const path=box(idx===1?4.2:3.2,.06,len,corridorMat);path.position.set(x,.19,z);path.rotation.y=Math.atan2(w,d);scene.add(path);});
   const roomGroups:THREE.Group[]=[];(Object.keys(ROOM_INFO) as RoomKey[]).forEach(r=>{const q=makeRoom(ROOM_INFO[r],r);scene.add(q);roomGroups.push(q);});
   const roomPoints=(Object.keys(ROOM_INFO) as RoomKey[]).map(r=>({room:r,point:new THREE.Vector3(...ROOM_INFO[r].position)}));
   const npcs:[Character,[number,number,number]][]=[[CHARACTERS[1],[-8,0,-2]],[CHARACTERS[2],[7,0,-1]],[CHARACTERS[3],[0,0,-5.5]]];
@@ -172,6 +178,16 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
   <div className="metaverse-controls"><div><Keyboard/><b>W A S D</b><span>Move</span></div><div><MousePointer2/><b>Click</b><span>Walk</span></div><div><span className="key-e">E</span><b>Enter</b></div></div>
   {nearRoom&&!selectedRoom&&<div className="metaverse-interact"><span className="interact-key">E</span><div><strong>{ROOM_INFO[nearRoom].title}</strong><small>{ROOM_INFO[nearRoom].subtitle}</small></div><button onClick={()=>setSelectedRoom(nearRoom)}>Enter <ChevronRight/></button></div>}
   {selectedRoom&&<div className="metaverse-modal-backdrop" onClick={()=>setSelectedRoom(null)}><div className={selectedRoom==='gd'?"metaverse-room-modal gd-hall-modal":"metaverse-room-modal"} onClick={e=>e.stopPropagation()}>{selectedRoom==='gd'?<><div className="gd-hall-header"><div><span className="modal-kicker">LIVE GROUP DISCUSSION ROOM</span><h2>Conference Hall</h2><p>Take your seat. Other candidates are listening while your live camera appears on the presentation screen.</p></div><button className="gd-hall-close" onClick={()=>setSelectedRoom(null)} aria-label="Close"><X/></button></div><div className="gd-hall-stage"><iframe title="Conference Hall 3D environment" src="https://sketchfab.com/models/2a530dfce151413693bb3aa9f842ddde/embed" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share/><div className="gd-live-screen"><div className="gd-live-screen-label"><span className="gd-live-dot"><span/></span> YOUR LIVE VIDEO</div><video ref={gdVideoRef} autoPlay muted playsInline/><div className="gd-live-screen-status">{gdCameraReady?"Camera active":"Camera permission required"}</div></div><div className="gd-listeners"><div className="gd-listener"><span className="gd-listener-avatar meera">M</span><strong>Meera</strong><small>Listening</small></div><div className="gd-listener"><span className="gd-listener-avatar rahul">R</span><strong>Rahul</strong><small>Listening</small></div><div className="gd-listener"><span className="gd-listener-avatar nisha">N</span><strong>Nisha</strong><small>Listening</small></div></div></div><div className="gd-hall-footer"><div className="gd-hall-state"><Users/><span>3 candidates are seated and listening</span></div><div className="modal-actions"><button onClick={openRoom}><Mic/> Start GD assessment <ArrowRight/></button><button className="modal-secondary" onClick={()=>setSelectedRoom(null)}>Keep walking</button></div></div></>:<>{React.createElement(ROOM_INFO[selectedRoom].icon,{className:"room-modal-icon"})}<span className="modal-kicker">OFFICE ROOM</span><h2>{ROOM_INFO[selectedRoom].title}</h2><p>{ROOM_INFO[selectedRoom].subtitle}. Enter the existing assessment module when you are ready.</p><div className="modal-actions"><button onClick={openRoom}>Enter assessment <ArrowRight/></button><button className="modal-secondary" onClick={()=>setSelectedRoom(null)}>Keep walking</button></div></>}</div></div>}
+  <div className="metaverse-character-panel">
+   <div className="character-panel-title"><span>YOUR CHARACTER</span><small>Choose and rename</small></div>
+   <div className="character-list">
+    {CHARACTERS.map(c=><div key={c.id} className={"character-row "+(characterId===c.id?"active":"")}>
+      <button className="character-choice" onClick={()=>chooseCharacter(c.id)}><span className="character-mini" style={{background:c.shirt}}>{c.name.charAt(0)}</span><strong>{characterNames[c.id]||c.name}</strong></button>
+      <button className="character-edit" onClick={()=>beginRename(c.id)} aria-label={"Rename "+c.name}><Pencil/></button>
+      {editingCharacter===c.id&&<div className="character-editor"><input autoFocus value={draftName} maxLength={24} onChange={e=>setDraftName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')saveRename();if(e.key==='Escape')setEditingCharacter(null)}}/><button onClick={saveRename}><Check/></button><button onClick={()=>setEditingCharacter(null)}><X/></button></div>}
+    </div>)}
+   </div>
+  </div>
   <div className="metaverse-bottom"><div className="metaverse-player"><div className="player-avatar-dot" style={{background:character.shirt}}/><div><small>YOU ARE</small><strong>{character.name}</strong></div></div><button className="metaverse-help" onClick={()=>setShowHelp(v=>!v)}><Clock3/> Office guide</button></div>
   {showHelp&&<div className="metaverse-guide"><strong>Welcome to the virtual placement office</strong><p>Walk through the lobby, approach each room and interact with the assessment areas. Your existing Aptitude, GD and AI Interview systems remain connected.</p><div><Mic/><span>Voice-enabled GD and AI Interview open after you enter their rooms.</span></div><button onClick={()=>setShowHelp(false)}>Got it</button></div>}
  </div>;
