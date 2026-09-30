@@ -86,7 +86,7 @@ function makeRoom(info:typeof ROOM_INFO[RoomKey],room:RoomKey){
  const right=left.clone();right.position.x=4.92;
  const roof=box(10,.12,7,mat('#f7f3ec',.92));roof.position.y=4.25;g.add(floor,back,left,right,roof);
  addWindow(g,-2.25,2.35,-3.54,3.6,2.05);addWindow(g,2.25,2.35,-3.54,3.6,2.05);
- const door=box(1.35,2.45,.18,mat('#493d35',.7));door.position.set(0,1.22,3.48);g.add(door);
+ const door=box(1.35,2.45,.18,mat('#493d35',.7));door.position.set(0,1.22,3.48);door.userData.door=true;door.userData.room=room;g.add(door);
  const handle=new THREE.Mesh(new THREE.SphereGeometry(.045,10,8),mat('#d7ad54',.35,.7));handle.position.set(.48,1.22,3.6);g.add(handle);
  const sign=textSprite(info.title.toUpperCase(),info.color,2.8);sign.position.set(0,4.72,0);g.add(sign);
  makeCeilingLights(g,5);
@@ -96,13 +96,12 @@ function makeRoom(info:typeof ROOM_INFO[RoomKey],room:RoomKey){
    [-2.65,0,2.65].forEach((x)=>{makeDesk(g,x,.25,2.2,.9);makeChair(g,x,1.12,Math.PI);});
    makePlant(g,-4.1,-2.55);makePlant(g,4.1,-2.55);
  } else if(room==='gd'){
-   const table=new THREE.Mesh(new THREE.CylinderGeometry(2.55,2.35,.2,48),mat('#755541',.62));table.position.y=1.02;g.add(table);
-   const base=new THREE.Mesh(new THREE.CylinderGeometry(.72,.95,.88,32),mat('#4d3d34',.7));base.position.y=.52;g.add(base);
-   const tableEdge=new THREE.Mesh(new THREE.TorusGeometry(2.43,.035,8,64),mat('#d7ad54',.4,.45));tableEdge.rotation.x=Math.PI/2;tableEdge.position.y=1.14;g.add(tableEdge);
-   for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2;makeChair(g,Math.cos(a)*2.85,Math.sin(a)*2.15,a+Math.PI/2,'#59666a');}
-   const screenFrame=box(5.0,2.0,.1,mat('#24292b',.35,.3));screenFrame.position.set(0,2.72,-3.57);g.add(screenFrame);
-   const screen=box(4.65,1.65,.025,mat('#8faeb5',.18,.1));screen.position.set(0,2.72,-3.64);g.add(screen);
-   const cameraBar=box(1.0,.08,.04,mat('#1b1d1e',.3));cameraBar.position.set(0,1.87,-3.68);g.add(cameraBar);
+   const table=box(4.8,.18,2.5,mat('#6b5140',.62));table.position.y=1.02;g.add(table);
+   const edge=box(4.9,.05,2.6,mat('#d7ad54',.45,.35));edge.position.y=1.13;g.add(edge);
+   [[0,1.75,Math.PI],[0,-1.75,0],[-2.55,0,-Math.PI/2],[2.55,0,Math.PI/2]].forEach(([x,z,rot])=>makeChair(g,x,z,rot,'#59666a'));
+   makeChair(g,-1.55,-1.75,0,'#59666a');makeChair(g,1.55,-1.75,0,'#59666a');
+   const whiteboard=box(4.8,1.35,.08,mat('#f1eee8',.9));whiteboard.position.set(0,2.55,-3.62);g.add(whiteboard);
+   const markerTray=box(4.9,.06,.12,mat('#7f2f2a',.5));markerTray.position.set(0,1.86,-3.67);g.add(markerTray);
    makePlant(g,-4.1,-2.55);makePlant(g,4.1,-2.55);
  } else {
    const desk=box(5.0,.16,1.6,mat('#624a39',.62));desk.position.set(0,1.0,-.75);g.add(desk);
@@ -261,15 +260,25 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
     playerRoot.add(model);
     modelLoaded=true;
   },undefined,(error)=>console.warn('Spider-Man GLB not found at /avatars/spiderman.glb',error));
-  const target=new THREE.Vector3(0,0,6),keys=new Set<string>();let currentNear:RoomKey|null=null,raf=0;const clock=new THREE.Clock();
-  const onKeyDown=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){keys.add(k);e.preventDefault();}if(k==='e'&&currentNear)setSelectedRoom(currentNear);if(k==='escape')setSelectedRoom(null);};
-  const onKeyUp=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
+  const target=new THREE.Vector3(0,0,6),keys=new Set<string>();let currentNear:RoomKey|null=null,raf=0,jumpVelocity=0;const clock=new THREE.Clock();
+  const isTyping=(e:KeyboardEvent)=>{const el=e.target as HTMLElement|null;return !!el&&(['INPUT','TEXTAREA','SELECT'].includes(el.tagName)||el.isContentEditable);};
+  const onKeyDown=(e:KeyboardEvent)=>{
+    if(isTyping(e)) return;
+    const k=e.key.toLowerCase();
+    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){keys.add(k);e.preventDefault();}
+    if(k===' '&&Math.abs(playerRoot.position.y)<.01){jumpVelocity=5.2;e.preventDefault();}
+    if(k==='e'&&currentNear)setSelectedRoom(currentNear);
+    if(k==='escape')setSelectedRoom(null);
+  };
+  const onKeyUp=(e:KeyboardEvent)=>{if(!isTyping(e))keys.delete(e.key.toLowerCase());};
   const onClick=(e:MouseEvent)=>{const rect=renderer.domElement.getBoundingClientRect();const m=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);const ray=new THREE.Raycaster();ray.setFromCamera(m,camera);const hit=ray.intersectObjects(roomGroups,true)[0];if(!hit)return;let o:any=hit.object;while(o&&!o.userData.room)o=o.parent;if(o?.userData.room){const p=ROOM_INFO[o.userData.room as RoomKey].position;target.set(p[0],0,p[2]+3.1);}};
   window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);renderer.domElement.addEventListener('click',onClick);
   const resize=()=>{const w=mount.clientWidth||window.innerWidth,h=mount.clientHeight||window.innerHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};resize();window.addEventListener('resize',resize);
-  const animate=()=>{raf=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);const speed=4.8*dt;let moving=false;if(keys.size){moving=true;target.copy(playerRoot.position);if(keys.has('w')||keys.has('arrowup'))target.z-=speed;if(keys.has('s')||keys.has('arrowdown'))target.z+=speed;if(keys.has('a')||keys.has('arrowleft'))target.x-=speed;if(keys.has('d')||keys.has('arrowright'))target.x+=speed;}
+  const animate=()=>{raf=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);const speed=4.8*dt;let moving=false;
+   if(jumpVelocity!==0||playerRoot.position.y>0){playerRoot.position.y=Math.max(0,playerRoot.position.y+jumpVelocity*dt);jumpVelocity-=12*dt;if(playerRoot.position.y===0)jumpVelocity=0;}if(keys.size){moving=true;target.copy(playerRoot.position);if(keys.has('w')||keys.has('arrowup'))target.z-=speed;if(keys.has('s')||keys.has('arrowdown'))target.z+=speed;if(keys.has('a')||keys.has('arrowleft'))target.x-=speed;if(keys.has('d')||keys.has('arrowright'))target.x+=speed;}
    const dx=target.x-playerRoot.position.x,dz=target.z-playerRoot.position.z,dist=Math.hypot(dx,dz);if(dist>.03){const step=Math.min(dist,speed*1.5);playerRoot.position.x+=dx/dist*step;playerRoot.position.z+=dz/dist*step;playerRoot.rotation.y=Math.atan2(dx,dz);}
    playerRoot.position.x=THREE.MathUtils.clamp(playerRoot.position.x,-17,17);playerRoot.position.z=THREE.MathUtils.clamp(playerRoot.position.z,-13,12);
+   roomGroups.forEach((roomGroup)=>{const door=roomGroup.children.find(o=>o.userData.door) as THREE.Object3D|undefined;if(!door)return;const wp=new THREE.Vector3();door.getWorldPosition(wp);const d=Math.hypot(playerRoot.position.x-wp.x,playerRoot.position.z-wp.z);const open=d<2.5;const targetX=open?0.72:0;door.position.x=THREE.MathUtils.lerp(door.position.x,targetX,.12);});
    const parts=fallbackPlayer.userData.parts;if(!modelLoaded&&parts){const swing=moving?Math.sin(clock.elapsedTime*9)*.32:0;parts.armL.rotation.x=swing;parts.armR.rotation.x=-swing;parts.legL.rotation.x=-swing;parts.legR.rotation.x=swing;}
    npcGroups.forEach((n,i)=>{n.position.y=Math.sin(clock.elapsedTime*1.5+i)*.015;n.rotation.y+=Math.sin(clock.elapsedTime*.4+i)*.0007;});
    let closest:RoomKey|null=null,best=3.2;roomPoints.forEach(({room,point})=>{const d=Math.hypot(playerRoot.position.x-point.x,playerRoot.position.z-point.z);if(d<best){best=d;closest=room;}});if(closest!==currentNear){currentNear=closest;setNearRoom(closest);}
@@ -292,8 +301,8 @@ export const PlacementCampusView:React.FC<{setActiveTab:(tab:'dashboard'|'aptitu
        <div className="gd-hall-header">
         <div>
          <span className="modal-kicker">LIVE GROUP DISCUSSION ROOM</span>
-         <h2>Conference Hall</h2>
-         <p>Take your seat. Other candidates are listening while your live camera appears on the presentation screen.</p>
+         <h2>Group Discussion Room</h2>
+         <p>Take a seat with the other candidates. Use the room code below to join the live discussion.</p><div className="gd-room-code"><span>ROOM CODE</span><strong>GD-{(userProfile?.id||'MBA').toString().slice(-4).toUpperCase()}</strong></div>
         </div>
         <button className="gd-hall-close" onClick={()=>setSelectedRoom(null)} aria-label="Close"><X/></button>
        </div>
