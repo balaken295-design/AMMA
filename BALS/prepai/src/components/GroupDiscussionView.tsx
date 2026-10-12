@@ -299,6 +299,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
   // This makes speaking fill the message box the same way typing does.
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [speechError, setSpeechError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);
   const ignoreSpeechResultsRef = useRef(false);
@@ -312,6 +313,10 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionCtor) {
       setSpeechSupported(false);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      setSpeechError(isIOS
+        ? 'This iPhone/iPad browser does not provide app-level live speech recognition. Focus the message box and use the microphone on your keyboard to dictate.'
+        : 'This browser does not support live speech recognition. Try current Chrome on Android, or use your phone keyboard microphone in the message box.');
       return;
     }
     const recognition = new SpeechRecognitionCtor();
@@ -355,7 +360,13 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
   } else if (event.error === 'audio-capture') {
     setSpeechError('No microphone was found. Check that a mic is connected and not in use by another app.');
   } else if (event.error === 'network') {
-    setSpeechError('Speech recognition needs an internet connection to work.');
+    shouldListenRef.current = false;
+    ignoreSpeechResultsRef.current = true;
+    setIsListening(false);
+    setMicEnabled(false);
+    setSpeechError('The browser speech service could not connect. Check your internet and retry. If this phone browser blocks speech recognition, focus the message box and use the microphone on your keyboard to dictate.');
+  } else if (event.error) {
+    setSpeechError(`Voice recognition error: ${event.error}. Allow microphone access and retry.`);
   }
 };
 
@@ -363,18 +374,26 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
     // mic is still meant to be on — a GD turn can have pauses mid-thought.
     recognition.onend = () => {
       if (shouldListenRef.current) {
+        // Mobile browsers need a longer audio-session release gap between starts.
         window.setTimeout(() => {
           if (!shouldListenRef.current || recognitionStartingRef.current) return;
           recognitionStartingRef.current = true;
-          try { recognition.start(); } catch {
-            window.setTimeout(() => {
-              if (!shouldListenRef.current) return;
-              try { recognition.start(); } catch {}
-            }, 120);
+          try { recognition.start(); } catch (error: any) {
+            const name = String(error?.name || '').toLowerCase();
+            if (name.includes('invalidstate') || name.includes('abort')) {
+              window.setTimeout(() => {
+                if (!shouldListenRef.current) return;
+                try { recognition.start(); } catch (retryError) {
+                  console.warn('Mobile GD speech restart failed:', retryError);
+                }
+              }, 350);
+            } else {
+              console.warn('Mobile GD speech restart failed:', error);
+            }
           } finally {
-            recognitionStartingRef.current = false;
+            window.setTimeout(() => { recognitionStartingRef.current = false; }, 250);
           }
-        }, 50);
+        }, 300);
       } else {
         setIsListening(false);
       }
@@ -1199,8 +1218,9 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
             <section className="gd-conversation">
               <div className="gd-conversation-header">
                 <div><span className="gd-section-kicker">LIVE NOTES</span><h3>Discussion</h3></div>
-                <span className={`gd-listening-status ${isListening ? 'is-listening' : ''}`}>{isListening ? 'Listening' : speechSupported ? 'Voice ready' : 'Type your response'}</span>
+                <span className={`gd-listening-status ${isListening ? 'is-listening' : ''}`}>{isListening ? 'Listening — speak clearly' : speechSupported ? 'Voice ready' : 'Keyboard dictation available'}</span>
               </div>
+              {speechError && <p className="gd-speech-fallback">{speechError}</p>}
               <div className="gd-message-list">
                 {activeRoom.messages.length === 0 && <div className="gd-empty-conversation"><Volume2 className="w-5 h-5" /><p>The discussion is ready.</p><span>Use your microphone or type your opening point below.</span></div>}
                 {activeRoom.messages.map(m => (
@@ -1219,6 +1239,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
                     onChange={e => { const value=e.target.value; setMessageText(value); messageBaseRef.current=value; }}
                     onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSendMessage();} }}
                     className="gd-message-input" />
+                  {!speechSupported && <p className="gd-speech-fallback">Live speech recognition is unavailable in this browser. Focus this box and tap the microphone on your phone keyboard to dictate.</p>}
                   <button onClick={handleSendMessage} disabled={!messageText.trim()} className="gd-send-button" title="Send contribution"><Send className="w-4 h-4" /><span>Send</span></button>
                 </div>
                 <p className="gd-composer-hint">Press Enter to send · Shift + Enter for a new line</p>
