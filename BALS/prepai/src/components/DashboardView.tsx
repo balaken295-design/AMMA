@@ -1,7 +1,6 @@
 import React from 'react';
-import { VERBAL_TOPICS, LOGICAL_TOPICS, QUANTS_TOPICS } from '../data/aptitudeData';
-import { BookOpen, Users, Video, Award, CheckCircle2, ArrowRight, TrendingUp, ShieldCheck, Zap, LogIn, RefreshCw } from 'lucide-react';
-import { UserProfile, MBADomain } from '../types';
+import { BookOpen, Users, Video, Award, ArrowRight, CheckCircle2, Circle, LogIn, ClipboardCheck, TrendingUp } from 'lucide-react';
+import { UserProfile } from '../types';
 
 interface DashboardViewProps {
   setActiveTab: (tab: 'dashboard' | 'aptitude' | 'gd' | 'interview' | 'evaluation') => void;
@@ -10,410 +9,94 @@ interface DashboardViewProps {
   onOpenLoginModal: () => void;
 }
 
+const ProgressBar: React.FC<{ value: number; compact?: boolean }> = ({ value, compact = false }) => (
+  <div className={`w-full bg-[#e8e2d9] overflow-hidden ${compact ? 'h-1.5' : 'h-2'}`} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
+    <div className="h-full bg-[#7f2f2a] transition-all duration-500" style={{ width: `${value}%` }} />
+  </div>
+);
+
 export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onSelectCategory, userProfile, onOpenLoginModal }) => {
-  const readiness = userProfile.readinessScore || 0;
-  const dashOffset = 301.59 * (1 - readiness / 100);
+  const completedCategories = userProfile.completedAptitudeCategories || [];
+  const verbalDone = completedCategories.includes('verbal');
+  const logicalDone = completedCategories.includes('logical');
+  const quantsDone = completedCategories.includes('quants');
+  const aptitudeProgress = Math.round((Number(verbalDone) + Number(logicalDone) + Number(quantsDone)) / 3 * 100);
+  const gdProgress = userProfile.completedGDs > 0 ? 100 : 0;
+  const interviewProgress = userProfile.completedInterviews > 0 ? 100 : 0;
+  const overallProgress = Math.round((aptitudeProgress + gdProgress + interviewProgress) / 3);
+  const completedAreas = Number(aptitudeProgress === 100) + Number(gdProgress === 100) + Number(interviewProgress === 100);
+  const sections = [
+    { id: 'aptitude' as const, title: 'Placement Aptitude', description: 'Verbal ability, logical reasoning and quantitative aptitude.', progress: aptitudeProgress, detail: `${[verbalDone, logicalDone, quantsDone].filter(Boolean).length} of 3 categories assessed`, icon: BookOpen, action: 'Start aptitude practice' },
+    { id: 'gd' as const, title: 'Group Discussion', description: 'Practise structured discussions and review your contribution feedback.', progress: gdProgress, detail: userProfile.completedGDs ? `${userProfile.completedGDs} assessment${userProfile.completedGDs === 1 ? '' : 's'} completed` : 'Assessment not completed yet', icon: Users, action: userProfile.completedGDs ? 'Practise again' : 'Start group discussion' },
+    { id: 'interview' as const, title: 'AI Interview', description: 'Answer role-based questions and review your interview evaluation.', progress: interviewProgress, detail: userProfile.completedInterviews ? `${userProfile.completedInterviews} interview${userProfile.completedInterviews === 1 ? '' : 's'} completed` : 'Assessment not completed yet', icon: Video, action: userProfile.completedInterviews ? 'Practise again' : 'Start AI interview' },
+  ];
+  const categoryItems = [
+    { id: 'verbal' as const, title: 'Verbal Ability', done: verbalDone },
+    { id: 'logical' as const, title: 'Logical Reasoning', done: logicalDone },
+    { id: 'quants' as const, title: 'Quantitative Aptitude', done: quantsDone },
+  ];
 
   return (
-    <div id="dashboard-container" className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 space-y-6">
-      {/* Welcome & Readiness Hero Section in Bento style */}
-      <div id="hero-readiness" className="interactive-card bg-ink-900 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden border border-ink-800">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-3.5 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="interactive-card inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/20 text-accent-300 text-xs font-semibold uppercase tracking-wider border border-accent-500/30">
-                Candidate Overview
-              </span>
-              {!userProfile.isLoggedIn && (
-                <button
-                  onClick={onOpenLoginModal}
-                  className="interactive-card px-3 py-1 rounded-full bg-success-500/20 text-success-300 text-xs font-mono font-bold hover:bg-success-500/30 border border-success-500/30 flex items-center gap-1 transition-colors"
-                >
-                  <LogIn className="w-3 h-3" /> Connect Gmail
-                </button>
-              )}
-            </div>
-            
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-              Welcome, {userProfile.name}!
-            </h1>
-            
-            <p className="text-ink-300 text-base leading-relaxed">
-              {readiness === 0 ? (
-                <>Your placement readiness score is currently <span className="text-highlight-600 font-bold">0%</span>. Complete an Aptitude test or a mock AI Interview to begin building your profile.</>
-              ) : (
-                <>Your placement readiness score currently stands at <span className="text-accent-500 font-bold">{readiness}%</span>. Continue practicing to improve it further.</>
-              )}
-            </p>
-
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                id="btn-quick-interview"
-                onClick={() => setActiveTab('interview')}
-                className="bg-accent-600 hover:bg-accent-500 text-white font-bold px-5 py-3 rounded-xl text-sm transition-all flex items-center gap-2 shadow-lg shadow-accent-600/30 active:scale-95"
-              >
-                <Video className="w-4 h-4" />
-                Launch 1-on-1 AI Interviewer
-              </button>
-              <button
-                id="btn-quick-gd"
-                onClick={() => setActiveTab('gd')}
-                className="interactive-card bg-white/10 hover:bg-white/20 text-white font-medium px-5 py-3 rounded-xl text-sm transition-all border border-white/20 flex items-center gap-2"
-              >
-                <Users className="w-4 h-4" />
-                Join Group Discussion Room
-              </button>
-            </div>
-          </div>
-
-          <div className="interactive-card bg-white/10 border border-white/15 rounded-2xl p-5 flex items-center gap-6 backdrop-blur-md self-start lg:self-center shadow-inner">
-            <div className="relative w-28 h-28 flex items-center justify-center">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle className="text-white/10" cx="56" cy="56" fill="transparent" r="48" stroke="currentColor" strokeWidth="8" />
-                <circle 
-                  className="text-accent-400 transition-all duration-1000 ease-out" 
-                  cx="56" 
-                  cy="56" 
-                  fill="transparent" 
-                  r="48" 
-                  stroke="currentColor" 
-                  strokeDasharray="301.59" 
-                  strokeDashoffset={dashOffset} 
-                  strokeWidth="8" 
-                  strokeLinecap="round" 
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-3xl font-black text-white">{readiness}</span>
-                <span className="text-[10px] text-ink-300 font-mono">/ 100</span>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[11px] text-accent-300 font-mono uppercase font-bold tracking-wider">Readiness Index</span>
-              <p className="text-sm font-bold text-accent-300 flex items-center gap-1">
-                <ShieldCheck className="w-4 h-4 text-accent-400" /> 
-                {readiness === 0 ? 'Starting Fresh' : readiness >= 80 ? 'Market Ready' : 'In Progress'}
-              </p>
-              <p className="text-xs text-ink-300 max-w-[160px]">
-                {readiness === 0 
-                  ? 'Complete Aptitude & Interview tests to grow.'
-                  : `${userProfile.completedTests} Tests • ${userProfile.completedInterviews} Interviews completed.`
-                }
-              </p>
-            </div>
-          </div>
+    <div id="dashboard-container" className="max-w-[1180px] mx-auto w-full px-4 md:px-8 py-8 space-y-8">
+      <header className="border-b border-[#ddd4c8] pb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[.18em] text-[#7f2f2a] font-bold mb-2">Candidate dashboard</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-[#1b1714]">Welcome, {userProfile.name || 'MBA Candidate'}</h1>
+          <p className="text-sm md:text-base text-[#625951] mt-2 max-w-2xl">Track your placement preparation, complete assessments and review your progress in one place.</p>
         </div>
-      </div>
+        {!userProfile.isLoggedIn && <button onClick={onOpenLoginModal} className="inline-flex items-center gap-2 self-start border border-[#cfc3b5] bg-white px-4 py-2.5 text-sm font-semibold text-[#1b1714] hover:bg-[#f8f4ee]"><LogIn size={16} /> Sign in with Google</button>}
+      </header>
 
-      {/* 3 Core Aptitude Modules Grid */}
-      <div id="section-modules" className="space-y-4">
-        <div className="flex justify-between items-end px-1">
-          <div>
-            <h2 className="text-2xl font-black text-ink-900 tracking-tight">Aptitude Mastery Modules</h2>
-            <p className="text-ink-600 text-sm">Study by topic, complete practice tests, and review your progress.</p>
-          </div>
-          <button
-            onClick={() => setActiveTab('aptitude')}
-            className="text-accent-600 hover:text-accent-800 text-sm font-bold flex items-center gap-1 transition-colors"
-          >
-            View All Topics <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Verbal Aptitude Card */}
-          <div 
-            id="card-module-verbal"
-            className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
-          >
+      <section aria-label="Overall completion" className="grid grid-cols-1 lg:grid-cols-[1.4fr_.8fr] gap-5">
+        <div className="border border-[#ded5ca] bg-white p-6 md:p-7">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="flex justify-between items-start mb-3">
-                <span className="ui-3d-stage ui-3d-stage-sm" aria-hidden="true"><span className="ui-3d-tile"><BookOpen className="w-5 h-5" /></span></span>
-                <span className="px-3 py-1 bg-ink-100 text-ink-700 font-mono text-xs font-bold rounded-full">
-                  10 Topics
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-ink-900">Verbal Aptitude</h3>
-              <p className="text-ink-600 text-xs mt-1.5 leading-relaxed">
-                Reading comprehension, error spotting, vocabulary, para jumbles, idioms, and critical reasoning.
-              </p>
-              <div className="mt-5 space-y-2">
-                <div className="flex justify-between text-xs text-ink-600">
-                  <span className="font-medium">Topic Completion</span>
-                  <span className="font-bold text-ink-900">
-                    {userProfile.completedTests > 0 ? `${Math.min(10, userProfile.completedTests)} / 10` : '0 / 10 (0%)'}
-                  </span>
-                </div>
-                <div className="interactive-card h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
-                  <div 
-                    className="h-full bg-accent-600 rounded-full transition-all duration-500" 
-                    style={{ width: `${userProfile.completedTests > 0 ? Math.min(100, userProfile.completedTests * 10) : 0}%` }}
-                  ></div>
-                </div>
-              </div>
+              <p className="text-sm font-semibold text-[#625951]">Overall preparation completion</p>
+              <div className="flex items-baseline gap-2 mt-2"><span className="text-5xl font-bold text-[#1b1714] tabular-nums">{overallProgress}%</span><span className="text-sm text-[#74695f]">completed</span></div>
             </div>
-
-            <div className="interactive-card pt-3 border-t border-ink-100 flex gap-2">
-              <button
-                onClick={() => {
-                  onSelectCategory('verbal');
-                  setActiveTab('aptitude');
-                }}
-                className="w-full bg-ink-900 hover:bg-ink-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors"
-              >
-                Learn Topics
-              </button>
-              <button
-                onClick={() => {
-                  onSelectCategory('verbal');
-                  setActiveTab('aptitude');
-                }}
-                className="w-full bg-accent-50 text-accent-600 hover:bg-accent-100 text-xs font-bold py-2.5 rounded-xl transition-colors"
-              >
-                Test (20 Qs)
-              </button>
-            </div>
+            <div className="hidden sm:flex w-12 h-12 items-center justify-center bg-[#f5f1e8] text-[#7f2f2a]"><TrendingUp size={23} /></div>
           </div>
-
-          {/* Logical Aptitude Card */}
-          <div 
-            id="card-module-logical"
-            className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
-          >
-            <div>
-              <div className="flex justify-between items-start mb-3">
-                <span className="p-3 bg-accent-50 text-accent-600 rounded-2xl group-hover:bg-accent-600 group-hover:text-white transition-colors">
-                  <BookOpen className="w-5 h-5" />
-                </span>
-                <span className="px-3 py-1 bg-ink-100 text-ink-700 font-mono text-xs font-bold rounded-full">
-                  10 Topics
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-ink-900">Logical Reasoning</h3>
-              <p className="text-ink-600 text-xs mt-1.5 leading-relaxed">
-                Coding-decoding, syllogisms, blood relations, seating arrangements, and data sufficiency.
-              </p>
-              <div className="mt-5 space-y-2">
-                <div className="flex justify-between text-xs text-ink-600">
-                  <span className="font-medium">Topic Completion</span>
-                  <span className="font-bold text-ink-900">
-                    {userProfile.completedTests > 1 ? `${Math.min(10, userProfile.completedTests - 1)} / 10` : '0 / 10 (0%)'}
-                  </span>
-                </div>
-                <div className="interactive-card h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
-                  <div 
-                    className="h-full bg-accent-600 rounded-full transition-all duration-500" 
-                    style={{ width: `${userProfile.completedTests > 1 ? Math.min(100, (userProfile.completedTests - 1) * 10) : 0}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="interactive-card pt-3 border-t border-ink-100 flex gap-2">
-              <button
-                onClick={() => {
-                  onSelectCategory('logical');
-                  setActiveTab('aptitude');
-                }}
-                className="w-full bg-ink-900 hover:bg-ink-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors"
-              >
-                Learn Topics
-              </button>
-              <button
-                onClick={() => {
-                  onSelectCategory('logical');
-                  setActiveTab('aptitude');
-                }}
-                className="w-full bg-accent-50 text-accent-600 hover:bg-accent-100 text-xs font-bold py-2.5 rounded-xl transition-colors"
-              >
-                Test (20 Qs)
-              </button>
-            </div>
-          </div>
-
-          {/* Quants Aptitude Card */}
-          <div 
-            id="card-module-quants"
-            className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-sm hover:border-accent-300 transition-all flex flex-col justify-between space-y-5 group"
-          >
-            <div>
-              <div className="flex justify-between items-start mb-3">
-                <span className="p-3 bg-accent-50 text-accent-600 rounded-2xl group-hover:bg-accent-600 group-hover:text-white transition-colors">
-                  <BookOpen className="w-5 h-5" />
-                </span>
-                <span className="px-3 py-1 bg-ink-100 text-ink-700 font-mono text-xs font-bold rounded-full">
-                  10 Topics
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-ink-900">Quantitative Aptitude</h3>
-              <p className="text-ink-600 text-xs mt-1.5 leading-relaxed">
-                Profit & loss, percentages, time & distance, probability, data interpretation, and modern algebra.
-              </p>
-              <div className="mt-5 space-y-2">
-                <div className="flex justify-between text-xs text-ink-600">
-                  <span className="font-medium">Topic Completion</span>
-                  <span className="font-bold text-ink-900">
-                    {userProfile.completedTests > 2 ? `${Math.min(10, userProfile.completedTests - 2)} / 10` : '0 / 10 (0%)'}
-                  </span>
-                </div>
-                <div className="interactive-card h-2.5 w-full bg-ink-100 rounded-full overflow-hidden p-0.5 border border-ink-200/60">
-                  <div 
-                    className="h-full bg-accent-600 rounded-full transition-all duration-500" 
-                    style={{ width: `${userProfile.completedTests > 2 ? Math.min(100, (userProfile.completedTests - 2) * 10) : 0}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="interactive-card pt-3 border-t border-ink-100 flex gap-2">
-              <button
-                onClick={() => {
-                  onSelectCategory('quants');
-                  setActiveTab('aptitude');
-                }}
-                className="w-full bg-ink-900 hover:bg-ink-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors"
-              >
-                Learn Topics
-              </button>
-              <button
-                onClick={() => {
-                  onSelectCategory('quants');
-                  setActiveTab('aptitude');
-                }}
-                className="w-full bg-accent-50 text-accent-600 hover:bg-accent-100 text-xs font-bold py-2.5 rounded-xl transition-colors"
-              >
-                Test (20 Qs)
-              </button>
-            </div>
-          </div>
+          <div className="mt-5"><ProgressBar value={overallProgress} /></div>
+          <p className="mt-3 text-sm text-[#625951]">{completedAreas} of 3 preparation areas fully completed. Your percentage updates after you finish an assessment.</p>
         </div>
-      </div>
-
-      {/* MBA Specialization Domain Readiness Matrix */}
-      <div className="interactive-card bg-white border border-ink-200/90 rounded-3xl p-6 shadow-xs space-y-4">
-        <div className="interactive-card flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ink-100 pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-ink-900">MBA Domain Mastery & Level Progression</h2>
-            <p className="text-xs text-ink-500">Benchmark performance across Finance, HR, Marketing, Analytics, Operations & Strategy.</p>
-          </div>
-          <div className="interactive-card flex items-center gap-2 bg-success-50 text-success-700 px-3 py-1 rounded-full text-xs font-mono font-bold border border-success-200/60 self-start sm:self-auto">
-            <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse"></span>
-            MongoDB Atlas Connected
-          </div>
+        <div className="border border-[#ded5ca] bg-[#f8f5ef] p-6">
+          <p className="text-sm font-semibold text-[#625951]">Placement readiness</p>
+          <div className="flex items-baseline gap-2 mt-2"><span className="text-4xl font-bold text-[#7f2f2a] tabular-nums">{Math.max(0, Math.min(100, userProfile.readinessScore || 0))}%</span><span className="text-sm text-[#74695f]">score</span></div>
+          <ProgressBar value={Math.max(0, Math.min(100, userProfile.readinessScore || 0))} compact />
+          <p className="mt-3 text-xs leading-relaxed text-[#625951]">Readiness reflects your latest evaluation. Completion measures which preparation areas you have practised.</p>
         </div>
+      </section>
 
-        {/* Preparation Progress */}
-        <div className="interactive-card grid grid-cols-2 md:grid-cols-4 gap-3 bg-ink-900 text-white p-4 rounded-2xl border border-ink-800">
-          <div className={`p-3 rounded-xl border space-y-1 transition-all ${userProfile.level === 1 ? 'bg-accent-950/90 border-accent-500 shadow-md ring-1 ring-accent-500' : 'bg-ink-800/70 border-ink-700'}`}>
-            <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 1 ? 'text-accent-300' : 'text-ink-400'}`}>
-              Level 1 • {userProfile.level === 1 ? 'CURRENT' : 'UNLOCKED'}
-            </span>
-            <p className="text-xs font-bold">MBA Foundation</p>
-            <p className="text-[10px] text-ink-400">0 - 499 XP • Foundational</p>
-          </div>
-
-          <div className={`p-3 rounded-xl border space-y-1 transition-all ${userProfile.level === 2 ? 'bg-accent-950/90 border-accent-500 shadow-md ring-1 ring-accent-500' : 'bg-ink-800/70 border-ink-700'}`}>
-            <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 2 ? 'text-highlight-300' : 'text-ink-400'}`}>
-              Level 2 • {userProfile.level === 2 ? 'CURRENT' : userProfile.level > 2 ? 'UNLOCKED' : 'LOCKED'}
-            </span>
-            <p className="text-xs font-bold">Associate</p>
-            <p className="text-[10px] text-ink-400">500 - 1,499 XP • CAC & Metrics</p>
-          </div>
-
-          <div className={`p-3 rounded-xl border space-y-1 transition-all ${userProfile.level === 3 ? 'bg-accent-950/90 border-accent-500 shadow-md ring-1 ring-accent-500' : 'bg-ink-800/70 border-ink-700'}`}>
-            <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 3 ? 'text-accent-300' : userProfile.level > 3 ? 'UNLOCKED' : 'LOCKED'}`}>
-              Level 3 • {userProfile.level === 3 ? 'CURRENT' : userProfile.level > 3 ? 'UNLOCKED' : 'LOCKED'}
-            </span>
-            <p className="text-xs font-bold">Advanced Campaign</p>
-            <p className="text-[10px] text-ink-400">1,500 - 2,999 XP • M&A Cases</p>
-          </div>
-
-          <div className={`p-3 rounded-xl border space-y-1 transition-all ${userProfile.level === 4 ? 'bg-danger-950/90 border-danger-500 shadow-md ring-1 ring-danger-500' : 'bg-ink-800/50 border-ink-800 opacity-80'}`}>
-            <span className={`text-[10px] font-mono font-bold uppercase ${userProfile.level === 4 ? 'text-danger-300' : 'text-ink-400'}`}>
-              Level 4 • {userProfile.level === 4 ? 'CURRENT' : 'LOCKED'}
-            </span>
-            <p className="text-xs font-bold">MD Boardroom Challenge</p>
-            <p className="text-[10px] text-ink-400">3,000+ XP • Executive Final</p>
-          </div>
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+          <div><h2 className="text-xl font-bold text-[#1b1714]">Preparation progress</h2><p className="text-sm text-[#74695f] mt-1">Select an area to continue. Progress is based on completed assessments, not time spent.</p></div>
+          <button onClick={() => setActiveTab('evaluation')} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7f2f2a] hover:underline self-start">View evaluation reports <ArrowRight size={15} /></button>
         </div>
-
-        {/* Dynamic Domain Scores */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { domain: 'Finance', label: 'M&A & Valuation' },
-            { domain: 'HR', label: 'Talent & Culture' },
-            { domain: 'Marketing', label: 'CAC/LTV & Brands' },
-            { domain: 'Business Analytics', label: 'Data & Regression' },
-            { domain: 'Operations', label: 'Supply Chain & EOQ' },
-            { domain: 'Strategy', label: 'MECE & GTM Cases' },
-          ].map((item) => {
-            const domainScore = userProfile.domainScores ? userProfile.domainScores[item.domain as MBADomain] || 0 : 0;
-            return (
-              <div key={item.domain} className="interactive-card p-3.5 rounded-2xl border bg-ink-50 border-ink-200 space-y-1">
-                <div className="flex justify-between items-center text-xs font-mono font-bold">
-                  <span className="truncate max-w-[90px]">{item.domain}</span>
-                  <span className={domainScore > 0 ? "text-accent-600 font-bold" : "text-ink-400 font-normal"}>
-                    {domainScore > 0 ? `${domainScore}%` : '0%'}
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-ink-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-accent-600 transition-all duration-500" style={{ width: `${domainScore}%` }}></div>
-                </div>
-                <p className="text-[10px] text-ink-500 font-medium truncate">{item.label}</p>
-              </div>
-            );
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {sections.map(section => {
+            const Icon = section.icon;
+            return <article key={section.id} className="border border-[#ded5ca] bg-white p-5 flex flex-col min-h-[238px]">
+              <div className="flex items-start justify-between gap-3"><div className="w-10 h-10 flex items-center justify-center bg-[#f5f1e8] text-[#7f2f2a]"><Icon size={20} /></div><span className="text-lg font-bold text-[#1b1714] tabular-nums">{section.progress}%</span></div>
+              <h3 className="text-lg font-bold text-[#1b1714] mt-4">{section.title}</h3>
+              <p className="text-sm text-[#625951] leading-relaxed mt-1 flex-1">{section.description}</p>
+              <div className="mt-4"><ProgressBar value={section.progress} compact /><p className="text-xs text-[#74695f] mt-2">{section.detail}</p></div>
+              <button onClick={() => setActiveTab(section.id)} className="mt-4 w-full border border-[#bfb2a4] px-3 py-2.5 text-sm font-semibold text-[#1b1714] hover:bg-[#f8f4ee] flex items-center justify-between">{section.action}<ArrowRight size={15} /></button>
+            </article>;
           })}
         </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* GD Feature Spotlight */}
-        <div className="interactive-card bg-ink-900 text-white rounded-3xl p-7 shadow-lg flex flex-col justify-between relative overflow-hidden border border-ink-800">
-          <div className="space-y-3 z-10">
-            <span className="interactive-card inline-block px-3 py-1 bg-accent-500/20 text-accent-300 font-mono text-xs font-extrabold rounded-full border border-accent-500/30">
-              CAMERA & MIC PIPELINE
-            </span>
-            <h3 className="text-2xl font-bold">Realtime Group Discussion</h3>
-            <p className="text-ink-300 text-xs leading-relaxed">
-              Connect with peers via room codes or practice with simulated AI candidates (Alex, Sophia, David) with real-time camera feeds and speech recognition.
-            </p>
-          </div>
-          <div className="pt-6 z-10">
-            <button
-              onClick={() => setActiveTab('gd')}
-              className="bg-accent-600 hover:bg-accent-500 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all flex items-center gap-2 shadow-md"
-            >
-              <Users className="w-4 h-4" /> Start GD Room Session
-            </button>
-          </div>
-        </div>
+      </section>
 
-        {/* AI Face Interview Spotlight */}
-        <div className="interactive-card bg-accent-50/70 border border-accent-200/80 rounded-3xl p-7 shadow-sm flex flex-col justify-between">
-          <div className="space-y-3">
-            <span className="inline-block px-3 py-1 bg-accent-100 text-accent-700 font-mono text-xs font-extrabold rounded-full">
-              STEP-BY-STEP SIMULATION
-            </span>
-            <h3 className="text-2xl font-bold text-ink-900">1-on-1 AI Face Interviewer</h3>
-            <p className="text-ink-600 text-xs leading-relaxed">
-              Interview face-to-face with an interactive AI interviewer. Answer technical and situational questions while receiving instant posture, tone, and technical accuracy insights.
-            </p>
-          </div>
-          <div className="pt-6 flex gap-3">
-            <button
-              onClick={() => setActiveTab('interview')}
-              className="bg-ink-900 hover:bg-ink-800 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all flex items-center gap-2 shadow-sm"
-            >
-              <Video className="w-4 h-4" /> Begin AI Interview
-            </button>
-            <button
-              onClick={() => setActiveTab('evaluation')}
-              className="interactive-card bg-white hover:bg-ink-100 text-ink-800 border border-ink-200 font-semibold px-5 py-3 rounded-xl text-xs transition-all flex items-center gap-2"
-            >
-              <Award className="w-4 h-4 text-accent-600" /> Past Evaluation
-            </button>
-          </div>
+      <section className="border border-[#ded5ca] bg-white">
+        <div className="px-5 py-4 border-b border-[#e8e0d6]"><h2 className="font-bold text-[#1b1714]">Aptitude category checklist</h2><p className="text-sm text-[#74695f] mt-1">Complete at least one test in each category to finish the aptitude section.</p></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#e8e0d6]">
+          {categoryItems.map(item => <button key={item.id} onClick={() => { onSelectCategory(item.id); setActiveTab('aptitude'); }} className="p-5 text-left hover:bg-[#fbf8f3] flex items-center gap-3"><span className={item.done ? 'text-[#47704b]' : 'text-[#a59a8e'}>{item.done ? <CheckCircle2 size={20} /> : <Circle size={20} />}</span><span className="flex-1"><span className="block text-sm font-semibold text-[#1b1714]">{item.title}</span><span className="block text-xs text-[#74695f] mt-1">{item.done ? 'Assessment completed' : 'Not completed'}</span></span><ArrowRight size={15} className="text-[#8a7e72]" /></button>)}
         </div>
-      </div>
+      </section>
+
+      <section className="border-t border-[#ddd4c8] pt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3"><ClipboardCheck size={20} className="text-[#7f2f2a]" /><div><p className="text-sm font-semibold text-[#1b1714]">Assessment summary</p><p className="text-xs text-[#74695f] mt-1">{userProfile.completedTests} aptitude tests · {userProfile.completedGDs} group discussions · {userProfile.completedInterviews} interviews completed</p></div></div>
+        <button onClick={() => setActiveTab('evaluation')} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7f2f2a] hover:underline">Open reports <ArrowRight size={15} /></button>
+      </section>
     </div>
   );
 };
