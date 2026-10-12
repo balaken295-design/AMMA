@@ -6,7 +6,7 @@ import { BookOpen, CheckCircle, Clock, Play, HelpCircle, ArrowLeft, Award, Spark
 interface AptitudeViewProps {
   initialCategory?: 'verbal' | 'logical' | 'quants';
   userProfile?: UserProfile;
-  onAddXP?: (xpAmount: number, domain?: string, scorePercent?: number) => void;
+  onAddXP?: (xpAmount: number, domain?: string, scorePercent?: number, aptitudeCategory?: 'verbal' | 'logical' | 'quants') => void;
 }
 
 export const AptitudeView: React.FC<AptitudeViewProps> = ({ 
@@ -93,7 +93,7 @@ export const AptitudeView: React.FC<AptitudeViewProps> = ({
     const xpEarned = score * 50;
 
     if (onAddXP) {
-      onAddXP(xpEarned, undefined, scorePercent);
+      onAddXP(xpEarned, undefined, scorePercent, activeCategory);
     }
 
     // Save score to MongoDB Atlas / Backend
