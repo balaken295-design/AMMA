@@ -299,6 +299,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
   // This makes speaking fill the message box the same way typing does.
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [speechError, setSpeechError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);
   const ignoreSpeechResultsRef = useRef(false);
@@ -1217,8 +1218,9 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({ onComp
             <section className="gd-conversation">
               <div className="gd-conversation-header">
                 <div><span className="gd-section-kicker">LIVE NOTES</span><h3>Discussion</h3></div>
-                <span className={`gd-listening-status ${isListening ? 'is-listening' : ''}`}>{isListening ? 'Listening' : speechSupported ? 'Voice ready' : 'Type your response'}</span>
+                <span className={`gd-listening-status ${isListening ? 'is-listening' : ''}`}>{isListening ? 'Listening — speak clearly' : speechSupported ? 'Voice ready' : 'Keyboard dictation available'}</span>
               </div>
+              {speechError && <p className="gd-speech-fallback">{speechError}</p>}
               <div className="gd-message-list">
                 {activeRoom.messages.length === 0 && <div className="gd-empty-conversation"><Volume2 className="w-5 h-5" /><p>The discussion is ready.</p><span>Use your microphone or type your opening point below.</span></div>}
                 {activeRoom.messages.map(m => (
