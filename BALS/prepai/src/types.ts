@@ -38,6 +38,7 @@ export interface UserProfile {
   streakDays: number;
   readinessScore: number; // 0 to 100%
   completedTests: number;
+  completedAptitudeCategories?: ('verbal' | 'logical' | 'quants')[];
   completedInterviews: number;
   completedGDs: number;
   domainScores: {

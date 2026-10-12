@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Header } from './components/Header';
 import { LandingPageView } from './components/LandingPageView';
-import { PlacementCampusView } from './components/PlacementCampusView';
+import { DashboardView } from './components/DashboardView';
 import { AptitudeView } from './components/AptitudeView';
 import { GroupDiscussionView } from './components/GroupDiscussionView';
 import { AIInterviewView } from './components/AIInterviewView';
@@ -99,7 +99,7 @@ export default function App() {
     return { level: 4, title: 'Advanced Leadership' };
   };
 
-  const handleAddXP = (xpAmount: number, domain?: string, scorePercent?: number) => {
+  const handleAddXP = (xpAmount: number, domain?: string, scorePercent?: number, aptitudeCategory?: 'verbal' | 'logical' | 'quants') => {
     setUserProfile((prev) => {
       const newXp = prev.xp + xpAmount;
       const { level, title } = calculateLevel(newXp);
@@ -121,6 +121,9 @@ export default function App() {
         level,
         levelTitle: title,
         completedTests: newCompletedTests,
+        completedAptitudeCategories: aptitudeCategory
+          ? Array.from(new Set([...(prev.completedAptitudeCategories || []), aptitudeCategory]))
+          : prev.completedAptitudeCategories || [],
         readinessScore: Math.min(100, Math.max(15, baseReadiness)),
         streakDays: prev.streakDays === 0 ? 1 : prev.streakDays,
         domainScores: updatedDomainScores,
@@ -248,8 +251,9 @@ export default function App() {
         )}
 
         {activeTab === 'dashboard' && (
-          <PlacementCampusView
+          <DashboardView
             setActiveTab={navigate}
+            onSelectCategory={setSelectedCategory}
             userProfile={userProfile}
             onOpenLoginModal={() => setIsLoginModalOpen(true)}
           />
