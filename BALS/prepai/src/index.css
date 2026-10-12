@@ -421,3 +421,7 @@ button:hover .ui-3d-tile,.group:hover .ui-3d-tile,.group:hover .topic-card-3d{tr
 .gd-metaverse-stage{display:block;position:relative;min-height:420px;flex:1}.gd-metaverse-canvas{position:absolute!important;inset:0!important;z-index:1}.gd-metaverse-canvas canvas{position:absolute!important;inset:0!important;z-index:1}.gd-metaverse-controls,.gd-camera-badge{z-index:10!important}.character-edit span{font:10px "Times New Roman",serif;font-weight:bold}.character-editor{z-index:100!important;pointer-events:auto}.character-editor input,.character-editor button{pointer-events:auto}
 
 .gd-room-code{display:inline-flex;align-items:center;gap:10px;margin-top:8px;padding:6px 9px;border:1px solid #d9d0c2;background:#fffdf9}.gd-room-code span{font-size:8px;letter-spacing:.12em;color:#756b62}.gd-room-code strong{font:700 13px "Times New Roman",serif;color:#7f2f2a;letter-spacing:.08em}.character-edit span{font:10px "Times New Roman",serif;font-weight:bold}.character-edit{pointer-events:auto}.character-editor{pointer-events:auto}.character-editor *{pointer-events:auto}
+
+/* Mobile speech recognition guidance */
+.gd-speech-fallback{margin:6px 0;color:#7f2f2a;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+@media(max-width:640px){.gd-speech-fallback{font-size:13px}.gd-message-input{font-size:16px!important}}
